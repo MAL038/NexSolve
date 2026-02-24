@@ -1,0 +1,175 @@
+// ─── Auth / User ──────────────────────────────────────────────
+export type UserRole = "admin" | "member" | "viewer" | "superuser";
+export type MemberRole = "member" | "admin";
+
+export interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+  role: UserRole;
+  is_active: boolean;
+  team_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Platform-instellingen ────────────────────────────────────
+export interface PlatformSettings {
+  id: string;
+  company_name: string;
+  logo_url: string | null;
+  primary_color: string;
+  accent_color: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+// ─── Customers ────────────────────────────────────────────────
+export interface Customer {
+  id: string;
+  owner_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  /** Populated when fetching customer detail with projects */
+  projects?: Project[];
+}
+
+export interface CustomerFormData {
+  name: string;
+}
+
+// ─── Projects ─────────────────────────────────────────────────
+export type ProjectStatus = "active" | "in-progress" | "archived";
+
+export interface Project {
+  id: string;
+  owner_id: string;
+  customer_id: string | null;          // nullable – backwards compat
+  name: string;
+  description: string | null;
+  theme_id: string | null;
+  process_id: string | null;
+  process_type_id: string | null;
+  status: ProjectStatus;
+  created_at: string;
+  updated_at: string;
+  /** Joined from customers table */
+  customer?: Pick<Customer, "id" | "name"> | null;
+  /** Joined from profiles */
+  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
+  /** Joined members */
+  project_members?: ProjectMember[];
+}
+
+export interface ProjectFormData {
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  customer_id?: string | null;
+}
+
+// ─── Project Members ──────────────────────────────────────────
+export interface ProjectMember {
+  project_id: string;
+  user_id: string;
+  role: MemberRole;
+  added_at: string;
+  /** Populated via join on profiles */
+  profile?: Pick<Profile, "full_name" | "email" | "avatar_url">;
+}
+
+export interface AddMemberPayload {
+  user_id: string;
+  role?: MemberRole;
+}
+
+// ─── API helpers ──────────────────────────────────────────────
+export interface ApiError {
+  error: string;
+}
+
+// ─── Subprocesses ─────────────────────────────────────────────
+export type SubprocessStatus = "todo" | "in-progress" | "done" | "blocked";
+
+export interface Subprocess {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  theme_id: string | null;
+  process_id: string | null;
+  process_type_id: string | null;
+  status: SubprocessStatus;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubprocessFormData {
+  title: string;
+  description?: string;
+  status: SubprocessStatus;
+}
+
+// ─── Theme Hierarchy ──────────────────────────────────────────
+
+export interface Theme {
+  id: string;
+  name: string;
+  slug: string;
+  position: number;
+  created_at: string;
+}
+
+export interface Process {
+  id: string;
+  theme_id: string;
+  name: string;
+  slug: string;
+  position: number;
+  created_at: string;
+}
+
+export interface ProcessType {
+  id: string;
+  process_id: string;
+  name: string;
+  slug: string;
+  position: number;
+  created_at: string;
+}
+
+/** Full hierarchy tree (used when loading everything at once) */
+export interface ThemeWithChildren extends Theme {
+  processes: ProcessWithChildren[];
+}
+
+export interface ProcessWithChildren extends Process {
+  process_types: ProcessType[];
+}
+
+/** The three selections a project can hold */
+export interface ThemeSelection {
+  theme_id:        string | null;
+  process_id:      string | null;
+  process_type_id: string | null;
+}
+
+// ─── Aangepaste project-rollen ────────────────────────────────
+export interface CustomRole {
+  id:         string;
+  name:       string;
+  slug:       string;
+  color:      string;
+  position:   number;
+  is_active:  boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Admin overzicht-types ────────────────────────────────────
+export interface AdminUserRow extends Profile {
+  project_count?: number;
+}

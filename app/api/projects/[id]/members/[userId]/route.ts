@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabaseServer";
+
+interface Params { params: { id: string; userId: string } }
+
+export async function DELETE(_: NextRequest, { params }: Params) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Verify caller is owner
+  const { data: project } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", params.id)
+    .single();
+
+  if (!project) return NextResponse.json({ error: "Project niet gevonden" }, { status: 404 });
+  if (project.owner_id !== user.id)
+    return NextResponse.json({ error: "Only the project owner can remove members" }, { status: 403 });
+
+  const { error } = await supabase
+    .from("project_members")
+    .delete()
+    .eq("project_id", params.id)
+    .eq("user_id", params.userId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return new NextResponse(null, { status: 204 });
+}
+
+// PATCH: update member role
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", params.id)
+    .single();
+
+  if (!project || project.owner_id !== user.id)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { role } = await req.json();
+  if (!["member", "admin"].includes(role))
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+
+  const { data, error } = await supabase
+    .from("project_members")
+    .update({ role })
+    .eq("project_id", params.id)
+    .eq("user_id", params.userId)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
