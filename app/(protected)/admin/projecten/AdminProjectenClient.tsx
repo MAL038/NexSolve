@@ -11,7 +11,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { relativeTime } from "@/lib/time";
 import type { Project, Customer, Profile } from "@/types";
 
-interface AdminProject extends Project {
+interface AdminProject extends Omit<Project, "owner" | "customer"> {
   customer: Pick<Customer, "id" | "name"> | null;
   owner: Pick<Profile, "full_name" | "email"> | null;
 }
