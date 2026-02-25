@@ -9,9 +9,8 @@ const updateSchema = z.object({
   customer_id: z.string().uuid().nullable().optional(),
 });
 
-interface Params { params: { id: string } }
-
-export async function GET(_: NextRequest, { params }: Params) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,14 +26,15 @@ export async function GET(_: NextRequest, { params }: Params) {
         profile:profiles(full_name, email, avatar_url)
       )
     `)
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (error) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(data);
 }
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from("projects")
     .update({ ...result.data, updated_at: new Date().toISOString() })
-    .eq("id", params.id)
+    .eq("id", id)
     .select("*, customer:customers(id, name)")
     .single();
 
@@ -55,7 +55,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -63,7 +64,7 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   const { error } = await supabase
     .from("projects")
     .delete()
-    .eq("id", params.id);
+    .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });

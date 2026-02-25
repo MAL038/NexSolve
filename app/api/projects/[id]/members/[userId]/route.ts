@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 
-interface Params { params: { id: string; userId: string } }
-
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string; userId: string }> }) {
+  const { id, userId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Verify caller is owner
   const { data: project } = await supabase
     .from("projects")
     .select("owner_id")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!project) return NextResponse.json({ error: "Project niet gevonden" }, { status: 404 });
@@ -22,15 +20,15 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   const { error } = await supabase
     .from("project_members")
     .delete()
-    .eq("project_id", params.id)
-    .eq("user_id", params.userId);
+    .eq("project_id", id)
+    .eq("user_id", userId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });
 }
 
-// PATCH: update member role
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; userId: string }> }) {
+  const { id, userId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: project } = await supabase
     .from("projects")
     .select("owner_id")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!project || project.owner_id !== user.id)
@@ -51,8 +49,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from("project_members")
     .update({ role })
-    .eq("project_id", params.id)
-    .eq("user_id", params.userId)
+    .eq("project_id", id)
+    .eq("user_id", userId)
     .select()
     .single();
 

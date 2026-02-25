@@ -9,9 +9,8 @@ const createSchema = z.object({
   position:    z.number().int().optional(),
 });
 
-interface Params { params: { id: string } }
-
-export async function GET(_: NextRequest, { params }: Params) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,14 +18,15 @@ export async function GET(_: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from("subprocesses")
     .select("*")
-    .eq("project_id", params.id)
+    .eq("project_id", id)
     .order("position", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -36,18 +36,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!result.success)
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
 
-  // Auto-assign position at end if not provided
   if (result.data.position === undefined) {
     const { count } = await supabase
       .from("subprocesses")
       .select("*", { count: "exact", head: true })
-      .eq("project_id", params.id);
+      .eq("project_id", id);
     (result.data as any).position = count ?? 0;
   }
 
   const { data, error } = await supabase
     .from("subprocesses")
-    .insert({ ...result.data, project_id: params.id })
+    .insert({ ...result.data, project_id: id })
     .select()
     .single();
 

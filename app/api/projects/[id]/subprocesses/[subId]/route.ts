@@ -9,9 +9,8 @@ const updateSchema = z.object({
   position:    z.number().int().optional(),
 });
 
-interface Params { params: { id: string; subId: string } }
-
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; subId: string }> }) {
+  const { id, subId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,8 +23,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data, error } = await supabase
     .from("subprocesses")
     .update({ ...result.data, updated_at: new Date().toISOString() })
-    .eq("id", params.subId)
-    .eq("project_id", params.id)
+    .eq("id", subId)
+    .eq("project_id", id)
     .select()
     .single();
 
@@ -33,7 +32,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string; subId: string }> }) {
+  const { id, subId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,8 +41,8 @@ export async function DELETE(_: NextRequest, { params }: Params) {
   const { error } = await supabase
     .from("subprocesses")
     .delete()
-    .eq("id", params.subId)
-    .eq("project_id", params.id);
+    .eq("id", subId)
+    .eq("project_id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });
