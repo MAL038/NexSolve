@@ -1,5 +1,5 @@
 import Sidebar from "@/components/layout/Sidebar";
-import Topbar  from "@/components/layout/Topbar";
+import AppShellClient from "@/components/layout/AppShellClient";
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabaseServer";
 import type { ThemeWithChildren } from "@/types";
@@ -19,15 +19,16 @@ export default async function AppShell({ children }: { children: React.ReactNode
   const isSuperuser = isSu === true;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar profile={profile} hierarchy={(hierarchy as ThemeWithChildren[]) ?? []} isSuperuser={isSuperuser} />
-
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AppShellClient
+      sidebar={
+        <Sidebar
+          profile={profile}
+          hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
+          isSuperuser={isSuperuser}
+        />
+      }
+    >
+      {children}
+    </AppShellClient>
   );
 }

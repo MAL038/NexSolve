@@ -30,9 +30,10 @@ interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
   isSuperuser?: boolean;
+  onNavigate?: () => void;
 }
 
-export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProps) {
+export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }: SidebarProps) {
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -52,6 +53,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
     await supabase.auth.signOut();
     router.push("/auth/login");
     router.refresh();
+    onNavigate?.();
   }
 
   // Navigeer naar projecten-filter EN expandeer thema
@@ -64,6 +66,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
       setExpandedTheme(id);
       router.push(`/projects?theme=${id}`);
     }
+    onNavigate?.();
   }
 
   function goProcess(themeId: string, processId: string) {
@@ -73,6 +76,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
     } else {
       router.push(`/projects?theme=${themeId}&process=${processId}`);
     }
+    onNavigate?.();
   }
 
   // Nieuw project aanmaken met pre-filled thema/process via query params
@@ -82,19 +86,20 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
     if (processId) params.set("process", processId);
     params.set("new", "1");
     router.push(`/projects?${params.toString()}`);
+    onNavigate?.();
   }
 
   const pdfScope = urlProcess ? `process:${urlProcess}` : urlTheme ? `theme:${urlTheme}` : "all";
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0 overflow-y-auto">
+    <aside className="flex h-full w-full flex-col bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0 overflow-y-auto">
       <div className="px-2 mb-8 flex-shrink-0">
         <Logo variant="main" />
       </div>
 
       <nav className="flex-1 flex flex-col gap-0.5">
 
-        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
+        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} onNavigate={onNavigate} />
 
         {/* ── Projecten + altijd-zichtbare thema-boom ── */}
         <div>
@@ -102,6 +107,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
           <div className="flex items-center gap-1">
             <Link
               href="/projects"
+              onClick={() => onNavigate?.()}
               className={clsx(
                 "flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                 isProjectsArea && !urlTheme
@@ -130,7 +136,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
             {/* "Alle projecten" chip — alleen tonen als we al in /projects zijn */}
             {isProjectsArea && (
               <button
-                onClick={() => { setExpandedTheme(""); router.push("/projects"); }}
+                onClick={() => { setExpandedTheme(""); router.push("/projects"); onNavigate?.(); }}
                 className={clsx(
                   "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
                   isProjectsArea && !urlTheme
@@ -225,21 +231,21 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
           </div>
         </div>
 
-        <NavItem href="/customers" icon={Building2} label="Klanten"     active={pathname.startsWith("/customers")} />
-        <NavItem href="/team"      icon={Users}     label="Team"         active={pathname.startsWith("/team")}      />
+        <NavItem href="/customers" icon={Building2} label="Klanten"     active={pathname.startsWith("/customers")} onNavigate={onNavigate} />
+        <NavItem href="/team"      icon={Users}     label="Team"         active={pathname.startsWith("/team")}      onNavigate={onNavigate} />
         <PdfExportButton scope={pdfScope} variant="sidebar" />
-        <NavItem href="/settings"  icon={Settings}  label="Instellingen" active={pathname.startsWith("/settings")}  />
+        <NavItem href="/settings"  icon={Settings}  label="Instellingen" active={pathname.startsWith("/settings")}  onNavigate={onNavigate} />
 
         {isSuperuser && (
           <>
             <div className="my-2 border-t border-slate-100" />
-            <NavItem href="/admin" icon={ShieldCheck} label="Beheerpaneel" active={pathname.startsWith("/admin")} variant="admin" />
+            <NavItem href="/admin" icon={ShieldCheck} label="Beheerpaneel" active={pathname.startsWith("/admin")} variant="admin" onNavigate={onNavigate} />
           </>
         )}
       </nav>
 
       <div className="border-t border-slate-100 pt-4 mt-4 flex-shrink-0">
-        <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors group">
+        <Link href="/profile" onClick={() => onNavigate?.()} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors group">
           <Avatar name={profile?.full_name} url={profile?.avatar_url} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-800 truncate">{profile?.full_name ?? "Gebruiker"}</p>
@@ -257,11 +263,16 @@ export default function Sidebar({ profile, hierarchy, isSuperuser }: SidebarProp
   );
 }
 
-function NavItem({ href, icon: Icon, label, active, variant }: {
-  href: string; icon: React.ElementType; label: string; active: boolean; variant?: "admin";
+function NavItem({ href, icon: Icon, label, active, variant, onNavigate }: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  variant?: "admin";
+  onNavigate?: () => void;
 }) {
   return (
-    <Link href={href} className={clsx(
+    <Link href={href} onClick={() => onNavigate?.()} className={clsx(
       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
       variant === "admin"
         ? active
