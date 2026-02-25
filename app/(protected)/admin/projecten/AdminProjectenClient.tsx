@@ -13,12 +13,12 @@ import type { Project, Customer, Profile } from "@/types";
 
 interface AdminProject extends Project {
   customer: Pick<Customer, "id" | "name"> | null;
-  owner: Pick<Profile, "full_name" | "email"> | null;
+  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
 }
 
-interface AdminProject extends Project {
-  customer: Pick<Customer, "id" | "name"> | null;
-  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
+interface Props {
+  projecten:  AdminProject[];
+  eigenaren:  Pick<Profile, "id" | "full_name">[];
 }
 
 export default function AdminProjectenClient({ projecten, eigenaren }: Props) {
