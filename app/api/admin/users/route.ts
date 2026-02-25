@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
-type SuperuserContext = {
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  user: NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof createClient>>["auth"]["getUser"]>>["data"]["user"]>;
-};
-
-async function requireSuperuser(): Promise<SuperuserContext | null> {
+async function requireSuperuser() {
   const supabase = await createClient();
-
-  const { data, error: userErr } = await supabase.auth.getUser();
-  const user = data?.user;
-  if (userErr || !user) return null;
-
-  // SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
-  const { data: isSu, error: suErr } = await supabase.rpc("is_superuser");
-  if (suErr || !isSu) return null;
-
-  return { supabase, user };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  // Gebruik SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
+  const { data: isSu } = await supabase.rpc("is_superuser");
+  if (!isSu) return null;
+  return supabase;
 }
 
 export async function GET() {

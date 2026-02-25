@@ -13,7 +13,7 @@ import type { Project, Customer, Profile } from "@/types";
 
 interface AdminProject extends Project {
   customer: Pick<Customer, "id" | "name"> | null;
-  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
+  owner: Pick<Profile, "full_name" | "email"> | null;
 }
 
 interface Props {
