@@ -16,9 +16,9 @@ interface AdminProject extends Project {
   owner: Pick<Profile, "full_name" | "email"> | null;
 }
 
-interface Props {
-  projecten:  AdminProject[];
-  eigenaren:  Pick<Profile, "id" | "full_name">[];
+interface AdminProject extends Project {
+  customer: Pick<Customer, "id" | "name"> | null;
+  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
 }
 
 export default function AdminProjectenClient({ projecten, eigenaren }: Props) {
