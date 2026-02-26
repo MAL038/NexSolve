@@ -9,7 +9,7 @@ export const customerSchema = z.object({
   status:   z.enum(["active", "inactive"]).default("active"),
   autoCode: z.boolean().optional(),
 
-  // Stap 2 – Basisgegevens (allemaal optioneel)
+  // Stap 2 – Basisgegevens
   email:           z.string().email("Ongeldig e-mailadres").optional().or(z.literal("")),
   phone:           z.string().max(50).optional().or(z.literal("")),
   website:         z.string().url("Ongeldige URL (begin met https://)").optional().or(z.literal("")),
@@ -18,7 +18,7 @@ export const customerSchema = z.object({
   address_city:    z.string().max(100).optional().or(z.literal("")),
   address_country: z.string().max(100).optional().or(z.literal("")),
 
-  // Stap 3 – Contactpersoon (allemaal optioneel)
+  // Stap 3 – Contactpersoon
   contact_name:  z.string().max(200).optional().or(z.literal("")),
   contact_role:  z.string().max(100).optional().or(z.literal("")),
   contact_email: z.string().email("Ongeldig e-mailadres contactpersoon").optional().or(z.literal("")),
@@ -29,18 +29,20 @@ export const customerUpdateSchema = customerSchema.partial().omit({ autoCode: tr
 
 export type CustomerInput = z.infer<typeof customerSchema>;
 
-
+// ─── Project ──────────────────────────────────────────────────
 export const projectSchema = z.object({
   name:        z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
   status:      z.enum(["active", "in-progress", "archived"]),
 });
 
+// ─── Profile ──────────────────────────────────────────────────
 export const profileSchema = z.object({
-  full_name: z.string().min(1, "Name is required").max(100),
+  full_name:  z.string().min(1, "Name is required").max(100),
   avatar_url: z.string().url().optional().or(z.literal("")),
 });
 
+// ─── Auth ─────────────────────────────────────────────────────
 export const loginSchema = z.object({
   email:    z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -56,8 +58,8 @@ export const registerSchema = z.object({
   path: ["confirm"],
 });
 
+// ─── Exports ──────────────────────────────────────────────────
 export type ProjectInput  = z.infer<typeof projectSchema>;
 export type ProfileInput  = z.infer<typeof profileSchema>;
 export type LoginInput    = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
-export type CustomerInput = z.infer<typeof customerSchema>;
