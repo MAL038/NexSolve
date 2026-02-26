@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FolderKanban, Users, Settings,
   LogOut, Building2, ChevronRight, Plus, ShieldCheck,
+  Calendar, CalendarDays, CalendarRange, ChevronDown,
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect } from "react";
@@ -30,23 +31,33 @@ interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
   isSuperuser?: boolean;
-  onNavigate?: () => void;
+  onNavigate?:  () => void;
 }
+
+// ─── Kalender submenu items ───────────────────────────────────
+
+const CALENDAR_ITEMS = [
+  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",      icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=team", scope: "team", label: "Kalender team",       icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["admin","superuser"] },
+];
 
 export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }: SidebarProps) {
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const isProjectsArea = pathname.startsWith("/projects");
+  const isProjectsArea  = pathname.startsWith("/projects");
+  const isCalendarArea  = pathname.startsWith("/calendar");
 
   const urlTheme   = searchParams.get("theme")   ?? "";
   const urlProcess = searchParams.get("process") ?? "";
+  const urlScope   = searchParams.get("scope")   ?? "mine";
 
-  // Thema-boom altijd uitklapbaar, niet alleen op /projects
-  const [expandedTheme, setExpandedTheme] = useState<string>(urlTheme);
+  const [expandedTheme,    setExpandedTheme]    = useState<string>(urlTheme);
+  const [calendarExpanded, setCalendarExpanded] = useState(isCalendarArea);
 
-  // Sync expansion wanneer URL verandert (bijv. sidebar-klik elders)
   useEffect(() => { if (urlTheme) setExpandedTheme(urlTheme); }, [urlTheme]);
+  useEffect(() => { if (isCalendarArea) setCalendarExpanded(true); }, [isCalendarArea]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -56,194 +67,173 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
     onNavigate?.();
   }
 
-  // Navigeer naar projecten-filter EN expandeer thema
-  function goTheme(id: string) {
-    if (expandedTheme === id && urlTheme === id && !urlProcess) {
-      // Tweede klik: collapse + wis filter
-      setExpandedTheme("");
-      router.push("/projects");
-    } else {
-      setExpandedTheme(id);
-      router.push(`/projects?theme=${id}`);
-    }
-    onNavigate?.();
-  }
+  const userRole = profile?.role ?? "member";
 
-  function goProcess(themeId: string, processId: string) {
-    setExpandedTheme(themeId);
-    if (urlProcess === processId) {
-      router.push(`/projects?theme=${themeId}`);
-    } else {
-      router.push(`/projects?theme=${themeId}&process=${processId}`);
-    }
-    onNavigate?.();
-  }
+  // Welke kalender-items mag deze user zien?
+  const visibleCalendarItems = CALENDAR_ITEMS.filter(item =>
+    item.roles.includes(userRole)
+  );
 
-  // Nieuw project aanmaken met pre-filled thema/process via query params
-  function createWithContext(themeId?: string, processId?: string) {
-    const params = new URLSearchParams();
-    if (themeId)   params.set("theme",   themeId);
-    if (processId) params.set("process", processId);
-    params.set("new", "1");
-    router.push(`/projects?${params.toString()}`);
-    onNavigate?.();
-  }
-
-  const pdfScope = urlProcess ? `process:${urlProcess}` : urlTheme ? `theme:${urlTheme}` : "all";
+  // PDF export scope
+  const pdfScope = isProjectsArea
+    ? (urlTheme ? (urlProcess ? "subprocess" : "theme") : "all")
+    : "all";
 
   return (
-    <aside className="flex h-full w-full flex-col bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0 overflow-y-auto">
-      <div className="px-2 mb-8 flex-shrink-0">
+    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
+
+      <div className="px-2 mb-6">
         <Logo variant="main" />
       </div>
 
-      <nav className="flex-1 flex flex-col gap-0.5">
+      <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
 
-        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} onNavigate={onNavigate} />
+        {/* Dashboard */}
+        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard"
+          active={pathname === "/dashboard"} onNavigate={onNavigate} />
 
-        {/* ── Projecten + altijd-zichtbare thema-boom ── */}
-        <div>
-          {/* Hoofd "Projecten" knop — toont alle projecten */}
-          <div className="flex items-center gap-1">
-            <Link
-              href="/projects"
-              onClick={() => onNavigate?.()}
-              className={clsx(
-                "flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
-                isProjectsArea && !urlTheme
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
-                  : isProjectsArea
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
-              )}
-            >
-              <FolderKanban size={18} />
-              <span className="flex-1">Projecten</span>
-            </Link>
-            {/* + knop: nieuw project zonder filter */}
-            <button
-              onClick={() => createWithContext()}
-              title="Nieuw project"
-              className="p-2 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors flex-shrink-0"
-            >
-              <Plus size={15} />
-            </button>
-          </div>
+        {/* Projecten (met thema-boom) */}
+        <div className="space-y-0.5">
+          <NavItem href="/projects" icon={FolderKanban} label="Projecten"
+            active={isProjectsArea && !urlTheme} onNavigate={onNavigate} />
 
-          {/* ── Thema-boom: ALTIJD zichtbaar ── */}
-          <div className="mt-1 ml-3 border-l-2 border-slate-100 pl-2 pb-1 space-y-0.5">
+          {/* Thema-submenu */}
+          {hierarchy.map(t => {
+            const c   = tc(t.slug ?? "algemeen");
+            const ta  = urlTheme === t.slug;
+            const exp = expandedTheme === t.slug;
+            return (
+              <div key={t.id}>
+                <div className="flex items-center group/theme">
+                  <button
+                    onClick={() => {
+                      router.push(`/projects?theme=${t.slug}`);
+                      setExpandedTheme(exp ? "" : t.slug ?? "");
+                      onNavigate?.();
+                    }}
+                    className={clsx(
+                      "flex-1 flex items-center gap-2.5 pl-6 pr-2 py-2 rounded-xl text-xs font-medium transition-all",
+                      ta ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText}`
+                    )}
+                  >
+                    <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", ta ? c.dot : "bg-slate-200")} />
+                    <span className="flex-1 truncate">{t.name}</span>
+                  </button>
 
-            {/* "Alle projecten" chip — alleen tonen als we al in /projects zijn */}
-            {isProjectsArea && (
-              <button
-                onClick={() => { setExpandedTheme(""); router.push("/projects"); onNavigate?.(); }}
-                className={clsx(
-                  "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
-                  isProjectsArea && !urlTheme
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                )}
-              >
-                <span className="flex-1">Alle projecten</span>
-              </button>
-            )}
-
-            {hierarchy.map(t => {
-              const c          = tc(t.slug);
-              const isActive   = urlTheme === t.id;
-              const isExpanded = expandedTheme === t.id;
-              const hasSubs    = (t.processes?.length ?? 0) > 0;
-
-              return (
-                <div key={t.id}>
-                  {/* Thema-rij */}
-                  <div className="flex items-center gap-1 group/theme">
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover/theme:opacity-100 transition-opacity">
                     <button
-                      onClick={() => goTheme(t.id)}
-                      className={clsx(
-                        "flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
-                        isActive && !urlProcess
-                          ? `${c.activeBg} ${c.active}`
-                          : isActive
-                          ? `${c.activeBg} ${c.active} opacity-80`
-                          : `text-slate-500 ${c.hoverBg} ${c.hoverText}`
-                      )}
+                      onClick={() => setExpandedTheme(exp ? "" : t.slug ?? "")}
+                      className="p-1 rounded text-slate-300 hover:text-slate-500"
                     >
-                      <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", c.dot)} />
-                      <span className="flex-1 truncate">{t.name}</span>
-                      {hasSubs && (
-                        <ChevronRight
-                          size={12}
-                          className={clsx(
-                            "flex-shrink-0 transition-transform duration-200 opacity-40",
-                            isExpanded && "rotate-90"
-                          )}
-                        />
-                      )}
-                    </button>
-
-                    {/* + knop naast elk thema */}
-                    <button
-                      onClick={e => { e.stopPropagation(); createWithContext(t.id); }}
-                      title={`Nieuw project in ${t.name}`}
-                      className="p-1 rounded-lg text-slate-300 hover:text-brand-500 hover:bg-brand-50 transition-colors opacity-0 group-hover/theme:opacity-100 flex-shrink-0"
-                    >
-                      <Plus size={11} />
+                      <ChevronRight size={12} className={clsx("transition-transform", exp && "rotate-90")} />
                     </button>
                   </div>
-
-                  {/* Subprocessen — zichtbaar als expanded */}
-                  {isExpanded && hasSubs && (
-                    <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-100 pl-2.5">
-                      {t.processes.map(p => {
-                        const pa = urlProcess === p.id;
-                        return (
-                          <div key={p.id} className="flex items-center gap-1 group/proc">
-                            <button
-                              onClick={() => goProcess(t.id, p.id)}
-                              className={clsx(
-                                "flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all text-left",
-                                pa
-                                  ? `${c.activeBg} ${c.active} font-semibold`
-                                  : `text-slate-400 ${c.hoverBg} ${c.hoverText} font-medium`
-                              )}
-                            >
-                              <span className={clsx("w-1 h-1 rounded-full flex-shrink-0", pa ? c.dot : "bg-slate-300")} />
-                              <span className="truncate">{p.name}</span>
-                            </button>
-
-                            {/* + knop naast elk subproces */}
-                            <button
-                              onClick={e => { e.stopPropagation(); createWithContext(t.id, p.id); }}
-                              title={`Nieuw project in ${p.name}`}
-                              className="p-1 rounded-lg text-slate-300 hover:text-brand-500 hover:bg-brand-50 transition-colors opacity-0 group-hover/proc:opacity-100 flex-shrink-0"
-                            >
-                              <Plus size={11} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
+
+                {exp && t.processes?.map(p => {
+                  const pa = urlProcess === p.slug;
+                  return (
+                    <div key={p.id} className="flex items-center group/proc">
+                      <button
+                        onClick={() => { router.push(`/projects?theme=${t.slug}&process=${p.slug}`); onNavigate?.(); }}
+                        className={clsx(
+                          "flex-1 flex items-center gap-2 pl-10 pr-2 py-1.5 rounded-xl text-xs transition-all",
+                          pa ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText} font-medium`
+                        )}
+                      >
+                        <span className={clsx("w-1 h-1 rounded-full flex-shrink-0", pa ? c.dot : "bg-slate-300")} />
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); router.push(`/projects/new?theme=${t.id}&process=${p.id}`); }}
+                        title={`Nieuw project in ${p.name}`}
+                        className="p-1 rounded-lg text-slate-300 hover:text-brand-500 hover:bg-brand-50 transition-colors opacity-0 group-hover/proc:opacity-100 flex-shrink-0"
+                      >
+                        <Plus size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
 
-        <NavItem href="/customers" icon={Building2} label="Klanten"     active={pathname.startsWith("/customers")} onNavigate={onNavigate} />
-        <NavItem href="/team"      icon={Users}     label="Team"         active={pathname.startsWith("/team")}      onNavigate={onNavigate} />
+        {/* Klanten */}
+        <NavItem href="/customers" icon={Building2} label="Klanten"
+          active={pathname.startsWith("/customers")} onNavigate={onNavigate} />
+
+        {/* Team */}
+        <NavItem href="/team" icon={Users} label="Team"
+          active={pathname.startsWith("/team")} onNavigate={onNavigate} />
+
+        {/* ─── Kalender (met submenu) ─────────────────────── */}
+        <div className="space-y-0.5">
+          {/* Hoofd kalender-knop — toggle submenu */}
+          <button
+            onClick={() => {
+              setCalendarExpanded(v => !v);
+              if (!isCalendarArea) {
+                router.push("/calendar?scope=mine");
+                onNavigate?.();
+              }
+            }}
+            className={clsx(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+              isCalendarArea
+                ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
+                : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
+            )}
+          >
+            <Calendar size={18} />
+            <span className="flex-1 text-left">Kalender</span>
+            <ChevronDown
+              size={14}
+              className={clsx("transition-transform duration-200", calendarExpanded && "rotate-180")}
+            />
+          </button>
+
+          {/* Submenu */}
+          {calendarExpanded && (
+            <div className="space-y-0.5 ml-1">
+              {visibleCalendarItems.map(item => {
+                const active = isCalendarArea && urlScope === item.scope;
+                return (
+                  <Link
+                    key={item.scope}
+                    href={item.href}
+                    onClick={() => onNavigate?.()}
+                    className={clsx(
+                      "flex items-center gap-2.5 pl-8 pr-3 py-2 rounded-xl text-xs font-medium transition-all",
+                      active
+                        ? "bg-brand-50 text-brand-700 font-semibold"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-brand-600"
+                    )}
+                  >
+                    <item.icon size={13} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <PdfExportButton scope={pdfScope} variant="sidebar" />
-        <NavItem href="/settings"  icon={Settings}  label="Instellingen" active={pathname.startsWith("/settings")}  onNavigate={onNavigate} />
+
+        <NavItem href="/settings" icon={Settings} label="Instellingen"
+          active={pathname.startsWith("/settings")} onNavigate={onNavigate} />
 
         {isSuperuser && (
           <>
             <div className="my-2 border-t border-slate-100" />
-            <NavItem href="/admin" icon={ShieldCheck} label="Beheerpaneel" active={pathname.startsWith("/admin")} variant="admin" onNavigate={onNavigate} />
+            <NavItem href="/admin" icon={ShieldCheck} label="Beheerpaneel"
+              active={pathname.startsWith("/admin")} variant="admin" onNavigate={onNavigate} />
           </>
         )}
       </nav>
 
+      {/* Profiel + uitloggen */}
       <div className="border-t border-slate-100 pt-4 mt-4 flex-shrink-0">
         <Link href="/profile" onClick={() => onNavigate?.()} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors group">
           <Avatar name={profile?.full_name} url={profile?.avatar_url} size="sm" />
