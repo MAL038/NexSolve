@@ -1,3 +1,6 @@
+// Voeg dit toe BOVEN de Profile interface:
+export type Locale = "en" | "nl" | "de" | "fr";
+
 // ─── Auth / User ──────────────────────────────────────────────
 export type UserRole = "admin" | "member" | "viewer" | "superuser";
 export type MemberRole = "member" | "admin";
@@ -12,6 +15,7 @@ export interface Profile {
   team_id: string | null;
   created_at: string;
   updated_at: string;
+  prefered_language: Locale
 }
 
 // ─── Platform-instellingen ────────────────────────────────────
