@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { z } from "zod";
-
 // ─── Customer ─────────────────────────────────────────────────
 export const customerSchema = z.object({
   // Stap 1 – Identiteit
