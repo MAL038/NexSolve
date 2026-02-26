@@ -154,6 +154,43 @@ export interface SubprocessFormData {
   status: SubprocessStatus;
 }
 
+// Voeg dit toe aan types/index.ts, na de Subprocess-sectie
+
+// ─── Kalender ─────────────────────────────────────────────────
+export type EventType = "verlof" | "niet_beschikbaar";
+
+export interface CalendarEvent {
+  id: string;
+  user_id: string;
+  title: string;
+  type: EventType;
+  start_date: string;   // YYYY-MM-DD
+  end_date: string;     // YYYY-MM-DD
+  all_day: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Joined via profiles */
+  profile?: Pick<Profile, "id" | "full_name" | "avatar_url" | "role"> & { id: string };
+}
+
+// ─── Project Planning ─────────────────────────────────────────
+export interface PlanningEntry {
+  id: string;
+  project_id: string;
+  user_id: string;
+  planned_by: string;
+  date: string;         // YYYY-MM-DD
+  hours: number;        // e.g. 4.0, 7.5
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Joined via projects */
+  project?: Pick<Project, "id" | "name" | "status">;
+  /** Joined via profiles */
+  user?: Pick<Profile, "id" | "full_name" | "avatar_url" | "role"> & { id: string };
+}
+
 // ─── Theme Hierarchy ──────────────────────────────────────────
 
 export interface Theme {
