@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { z } from "zod";
+import { customerUpdateSchema } from "@/lib/validators";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(200),

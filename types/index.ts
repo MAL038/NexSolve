@@ -30,10 +30,29 @@ export interface PlatformSettings {
 }
 
 // ─── Customers ────────────────────────────────────────────────
+export type CustomerStatus = "active" | "inactive";
+
 export interface Customer {
   id: string;
   owner_id: string;
+  // Stap 1 – Identiteit
   name: string;
+  code: string | null;
+  status: CustomerStatus;
+  // Stap 2 – Basisgegevens
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  address_street: string | null;
+  address_zip: string | null;
+  address_city: string | null;
+  address_country: string | null;
+  // Stap 3 – Contactpersoon
+  contact_name: string | null;
+  contact_role: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  // Meta
   created_at: string;
   updated_at: string;
   /** Populated when fetching customer detail with projects */
@@ -41,8 +60,26 @@ export interface Customer {
 }
 
 export interface CustomerFormData {
+  // Stap 1
   name: string;
+  code: string;
+  autoCode: boolean;
+  status: CustomerStatus;
+  // Stap 2
+  email: string;
+  phone: string;
+  website: string;
+  address_street: string;
+  address_zip: string;
+  address_city: string;
+  address_country: string;
+  // Stap 3
+  contact_name: string;
+  contact_role: string;
+  contact_email: string;
+  contact_phone: string;
 }
+
 
 // ─── Projects ─────────────────────────────────────────────────
 export type ProjectStatus = "active" | "in-progress" | "archived";
