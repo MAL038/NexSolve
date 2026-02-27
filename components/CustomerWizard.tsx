@@ -40,60 +40,6 @@ interface WizardForm {
   contact_phone: string;
 }
 
-// In je bestaande CustomerWizard component, voeg toe:
-interface CustomerWizardProps {
-  mode?: 'page' | 'modal'  // default: 'page'
-  onCreated?: (customer: Customer) => void
-  onCancel?: () => void
-}
-
-export function CustomerWizard({ mode = 'page', onCreated, onCancel }: CustomerWizardProps) {
-  // ... bestaande logica ...
-  
-  async function handleSubmit() {
-    // ... bestaande submit logica ...
-    
-    // Na succes:
-    if (mode === 'modal' && onCreated) {
-      onCreated(newCustomer)
-    } else {
-      router.push(`/customers/${newCustomer.id}`)
-    }
-  }
-
-  // Wrap in modal als mode === 'modal'
-  const content = (
-    <div>
-      {/* bestaande wizard content */}
-    </div>
-  )
-
-  if (mode === 'modal') {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-black/50" 
-          onClick={onCancel}
-        />
-        {/* Modal */}
-        <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-          <button
-            onClick={onCancel}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          {content}
-        </div>
-      </div>
-    )
-  }
-
-  return content
-}
 
 const EMPTY_FORM: WizardForm = {
   name: "", code: "", autoCode: true, status: "active",
