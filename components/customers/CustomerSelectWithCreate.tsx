@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { CustomerWizard } from '../CustomerWizard'
-
-interface Customer {
-  id: string
-  name: string
-  code?: string
-}
+import type { Customer } from '@/types'
 
 interface Props {
   value: string | null
