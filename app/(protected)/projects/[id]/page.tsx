@@ -10,6 +10,7 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Building2, Users, GitBranch, Layers, ChevronRight } from "lucide-react";
 import PdfExportButton from "@/components/ui/PdfExportButton";
 import type { Project, Subprocess, ThemeWithChildren } from "@/types";
+import { DossierList } from '@/components/dossiers/DossierList'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -82,6 +83,10 @@ export default async function ProjectDetailPage({ params }: Props) {
                   {doneSubs}/{subs.length} deeltaken
                 </span>
               )}
+              {/* Dossiers sectie — gewoon toevoegen onderaan */}
+      <section className="mt-8">
+        <DossierList projectId={params.id} />
+      </section>
             </div>
           </div>
           <PdfExportButton scope={`project:${project.id}`} label="Exporteer" />
@@ -167,7 +172,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           owner={project.owner as any}
           initialMembers={project.project_members ?? []}
         />
+        
       </div>
     </div>
   );
 }
+
