@@ -1,11 +1,10 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
 const PAGE_SIZE = 25
 
 export async function GET(req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createClient()
   
   // Auth check
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -54,7 +53,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = await createClient()
   
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
