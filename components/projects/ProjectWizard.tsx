@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import Avatar from "@/components/ui/Avatar";
+import { CustomerWizard } from "@/components/CustomerWizard";
 import type { ThemeWithChildren, Customer, Team, Profile } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [teams,     setTeams]     = useState<Team[]>([]);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -437,6 +439,27 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) 
                   </button>
                 ))}
               </div>
+
+              {/* Nieuwe klant aanmaken */}
+              <button
+                onClick={() => setShowNewCustomer(true)}
+                className="w-full flex items-center justify-center gap-2 mt-3 px-4 py-2.5 rounded-xl border border-dashed border-brand-300 text-sm text-brand-600 hover:bg-brand-50 transition-colors font-medium"
+              >
+                <Building2 size={14} />
+                Nieuwe klant aanmaken
+              </button>
+
+              {/* CustomerWizard modal */}
+              {showNewCustomer && (
+                <CustomerWizard
+                  onCreated={(newCustomer) => {
+                    setCustomers(prev => [newCustomer, ...prev]);
+                    set("customer_id", newCustomer.id);
+                    setShowNewCustomer(false);
+                  }}
+                  onCancel={() => setShowNewCustomer(false)}
+                />
+              )}
             </div>
           )}
 
