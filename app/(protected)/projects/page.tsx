@@ -11,6 +11,7 @@ interface Props {
 export default async function ProjectsPage({ searchParams }: Props) {
   const { theme, process } = await searchParams;
   const supabase = await createClient();
+  const currentUserId = user?.id ?? "";
 
   const [{ data: projects }, { data: customers }, { data: hierarchy }] = await Promise.all([
     supabase
@@ -41,6 +42,7 @@ export default async function ProjectsPage({ searchParams }: Props) {
     <ProjectsClient
       initialProjects={(projects as Project[]) ?? []}
       hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
+      currentUserId={currentUserId}
     />
   );
 }
