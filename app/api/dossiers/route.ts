@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   // submitted_by server-side zetten — nooit vertrouwen op client
-  const { data, error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('dossiers')
     .insert({
       title: title.trim(),
@@ -86,14 +86,26 @@ export async function POST(req: NextRequest) {
       file_url: file_url ?? null,
       file_name: file_name ?? null,
       file_size: file_size ?? null,
-      submitted_by: user.id,  // ← server-side, altijd
+      submitted_by: user.id,
     })
-    .select('*, profiles(full_name, avatar_url)')
+    .select('id')
     .single()
 
   if (error) {
     console.error('[POST /api/dossiers]', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Haal op via view zodat submitted_by_name, project_name etc. gevuld zijn
+  const { data, error: viewError } = await supabase
+    .from('dossiers_with_details')
+    .select('*')
+    .eq('id', inserted.id)
+    .single()
+
+  if (viewError) {
+    console.error('[POST /api/dossiers] view fetch', viewError)
+    return NextResponse.json({ error: viewError.message }, { status: 500 })
   }
 
   return NextResponse.json({ data }, { status: 201 })
