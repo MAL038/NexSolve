@@ -41,8 +41,6 @@ export default async function ProjectsPage({ searchParams }: Props) {
     <ProjectsClient
       initialProjects={(projects as Project[]) ?? []}
       hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
-      initialThemeId={theme ?? ""}
-      initialProcessId={process ?? ""}
     />
   );
 }
