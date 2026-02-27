@@ -2,7 +2,7 @@
 export type Locale = "en" | "nl" | "de" | "fr";
 
 // ─── Auth / User ──────────────────────────────────────────────
-export type UserRole = "admin" | "member" | "viewer" | "superuser";
+export type UserRole = "admin" | "member" | "viewer" | "superuser" | "projectleider";
 export type MemberRole = "member" | "admin";
 
 export interface Profile {
@@ -251,3 +251,40 @@ export interface CustomRole {
 export interface AdminUserRow extends Profile {
   project_count?: number;
 }
+
+// ─── Teams ────────────────────────────────────────────────────
+export interface Team {
+  id: string;
+  name: string;
+  description: string | null;
+  leader_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  /** Joined */
+  leader?: Pick<Profile, "id" | "full_name" | "avatar_url">;
+  members?: TeamMember[];
+}
+
+export interface TeamMember {
+  team_id: string;
+  user_id: string;
+  added_at: string;
+  /** Joined */
+  profile?: Pick<Profile, "id" | "full_name" | "email" | "avatar_url" | "role">;
+}
+
+export interface TeamFormData {
+  name: string;
+  description?: string;
+  leader_id?: string | null;
+  member_ids?: string[];
+}
+
+// ─── Project uitbreiding (voeg toe aan bestaande Project interface) ───
+// Voeg deze velden toe aan de bestaande Project interface:
+//   start_date?: string | null;   // YYYY-MM-DD
+//   end_date?:   string | null;   // YYYY-MM-DD
+//   team_id?:    string | null;
+//   team?:       Pick<Team, "id" | "name"> | null;
+
