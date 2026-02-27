@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CustomerWizard } from './CustomerWizard'
+import { CustomerWizard } from '../CustomerWizard'
 
 interface Customer {
   id: string
