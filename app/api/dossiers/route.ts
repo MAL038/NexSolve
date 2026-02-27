@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
+import { logActivity } from '@/lib/activityLogger'
 
 const PAGE_SIZE = 25
 
@@ -107,6 +108,18 @@ export async function POST(req: NextRequest) {
     console.error('[POST /api/dossiers] view fetch', viewError)
     return NextResponse.json({ error: viewError.message }, { status: 500 })
   }
+
+  // 🔔 Log
+  await logActivity(supabase, {
+    actorId:    user.id,
+    action:     'dossier.created',
+    entityType: 'dossier',
+    entityId:   data.id,
+    entityName: data.title,
+    projectId:  data.project_id  ?? null,
+    customerId: data.customer_id ?? null,
+    metadata:   { type: data.type },
+  })
 
   return NextResponse.json({ data }, { status: 201 })
 }

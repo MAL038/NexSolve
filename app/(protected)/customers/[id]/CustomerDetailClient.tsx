@@ -11,6 +11,8 @@ import {
 import { createClient } from "@/lib/supabaseClient";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { formatDate, relativeTime } from "@/lib/time";
+import { DossierList } from "@/components/dossiers/DossierList";
+import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
 interface Props {
@@ -345,6 +347,15 @@ export default function CustomerDetailClient({
           </Section>
         </div>
       </div>
+
+      {/* Dossiers */}
+      <div className="card p-6">
+        <DossierList customerId={customer.id} />
+      </div>
+
+      {/* Activiteitenlog */}
+      <ActivityFeed customerId={customer.id} title="Klantactiviteit" />
+
     </div>
   );
 }

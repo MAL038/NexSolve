@@ -5,6 +5,7 @@ import { FolderKanban, Users, CheckCircle, Building2 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Link from "next/link";
 import type { Customer, Project } from "@/types";
+import { ActivityFeed } from "@/components/activity/ActivityFeed";
 
 export const metadata = { title: "Dashboard" };
 
@@ -119,6 +120,10 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Activiteitenlog */}
+      <ActivityFeed limit={15} title="Recente activiteit in jouw workspace" />
+
     </div>
   );
 }

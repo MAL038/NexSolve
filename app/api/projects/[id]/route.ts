@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
+import { logActivity } from "@/lib/activityLogger";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -7,6 +8,9 @@ const updateSchema = z.object({
   description: z.string().max(1000).optional(),
   status:      z.enum(["active", "in-progress", "archived"]).optional(),
   customer_id: z.string().uuid().nullable().optional(),
+  start_date:  z.string().nullable().optional(),
+  end_date:    z.string().nullable().optional(),
+  team_id:     z.string().uuid().nullable().optional(),
 });
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,8 +25,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       *,
       customer:customers(id, name),
       owner:profiles!projects_owner_id_fkey(full_name, email, avatar_url),
-      project_members(
-        user_id, role, added_at,
+      project_members(user_id, role, added_at,
         profile:profiles(full_name, email, avatar_url)
       )
     `)
@@ -39,6 +42,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Haal huidige status op voor change detection
+  const { data: current } = await supabase
+    .from("projects").select("name, status, customer_id").eq("id", id).single();
+
   const body = await req.json();
   const result = updateSchema.safeParse(body);
   if (!result.success)
@@ -52,6 +59,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 🔔 Log: status gewijzigd vs algemene update
+  if (result.data.status && current && result.data.status !== current.status) {
+    await logActivity(supabase, {
+      actorId:    user.id,
+      action:     'project.status_changed',
+      entityType: 'project',
+      entityId:   id,
+      entityName: data.name,
+      projectId:  id,
+      customerId: data.customer_id,
+      metadata:   { from: current.status, to: result.data.status },
+    });
+  } else {
+    await logActivity(supabase, {
+      actorId:    user.id,
+      action:     'project.updated',
+      entityType: 'project',
+      entityId:   id,
+      entityName: data.name,
+      projectId:  id,
+      customerId: data.customer_id,
+    });
+  }
+
   return NextResponse.json(data);
 }
 
@@ -61,11 +93,21 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { error } = await supabase
-    .from("projects")
-    .delete()
-    .eq("id", id);
+  // Snapshot naam voor de log
+  const { data: project } = await supabase
+    .from("projects").select("name, customer_id").eq("id", id).single();
 
+  const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logActivity(supabase, {
+    actorId:    user.id,
+    action:     'project.deleted',
+    entityType: 'project',
+    entityId:   id,
+    entityName: project?.name,
+    customerId: project?.customer_id,
+  });
+
   return new NextResponse(null, { status: 204 });
 }

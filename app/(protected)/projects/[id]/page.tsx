@@ -11,6 +11,7 @@ import { ArrowLeft, Calendar, Building2, Users, GitBranch, Layers, ChevronRight 
 import PdfExportButton from "@/components/ui/PdfExportButton";
 import type { Project, Subprocess, ThemeWithChildren } from "@/types";
 import { DossierList } from '@/components/dossiers/DossierList'
+import { ActivityFeed } from '@/components/activity/ActivityFeed'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -174,6 +175,9 @@ export default async function ProjectDetailPage({ params }: Props) {
       <div className="card p-6">
         <DossierList projectId={id} />
       </div>
+
+      {/* Activiteitenlog */}
+      <ActivityFeed projectId={id} title="Projectactiviteit" />
     </div>
   );
 }

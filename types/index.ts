@@ -288,3 +288,19 @@ export interface TeamFormData {
 //   team_id?:    string | null;
 //   team?:       Pick<Team, "id" | "name"> | null;
 
+
+// ─── Activiteitenlog ──────────────────────────────────────────
+export interface ActivityLogEntry {
+  id:          string;
+  actor_id:    string;
+  action:      string;
+  entity_type: string;
+  entity_id:   string;
+  entity_name: string | null;
+  project_id:  string | null;
+  customer_id: string | null;
+  metadata:    Record<string, unknown> | null;
+  created_at:  string;
+  /** Joined */
+  actor?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>;
+}

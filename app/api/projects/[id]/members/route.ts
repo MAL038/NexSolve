@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
+import { logActivity } from "@/lib/activityLogger";
 import { z } from "zod";
 
 const addMemberSchema = z.object({
@@ -30,10 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: project } = await supabase
-    .from("projects")
-    .select("owner_id")
-    .eq("id", id)
-    .single();
+    .from("projects").select("owner_id, name, customer_id").eq("id", id).single();
 
   if (!project) return NextResponse.json({ error: "Project niet gevonden" }, { status: 404 });
   if (project.owner_id !== user.id)
@@ -58,6 +56,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "User is already a member" }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // 🔔 Log
+  await logActivity(supabase, {
+    actorId:    user.id,
+    action:     'member.added',
+    entityType: 'member',
+    entityId:   result.data.user_id,
+    entityName: (data.profile as any)?.full_name,
+    projectId:  id,
+    customerId: project.customer_id,
+    metadata:   { project_name: project.name, role: result.data.role },
+  });
 
   return NextResponse.json(data, { status: 201 });
 }
