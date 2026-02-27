@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       file_size: file_size ?? null,
       submitted_by: user.id,  // ← server-side, altijd
     })
-    .select('*, profiles(display_name, avatar_url)')
+    .select('*, profiles(full_name, avatar_url)')
     .single()
 
   if (error) {
