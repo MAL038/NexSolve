@@ -177,7 +177,7 @@ function SummaryRow({ label, value }: { label: string; value?: string | null }) 
 
 // ─── Main Wizard ──────────────────────────────────────────────
 
-export default function CustomerWizard({ open, allProjects, onClose, onCreated }: Props) {
+function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props) {
   const [step,    setStep]    = useState(1);
   const [form,    setForm]    = useState<WizardForm>(EMPTY_FORM);
   const [errors,  setErrors]  = useState<Partial<Record<keyof WizardForm, string>>>({});
@@ -753,3 +753,25 @@ export default function CustomerWizard({ open, allProjects, onClose, onCreated }
     </div>
   );
 }
+
+// ─── Named export wrapper ──────────────────────────────────────
+// Gebruikt door CustomerSelectWithCreate met interface { mode, onCreated, onCancel }
+
+interface CustomerWizardModalProps {
+  mode?: 'page' | 'modal'
+  onCreated?: (customer: Customer) => void
+  onCancel?: () => void
+}
+
+export function CustomerWizard({ onCreated, onCancel }: CustomerWizardModalProps) {
+  return (
+    <CustomerWizardDefault
+      open={true}
+      allProjects={[]}
+      onClose={() => onCancel?.()}
+      onCreated={(customer) => onCreated?.(customer)}
+    />
+  );
+}
+
+export default CustomerWizardDefault;
