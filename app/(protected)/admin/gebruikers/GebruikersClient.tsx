@@ -11,6 +11,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; 
   admin:     { label: "Admin",     color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200"  },
   member:    { label: "Teamlid",   color: "text-slate-600",  bg: "bg-slate-100", border: "border-slate-200" },
   viewer:    { label: "Viewer",    color: "text-slate-500",  bg: "bg-slate-50",  border: "border-slate-200" },
+  projectleider: { label: "Projectleider", color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
 };
 
 interface Props { initialUsers: Profile[] }
