@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FolderKanban, Users, Settings,
   LogOut, Building2, ChevronRight, Plus, ShieldCheck,
-  Calendar, CalendarDays, CalendarRange, ChevronDown,
+  Calendar, CalendarDays, CalendarRange, ChevronDown, Clock,
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect } from "react";
@@ -13,6 +13,7 @@ import Logo from "@/components/ui/Logo";
 import Avatar from "@/components/ui/Avatar";
 import PdfExportButton from "@/components/ui/PdfExportButton";
 import { createClient } from "@/lib/supabaseClient";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import type { Profile, ThemeWithChildren } from "@/types";
 
 const THEME_COLORS: Record<string, {
@@ -82,8 +83,12 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
 
-      <div className="px-2 mb-6">
+      <div className="px-2 mb-4">
         <Logo variant="main" />
+      </div>
+
+      <div className="mb-4">
+        <GlobalSearch />
       </div>
 
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
@@ -166,6 +171,10 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
         {/* Team */}
         <NavItem href="/team" icon={Users} label="Team"
           active={pathname.startsWith("/team")} onNavigate={onNavigate} />
+
+        {/* Urenregistratie */}
+        <NavItem href="/hours" icon={Clock} label="Urenregistratie"
+          active={pathname.startsWith("/hours")} onNavigate={onNavigate} />
 
         {/* ─── Kalender (met submenu) ─────────────────────── */}
         <div className="space-y-0.5">
