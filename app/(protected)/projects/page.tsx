@@ -1,27 +1,34 @@
 import { createClient } from "@/lib/supabaseServer";
-import type { Customer, Project, ThemeWithChildren } from "@/types";
+import type { Project, ThemeWithChildren } from "@/types";
 import ProjectsClient from "./ProjectsClient";
 
 export const metadata = { title: "Projecten" };
 
-interface Props {
-  searchParams: Promise<{ theme?: string; process?: string }>;
-}
+type PageProps = {
+  searchParams?: { theme?: string; process?: string };
+};
 
-export default async function ProjectsPage({ searchParams }: Props) {
-  const { theme, process } = await searchParams;
+export default async function ProjectsPage({ searchParams }: PageProps) {
+  // (Je gebruikt theme/process nu niet in ProjectsClient, maar laten staan kan geen kwaad)
+  const theme = searchParams?.theme ?? "";
+  const process = searchParams?.process ?? "";
+
   const supabase = await createClient();
+
+  // ✅ Haal user op (server-side)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  // Als dit echt protected is, kun je dit ook hard maken met redirect("/login")
   const currentUserId = user?.id ?? "";
 
-  const [{ data: projects }, { data: customers }, { data: hierarchy }] = await Promise.all([
+  const [{ data: projects }, { data: hierarchy }] = await Promise.all([
     supabase
       .from("projects")
       .select("*, customer:customers(id, name)")
       .order("created_at", { ascending: false }),
-    supabase
-      .from("customers")
-      .select("id, name")
-      .order("name"),
     supabase
       .from("themes")
       .select(`
