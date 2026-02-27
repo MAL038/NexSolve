@@ -83,10 +83,6 @@ export default async function ProjectDetailPage({ params }: Props) {
                   {doneSubs}/{subs.length} deeltaken
                 </span>
               )}
-              {/* Dossiers sectie — gewoon toevoegen onderaan */}
-      <section className="mt-8">
-        <DossierList projectId={params.id} />
-      </section>
             </div>
           </div>
           <PdfExportButton scope={`project:${project.id}`} label="Exporteer" />
@@ -173,6 +169,10 @@ export default async function ProjectDetailPage({ params }: Props) {
           initialMembers={project.project_members ?? []}
         />
         
+      </div>
+      {/* Dossiers card */}
+      <div className="card p-6">
+        <DossierList projectId={id} />
       </div>
     </div>
   );
