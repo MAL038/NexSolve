@@ -40,7 +40,7 @@ export default async function ProjectsPage({ searchParams }: Props) {
   return (
     <ProjectsClient
       initialProjects={(projects as Project[]) ?? []}
-      customers={(customers as Customer[]) ?? []}
+      currentUserId={supabase.auth.getUser().then(res => res.data.user?.id ?? "")}
       hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
       initialThemeId={theme ?? ""}
       initialProcessId={process ?? ""}
