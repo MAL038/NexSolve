@@ -14,7 +14,8 @@
 // nog niet geïnstalleerd is (graceful degradation).
 async function getResend() {
   try {
-    const { Resend } = await import('resend')
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+const { Resend } = require('resend') as typeof import('resend')
     const key = process.env.RESEND_API_KEY
     if (!key) return null
     return new Resend(key)
