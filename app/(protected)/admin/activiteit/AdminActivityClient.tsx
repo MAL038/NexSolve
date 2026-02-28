@@ -131,7 +131,7 @@ export default function AdminActivityClient() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card p-16 text-center text-slate-400">
-          <Activity size={32} className="mx-auto mb-3 opacity-30" />
+          <Activity size="sm" className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">Geen activiteit gevonden</p>
         </div>
       ) : (
@@ -148,7 +148,7 @@ export default function AdminActivityClient() {
                 <Avatar
                   name={actor?.full_name ?? "?"}
                   avatarUrl={actor?.avatar_url}
-                  size={32}
+                  size="sm"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
