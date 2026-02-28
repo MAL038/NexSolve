@@ -22,7 +22,21 @@ export async function GET(req: NextRequest) {
   const toDate       = searchParams.get('to')    // YYYY-MM-DD
 
   // ── Parallel ophalen ──────────────────────────────────────
-  const queries: Promise<any>[] = [
+  // Supabase query builders zijn PromiseLike maar geen exacte Promise —
+  // .then(r => r) wrapping zorgt dat Promise.allSettled correct typeert.
+  let hoursQuery = supabase
+    .from('project_planning')
+    .select(`
+      id, date, hours, notes,
+      project:projects(name),
+      user:profiles!project_planning_user_id_fkey(full_name, email)
+    `)
+    .order('date', { ascending: false })
+
+  if (fromDate) hoursQuery = hoursQuery.gte('date', fromDate)
+  if (toDate)   hoursQuery = hoursQuery.lte('date', toDate)
+
+  const [projectsRes, customersRes, hoursRes] = await Promise.allSettled([
     supabase
       .from('projects')
       .select(`
@@ -34,37 +48,25 @@ export async function GET(req: NextRequest) {
         process:processes(name),
         subprocesses(id, status)
       `)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .then(r => r),
 
     supabase
       .from('customers')
       .select('*')
       .eq('owner_id', user.id)
-      .order('code', { ascending: true, nullsFirst: false }),
-  ]
+      .order('code', { ascending: true, nullsFirst: false })
+      .then(r => r),
 
-  if (includeHours) {
-    let hoursQuery = supabase
-      .from('project_planning')
-      .select(`
-        id, date, hours, notes,
-        project:projects(name),
-        user:profiles!project_planning_user_id_fkey(full_name, email)
-      `)
-      .order('date', { ascending: false })
+    includeHours
+      ? hoursQuery.then(r => r)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ])
 
-    if (fromDate) hoursQuery = hoursQuery.gte('date', fromDate)
-    if (toDate)   hoursQuery = hoursQuery.lte('date', toDate)
-
-    queries.push(hoursQuery)
-  }
-
-  const results = await Promise.allSettled(queries)
-
-  const projectsData  = results[0].status === 'fulfilled' ? (results[0].value.data ?? []) : []
-  const customersData = results[1].status === 'fulfilled' ? (results[1].value.data ?? []) : []
-  const hoursData     = includeHours && results[2]?.status === 'fulfilled'
-    ? (results[2].value.data ?? [])
+  const projectsData  = projectsRes.status  === 'fulfilled' ? (projectsRes.value.data  ?? []) : []
+  const customersData = customersRes.status === 'fulfilled' ? (customersRes.value.data ?? []) : []
+  const hoursData     = includeHours && hoursRes.status === 'fulfilled'
+    ? (hoursRes.value.data ?? [])
     : []
 
   // ── Projecten mappen naar flat rows ──────────────────────

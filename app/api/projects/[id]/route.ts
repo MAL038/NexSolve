@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { logActivity } from "@/lib/activityLogger";
+// email import removed — status emails not in scope
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -72,6 +73,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       customerId: data.customer_id,
       metadata:   { from: current.status, to: result.data.status },
     });
+
   } else {
     await logActivity(supabase, {
       actorId:    user.id,

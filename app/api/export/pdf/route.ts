@@ -26,68 +26,54 @@ export async function GET(req: NextRequest) {
   const includeProjects  = scope === 'all' || scope === 'projects'
   const includeCustomers = scope === 'all' || scope === 'customers'
 
-  const fetches: Promise<any>[] = []
+  // Supabase builders zijn PromiseLike — .then(r => r) maakt ze tot echte Promises
+  let projectQuery = supabase
+    .from('projects')
+    .select(`
+      id, name, description, status, created_at, updated_at, start_date, end_date,
+      customer:customers(name),
+      owner:profiles!projects_owner_id_fkey(full_name, email),
+      theme:themes(name),
+      process:processes(name),
+      subprocesses(id, title, status),
+      project_members(user_id, role, profile:profiles(full_name))
+    `)
+    .order('created_at', { ascending: false })
 
-  // Projects
-  if (includeProjects || projectId) {
-    let q = supabase
-      .from('projects')
-      .select(`
-        id, name, description, status, created_at, updated_at, start_date, end_date,
-        customer:customers(name),
-        owner:profiles!projects_owner_id_fkey(full_name, email),
-        theme:themes(name),
-        process:processes(name),
-        subprocesses(id, title, status),
-        project_members(user_id, role, profile:profiles(full_name))
-      `)
-      .order('created_at', { ascending: false })
+  if (projectId) projectQuery = projectQuery.eq('id', projectId)
+  if (fromDate)  projectQuery = projectQuery.gte('updated_at', `${fromDate}T00:00:00Z`)
+  if (toDate)    projectQuery = projectQuery.lte('updated_at', `${toDate}T23:59:59Z`)
 
-    if (projectId) q = q.eq('id', projectId)
-    if (fromDate)  q = q.gte('updated_at', `${fromDate}T00:00:00Z`)
-    if (toDate)    q = q.lte('updated_at', `${toDate}T23:59:59Z`)
-    fetches.push(q)
-  } else {
-    fetches.push(Promise.resolve({ data: [] }))
-  }
+  let hoursQuery = supabase
+    .from('project_planning')
+    .select(`
+      id, date, hours, notes,
+      project:projects(name),
+      user:profiles!project_planning_user_id_fkey(full_name)
+    `)
+    .order('date', { ascending: false })
+    .limit(200)
 
-  // Customers
-  if (includeCustomers) {
-    fetches.push(
-      supabase
-        .from('customers')
-        .select('*')
-        .eq('owner_id', user.id)
-        .order('name')
-    )
-  } else {
-    fetches.push(Promise.resolve({ data: [] }))
-  }
+  if (fromDate) hoursQuery = hoursQuery.gte('date', fromDate)
+  if (toDate)   hoursQuery = hoursQuery.lte('date', toDate)
 
-  // Hours
-  if (includeHours) {
-    let q = supabase
-      .from('project_planning')
-      .select(`
-        id, date, hours, notes,
-        project:projects(name),
-        user:profiles!project_planning_user_id_fkey(full_name)
-      `)
-      .order('date', { ascending: false })
-      .limit(200)
+  const [projectsRes, customersRes, hoursRes] = await Promise.allSettled([
+    (includeProjects || projectId)
+      ? projectQuery.then(r => r)
+      : Promise.resolve({ data: [] as any[], error: null }),
 
-    if (fromDate) q = q.gte('date', fromDate)
-    if (toDate)   q = q.lte('date', toDate)
-    fetches.push(q)
-  } else {
-    fetches.push(Promise.resolve({ data: [] }))
-  }
+    includeCustomers
+      ? supabase.from('customers').select('*').eq('owner_id', user.id).order('name').then(r => r)
+      : Promise.resolve({ data: [] as any[], error: null }),
 
-  const results = await Promise.allSettled(fetches)
+    includeHours
+      ? hoursQuery.then(r => r)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ])
 
-  const projects  = results[0].status === 'fulfilled' ? (results[0].value.data ?? []) : []
-  const customers = results[1].status === 'fulfilled' ? (results[1].value.data ?? []) : []
-  const hours     = results[2].status === 'fulfilled' ? (results[2].value.data ?? []) : []
+  const projects  = projectsRes.status  === 'fulfilled' ? (projectsRes.value.data  ?? []) : []
+  const customers = customersRes.status === 'fulfilled' ? (customersRes.value.data ?? []) : []
+  const hours     = hoursRes.status     === 'fulfilled' ? (hoursRes.value.data     ?? []) : []
 
   return NextResponse.json({
     exported_at:    new Date().toISOString(),
