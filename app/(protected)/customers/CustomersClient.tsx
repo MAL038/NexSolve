@@ -57,7 +57,8 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
 
   // ── Selectie ────────────────────────────────────────────
   const allFilteredSelected = filtered.length > 0 && filtered.every((c: Customer) => selected.has(c.id));
-  const someSelected = selected.size > 0;
+  const activeSelected = filtered.filter((c: Customer) => selected.has(c.id));
+  const someSelected = activeSelected.length > 0;
 
   function toggleOne(id: string) {
     setSelected((prev: Set<string>) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -69,7 +70,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
 
   // ── Bulk acties ─────────────────────────────────────────
   async function bulkAction(action: "delete" | "status", status?: CustomerStatus) {
-    const ids = Array.from(selected);
+    const ids = activeSelected.map((c: Customer) => c.id);
     if (action === "delete" && !confirm(
       `${ids.length} klant${ids.length !== 1 ? "en" : ""} verwijderen? Dit kan niet ongedaan worden gemaakt.`
     )) return;
@@ -105,7 +106,10 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
     e.stopPropagation();
     if (!confirm("Klant verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
     const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
-    if (res.ok) setCustomers((prev: Customer[]) => prev.filter((c: Customer) => c.id !== id));
+    if (res.ok) {
+      setCustomers((prev: Customer[]) => prev.filter((c: Customer) => c.id !== id));
+      setSelected((prev: Set<string>) => { const n = new Set(prev); n.delete(id); return n; });
+    }
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -158,7 +162,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
                         shadow-lg shadow-brand-200 flex-wrap">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-brand-200" />
-            <span className="text-sm font-semibold">{selected.size} geselecteerd</span>
+            <span className="text-sm font-semibold">{activeSelected.length} geselecteerd</span>
           </div>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             {/* Status wijzigen */}

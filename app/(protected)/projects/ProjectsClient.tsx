@@ -77,7 +77,8 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   }, [projects, search, statusFilter, themeFilter, processFilter, hierarchy]);
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((p: Project) => selected.has(p.id));
-  const someSelected = selected.size > 0;
+  const activeSelected = filtered.filter((p: Project) => selected.has(p.id));
+  const someSelected = activeSelected.length > 0;
 
   function toggleOne(id: string) {
     setSelected((prev: Set<string>) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -88,7 +89,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   function clearSelection() { setSelected(new Set()); setBulkError(null); }
 
   async function bulkAction(action: "delete" | "status", status?: ProjectStatus) {
-    const ids = Array.from(selected);
+    const ids = activeSelected.map((p: Project) => p.id);
     if (action === "delete" && !confirm(`${ids.length} project${ids.length !== 1 ? "en" : ""} verwijderen?`)) return;
     setBulkLoading(true); setBulkError(null); setStatusDropdown(false);
     try {
@@ -114,7 +115,10 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   async function handleDelete(id: string) {
     if (!confirm("Project verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    if (res.ok) setProjects((prev: Project[]) => prev.filter((p: Project) => p.id !== id));
+    if (res.ok) {
+      setProjects((prev: Project[]) => prev.filter((p: Project) => p.id !== id));
+      setSelected((prev: Set<string>) => { const n = new Set(prev); n.delete(id); return n; });
+    }
   }
 
   function handleCreated(project: Project) { setProjects((prev: Project[]) => [project, ...prev]); setShowWizard(false); }
@@ -209,7 +213,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         <div className="flex items-center gap-3 px-4 py-3 bg-brand-600 rounded-2xl text-white shadow-lg shadow-brand-200 flex-wrap">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-brand-200" />
-            <span className="text-sm font-semibold">{selected.size} geselecteerd</span>
+            <span className="text-sm font-semibold">{activeSelected.length} geselecteerd</span>
           </div>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <div className="relative">
