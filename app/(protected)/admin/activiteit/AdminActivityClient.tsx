@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { relativeTime } from "@/lib/time";
-import { ACTION_LABELS, ACTION_ICONS, ACTION_COLORS, type ActivityAction } from "@/lib/activityLogger";
+import { ACTION_LABELS, ACTION_COLORS, type ActivityAction } from "@/lib/activityLogger";
 import type { ActivityLogEntry } from "@/types";
 import Avatar from "@/components/ui/Avatar";
 
@@ -141,7 +141,6 @@ export default function AdminActivityClient() {
             const action    = entry.action as ActivityAction;
             const label     = ACTION_LABELS[action] ?? action;
             const colorClass= ACTION_COLORS[action] ?? "text-slate-500 bg-slate-50";
-            const Icon      = ACTION_ICONS[action];
 
             return (
               <div key={entry.id} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors">
@@ -159,7 +158,6 @@ export default function AdminActivityClient() {
                       "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md",
                       colorClass
                     )}>
-                      {Icon && <Icon size={10} />}
                       {label}
                     </span>
                     {entry.entity_name && (
