@@ -158,10 +158,6 @@ export default function AdminActivityClient() {
                       "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md",
                       colorClass
                     )}>
-<<<<<<< HEAD
-=======
-                      {Icon && <span>{Icon}</span>}
->>>>>>> origin/claude/inline-project-editing-JDSD5
                       {label}
                     </span>
                     {entry.entity_name && (
