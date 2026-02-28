@@ -1,10 +1,12 @@
 "use client";
 
+import React from "react";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FolderKanban, Users, Settings,
-  LogOut, Building2, ChevronRight, Plus, ShieldCheck,
+  LogOut, Building2, ChevronRight, ShieldCheck,
   Calendar, CalendarDays, CalendarRange, ChevronDown, Clock,
 } from "lucide-react";
 import clsx from "clsx";
@@ -16,17 +18,6 @@ import { createClient } from "@/lib/supabaseClient";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import type { Profile, ThemeWithChildren } from "@/types";
 
-const THEME_COLORS: Record<string, {
-  dot: string; active: string; activeBg: string; hoverBg: string; hoverText: string;
-}> = {
-  "algemeen":        { dot: "bg-slate-400",  active: "text-slate-700",  activeBg: "bg-slate-100",  hoverBg: "hover:bg-slate-50",  hoverText: "hover:text-slate-700"  },
-  "crm":             { dot: "bg-blue-400",   active: "text-blue-700",   activeBg: "bg-blue-50",    hoverBg: "hover:bg-blue-50",   hoverText: "hover:text-blue-700"   },
-  "hrm":             { dot: "bg-brand-500",  active: "text-brand-700",  activeBg: "bg-brand-50",   hoverBg: "hover:bg-brand-50",  hoverText: "hover:text-brand-700"  },
-  "ordermanagement": { dot: "bg-amber-400",  active: "text-amber-700",  activeBg: "bg-amber-50",   hoverBg: "hover:bg-amber-50",  hoverText: "hover:text-amber-700"  },
-  "payroll":         { dot: "bg-violet-400", active: "text-violet-700", activeBg: "bg-violet-50",  hoverBg: "hover:bg-violet-50", hoverText: "hover:text-violet-700" },
-  "erp":             { dot: "bg-rose-400",   active: "text-rose-700",   activeBg: "bg-rose-50",    hoverBg: "hover:bg-rose-50",   hoverText: "hover:text-rose-700"   },
-};
-function tc(slug: string) { return THEME_COLORS[slug] ?? THEME_COLORS["algemeen"]; }
 
 interface SidebarProps {
   profile:      Profile | null;
@@ -50,14 +41,10 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
   const isProjectsArea  = pathname.startsWith("/projects");
   const isCalendarArea  = pathname.startsWith("/calendar");
 
-  const urlTheme   = searchParams.get("theme")   ?? "";
-  const urlProcess = searchParams.get("process") ?? "";
   const urlScope   = searchParams.get("scope")   ?? "mine";
 
-  const [expandedTheme,    setExpandedTheme]    = useState<string>(urlTheme);
   const [calendarExpanded, setCalendarExpanded] = useState(isCalendarArea);
 
-  useEffect(() => { if (urlTheme) setExpandedTheme(urlTheme); }, [urlTheme]);
   useEffect(() => { if (isCalendarArea) setCalendarExpanded(true); }, [isCalendarArea]);
 
   async function handleLogout() {
@@ -76,9 +63,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
   );
 
   // PDF export scope
-  const pdfScope = isProjectsArea
-    ? (urlTheme ? (urlProcess ? "subprocess" : "theme") : "all")
-    : "all";
+  const pdfScope = "all";
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
@@ -100,68 +85,9 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
         {/* Projecten (met thema-boom) */}
         <div className="space-y-0.5">
           <NavItem href="/projects" icon={FolderKanban} label="Projecten"
-            active={isProjectsArea && !urlTheme} onNavigate={onNavigate} />
+            active={isProjectsArea} onNavigate={onNavigate} />
 
-          {/* Thema-submenu */}
-          {hierarchy.map(t => {
-            const c   = tc(t.slug ?? "algemeen");
-            const ta  = urlTheme === t.slug;
-            const exp = expandedTheme === t.slug;
-            return (
-              <div key={t.id}>
-                <div className="flex items-center group/theme">
-                  <button
-                    onClick={() => {
-                      router.push(`/projects?theme=${t.slug}`);
-                      setExpandedTheme(exp ? "" : t.slug ?? "");
-                      onNavigate?.();
-                    }}
-                    className={clsx(
-                      "flex-1 flex items-center gap-2.5 pl-6 pr-2 py-2 rounded-xl text-xs font-medium transition-all",
-                      ta ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText}`
-                    )}
-                  >
-                    <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", ta ? c.dot : "bg-slate-200")} />
-                    <span className="flex-1 truncate">{t.name}</span>
-                  </button>
 
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover/theme:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setExpandedTheme(exp ? "" : t.slug ?? "")}
-                      className="p-1 rounded text-slate-300 hover:text-slate-500"
-                    >
-                      <ChevronRight size={12} className={clsx("transition-transform", exp && "rotate-90")} />
-                    </button>
-                  </div>
-                </div>
-
-                {exp && t.processes?.map(p => {
-                  const pa = urlProcess === p.slug;
-                  return (
-                    <div key={p.id} className="flex items-center group/proc">
-                      <button
-                        onClick={() => { router.push(`/projects?theme=${t.slug}&process=${p.slug}`); onNavigate?.(); }}
-                        className={clsx(
-                          "flex-1 flex items-center gap-2 pl-10 pr-2 py-1.5 rounded-xl text-xs transition-all",
-                          pa ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText} font-medium`
-                        )}
-                      >
-                        <span className={clsx("w-1 h-1 rounded-full flex-shrink-0", pa ? c.dot : "bg-slate-300")} />
-                        <span className="truncate">{p.name}</span>
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); router.push(`/projects/new?theme=${t.id}&process=${p.id}`); }}
-                        title={`Nieuw project in ${p.name}`}
-                        className="p-1 rounded-lg text-slate-300 hover:text-brand-500 hover:bg-brand-50 transition-colors opacity-0 group-hover/proc:opacity-100 flex-shrink-0"
-                      >
-                        <Plus size={11} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
         </div>
 
         {/* Klanten */}
@@ -181,7 +107,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
           {/* Hoofd kalender-knop — toggle submenu */}
           <button
             onClick={() => {
-              setCalendarExpanded(v => !v);
+              setCalendarExpanded((v: boolean) => !v);
               if (!isCalendarArea) {
                 router.push("/calendar?scope=mine");
                 onNavigate?.();

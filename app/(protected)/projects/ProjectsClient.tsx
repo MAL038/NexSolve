@@ -5,7 +5,7 @@ import React from "react";
 import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Plus, Pencil, Trash2, FolderKanban, Search,
+  Plus, Pencil, Trash2, FolderKanban, Search, Layers,
   Building2, Calendar, Users, CheckSquare, Square,
   ChevronDown, X, Loader2, CheckCircle2,
 } from "lucide-react";
@@ -41,14 +41,18 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   const themeSlug    = searchParams.get("theme")   ?? "";
   const processSlug  = searchParams.get("process") ?? "";
 
-  const [projects,      setProjects]      = useState<Project[]>(initialProjects);
-  const [search,        setSearch]        = useState("");
-  const [statusFilter,  setStatusFilter]  = useState<string>("all");
-  const [showWizard,    setShowWizard]    = useState(searchParams.get("new") === "1");
-  const [selected,      setSelected]      = useState<Set<string>>(new Set());
-  const [bulkLoading,   setBulkLoading]   = useState(false);
-  const [bulkError,     setBulkError]     = useState<string | null>(null);
-  const [statusDropdown,setStatusDropdown]= useState(false);
+  const [projects,       setProjects]       = useState<Project[]>(initialProjects);
+  const [search,         setSearch]         = useState("");
+  const [statusFilter,   setStatusFilter]   = useState<string>("all");
+  const [themeFilter,    setThemeFilter]     = useState<string>(themeSlug);
+  const [processFilter,  setProcessFilter]  = useState<string>(processSlug);
+  const [showWizard,     setShowWizard]     = useState(searchParams.get("new") === "1");
+  const [editProject,    setEditProject]    = useState<Project | null>(null);
+  const [selected,       setSelected]       = useState<Set<string>>(new Set());
+  const [bulkLoading,    setBulkLoading]    = useState(false);
+  const [bulkError,      setBulkError]      = useState<string | null>(null);
+  const [statusDropdown, setStatusDropdown] = useState(false);
+  const [themeDropdown,  setThemeDropdown]  = useState(false);
 
   const filtered = useMemo(() => {
     return projects.filter((p: Project) => {
@@ -57,20 +61,20 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         p.customer?.name?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
 
-      // Sidebar theme/process filtering via URL params
+      // Theme/process filtering
       let matchTheme = true;
-      if (themeSlug) {
-        const theme = hierarchy.find(t => t.slug === themeSlug);
+      if (themeFilter) {
+        const theme = hierarchy.find(t => t.slug === themeFilter);
         matchTheme = !!theme && p.theme_id === theme.id;
-        if (matchTheme && processSlug) {
-          const process = theme?.processes?.find(pr => pr.slug === processSlug);
+        if (matchTheme && processFilter) {
+          const process = theme?.processes?.find(pr => pr.slug === processFilter);
           matchTheme = !!process && p.process_id === process.id;
         }
       }
 
       return matchSearch && matchStatus && matchTheme;
     });
-  }, [projects, search, statusFilter, themeSlug, processSlug, hierarchy]);
+  }, [projects, search, statusFilter, themeFilter, processFilter, hierarchy]);
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((p: Project) => selected.has(p.id));
   const someSelected = selected.size > 0;
@@ -114,6 +118,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   }
 
   function handleCreated(project: Project) { setProjects((prev: Project[]) => [project, ...prev]); setShowWizard(false); }
+  function handleUpdated(project: Project) { setProjects((prev: Project[]) => prev.map((p: Project) => p.id === project.id ? { ...p, ...project } : p)); setEditProject(null); }
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -121,7 +126,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         <div>
           <h2 className="text-xl font-bold text-slate-800">Projecten</h2>
           <p className="text-sm text-slate-400 mt-0.5">
-            {filtered.length} project{filtered.length !== 1 ? "en" : ""}{themeSlug && ` · ${themeSlug}`}
+            {filtered.length} project{filtered.length !== 1 ? "en" : ""}{themeFilter && ` · ${hierarchy.find(t => t.slug === themeFilter)?.name ?? themeFilter}`}
           </p>
         </div>
         <button onClick={() => setShowWizard(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200">
@@ -145,6 +150,59 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
             </button>
           ))}
         </div>
+
+        {/* Thema filter */}
+        <div className="relative">
+          <button
+            onClick={() => setThemeDropdown((v: boolean) => !v)}
+            className={clsx(
+              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
+              themeFilter
+                ? "bg-brand-50 text-brand-700 border-brand-200"
+                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+            )}>
+            <Layers size={12} />
+            {themeFilter ? hierarchy.find(t => t.slug === themeFilter)?.name ?? themeFilter : "Thema"}
+            <ChevronDown size={11} className={clsx("transition-transform", themeDropdown && "rotate-180")} />
+          </button>
+          {themeDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setThemeDropdown(false)} />
+              <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden min-w-[180px]">
+                <button onClick={() => { setThemeFilter(""); setProcessFilter(""); setThemeDropdown(false); }}
+                  className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
+                    !themeFilter ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-600 hover:bg-slate-50")}>
+                  Alle thema&apos;s
+                </button>
+                {hierarchy.map(t => (
+                  <div key={t.id}>
+                    <button
+                      onClick={() => { setThemeFilter(t.slug ?? ""); setProcessFilter(""); setThemeDropdown(false); }}
+                      className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
+                        themeFilter === t.slug ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-700 hover:bg-slate-50")}>
+                      {t.name}
+                    </button>
+                    {themeFilter === t.slug && t.processes?.map(pr => (
+                      <button key={pr.id}
+                        onClick={() => { setProcessFilter(pr.slug ?? ""); setThemeDropdown(false); }}
+                        className={clsx("w-full flex items-center gap-2 pl-8 pr-4 py-2 text-xs text-left transition-colors",
+                          processFilter === pr.slug ? "bg-brand-50 text-brand-600 font-semibold" : "text-slate-500 hover:bg-slate-50")}>
+                        <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
+                        {pr.name}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {themeFilter && (
+          <button onClick={() => { setThemeFilter(""); setProcessFilter(""); }}
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={11} /> Filter wissen
+          </button>
+        )}
       </div>
 
       {someSelected && (
@@ -225,7 +283,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
                   <div className="flex items-start justify-between gap-2 pl-4">
                     <StatusBadge status={p.status} />
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); router.push(`/projects/${p.id}`); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"><Pencil size={13} /></button>
+                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditProject(p); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Bewerken"><Pencil size={13} /></button>
                       <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(p.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
                     </div>
                   </div>
@@ -255,6 +313,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
       )}
 
       {showWizard && <ProjectWizard onClose={() => setShowWizard(false)} onCreated={handleCreated} hierarchy={hierarchy} />}
+      {editProject && <ProjectWizard onClose={() => setEditProject(null)} onCreated={handleUpdated} hierarchy={hierarchy} editProject={editProject} />}
     </div>
   );
 }

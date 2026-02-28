@@ -44,9 +44,10 @@ interface FormData {
 }
 
 interface Props {
-  onClose:   () => void;
-  onCreated: (project: any) => void;
-  hierarchy: ThemeWithChildren[];
+  onClose:      () => void;
+  onCreated:    (project: any) => void;
+  hierarchy:    ThemeWithChildren[];
+  editProject?: any;  // als gezet: edit-modus (PATCH)
 }
 
 // ─── Config ───────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 // ─── Hoofd component ──────────────────────────────────────────
 
-export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) {
+export default function ProjectWizard({ onClose, onCreated, hierarchy, editProject }: Props) {
   const router  = useRouter();
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
@@ -166,6 +167,24 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) 
     });
   }, []);
 
+  // Pre-fill form bij edit-modus
+  useEffect(() => {
+    if (editProject) {
+      setForm({
+        name:            editProject.name        ?? "",
+        description:     editProject.description ?? "",
+        status:          editProject.status       ?? "active",
+        theme_id:        editProject.theme_id     ?? null,
+        process_id:      editProject.process_id   ?? null,
+        process_type_id: editProject.process_type_id ?? null,
+        customer_id:     editProject.customer_id  ?? null,
+        team_id:         editProject.team_id      ?? null,
+        start_date:      editProject.start_date   ?? "",
+        end_date:        editProject.end_date      ?? "",
+      });
+    }
+  }, [editProject]);
+
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm(f => ({ ...f, [key]: value }));
   }
@@ -183,13 +202,14 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) 
     const err = validateStep(step);
     if (err) { setError(err); return; }
     setError("");
-    if (step < 4) { setStep(s => s + 1); return; }
+    const lastStep = editProject ? 4 : 4;  // stap 5 = confetti, alleen bij nieuw
+    if (step < lastStep) { setStep(s => s + 1); return; }
     handleCreate();
   }
 
   function prev() { setError(""); setStep(s => s - 1); }
 
-  // ─── Aanmaken ───────────────────────────────────────────────
+  // ─── Aanmaken / Bewerken ────────────────────────────────────
 
   async function handleCreate() {
     setLoading(true); setError("");
@@ -206,18 +226,28 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy }: Props) 
       end_date:        form.end_date        || null,
     };
 
-    const res  = await fetch("/api/projects", {
-      method:  "POST",
+    const isEdit = !!editProject;
+    const url    = isEdit ? `/api/projects/${editProject.id}` : "/api/projects";
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res  = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),
     });
     const json = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(json.error ?? "Aanmaken mislukt"); return; }
-    setCreated(json);
-    setStep(5);
-    onCreated(json);
+    if (!res.ok) { setError(json.error ?? (isEdit ? "Opslaan mislukt" : "Aanmaken mislukt")); return; }
+
+    if (isEdit) {
+      onCreated(json);  // caller update de lijst
+      onClose();
+    } else {
+      setCreated(json);
+      setStep(5);
+      onCreated(json);
+    }
   }
 
   // ─── Geselecteerde labels voor bevestiging ───────────────────
