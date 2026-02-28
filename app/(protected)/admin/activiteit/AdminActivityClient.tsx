@@ -159,7 +159,7 @@ export default function AdminActivityClient() {
                       "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md",
                       colorClass
                     )}>
-                      {Icon && <Icon size={10} />}
+                      {Icon && <span>{Icon}</span>}
                       {label}
                     </span>
                     {entry.entity_name && (
