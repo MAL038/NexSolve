@@ -94,6 +94,8 @@ export interface Project {
   process_id: string | null;
   process_type_id: string | null;
   status: ProjectStatus;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
   /** Joined from customers table */
