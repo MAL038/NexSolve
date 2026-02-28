@@ -15,6 +15,7 @@ import {
 import clsx from "clsx";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ProjectWizard from "@/components/projects/ProjectWizard";
+import ProjectEditModal from "@/components/projects/ProjectEditModal";
 import type { Project, ThemeWithChildren } from "@/types";
 
 interface Props {
@@ -44,6 +45,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   const [showWizard,   setShowWizard]   = useState(
     searchParams.get("new") === "1" // open direct als ?new=1 in URL
   );
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Gefilterde projecten
   const filtered = useMemo(() => {
@@ -72,6 +74,11 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   function handleCreated(project: Project) {
     setProjects(prev => [project, ...prev]);
     setShowWizard(false);
+  }
+
+  function handleSaved(updated: Project) {
+    setProjects(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
+    setEditingProject(null);
   }
 
   const canCreate = true; // Iedereen mag projecten aanmaken; wizard valideert owner
@@ -155,8 +162,9 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
                   <StatusBadge status={p.status} />
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={e => { e.stopPropagation(); router.push(`/projects/${p.id}`); }}
+                      onClick={e => { e.stopPropagation(); setEditingProject(p); }}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                      title="Bewerken"
                     >
                       <Pencil size={13} />
                     </button>
@@ -217,12 +225,22 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         </div>
       )}
 
-      {/* Wizard */}
+      {/* Wizard: nieuw project */}
       {showWizard && (
         <ProjectWizard
           onClose={() => setShowWizard(false)}
           onCreated={handleCreated}
           hierarchy={hierarchy}
+        />
+      )}
+
+      {/* Modal: bestaand project bewerken */}
+      {editingProject && (
+        <ProjectEditModal
+          project={editingProject}
+          hierarchy={hierarchy}
+          onClose={() => setEditingProject(null)}
+          onSaved={handleSaved}
         />
       )}
     </div>

@@ -5,13 +5,16 @@ import { logActivity } from "@/lib/activityLogger";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  name:        z.string().min(1).max(200).optional(),
-  description: z.string().max(1000).optional(),
-  status:      z.enum(["active", "in-progress", "archived"]).optional(),
-  customer_id: z.string().uuid().nullable().optional(),
-  start_date:  z.string().nullable().optional(),
-  end_date:    z.string().nullable().optional(),
-  team_id:     z.string().uuid().nullable().optional(),
+  name:            z.string().min(1).max(200).optional(),
+  description:     z.string().max(1000).optional(),
+  status:          z.enum(["active", "in-progress", "archived"]).optional(),
+  customer_id:     z.string().uuid().nullable().optional(),
+  start_date:      z.string().nullable().optional(),
+  end_date:        z.string().nullable().optional(),
+  team_id:         z.string().uuid().nullable().optional(),
+  theme_id:        z.string().uuid().nullable().optional(),
+  process_id:      z.string().uuid().nullable().optional(),
+  process_type_id: z.string().uuid().nullable().optional(),
 });
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
