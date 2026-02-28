@@ -147,7 +147,7 @@ export default function AdminActivityClient() {
               <div key={entry.id} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/50 transition-colors">
                 <Avatar
                   name={actor?.full_name ?? "?"}
-                  avatarUrl={actor?.avatar_url}
+                  url={actor?.avatar_url}
                   size="sm"
                 />
                 <div className="flex-1 min-w-0">
