@@ -192,7 +192,7 @@ export default function ProjectDetailClient({
       {/* ════════════════════════════════════════════════════
           PROJECT SIDEBAR — 260px, border-right, sticky
       ════════════════════════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-100 bg-white">
+      <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
 
         {/* Terug-link + project naam */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100">
@@ -237,16 +237,16 @@ export default function ProjectDetailClient({
                 className={clsx(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left",
                   active
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
                 )}
               >
-                <Icon size={15} className={active ? "text-brand-500" : "text-slate-400"} />
+                <Icon size={15} className={active ? "opacity-75" : "text-slate-400"} />
                 {tab.label}
                 {tab.id === "taken" && totalSubs > 0 && (
                   <span className={clsx(
                     "ml-auto text-[11px] font-semibold px-1.5 py-0.5 rounded-full",
-                    active ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-slate-400"
+                    active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"
                   )}>
                     {doneSubs}/{totalSubs}
                   </span>

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Building2, Trash2, Search, Hash,
+  Plus, Building2, Trash2, Search, Hash, Pencil,
   CheckCircle2, XCircle, CheckSquare, Square,
   ChevronDown, Loader2, X,
 } from "lucide-react";
@@ -271,6 +271,14 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
                         <XCircle size={11} /> Inactief
                       </span>
                     )}
+                    <button
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); router.push(`/customers/${c.id}`); }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50
+                                 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Bewerken"
+                    >
+                      <Pencil size={13} />
+                    </button>
                     <button
                       onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleDelete(e, c.id)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50
