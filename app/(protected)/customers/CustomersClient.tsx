@@ -28,6 +28,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
   const [search,         setSearch]         = useState("");
   const [statusFilter,   setStatusFilter]   = useState<string>("all");
   const [wizardOpen,     setWizardOpen]     = useState(false);
+  const [editCustomer,   setEditCustomer]   = useState<Customer | null>(null);
   const [selected,       setSelected]       = useState<Set<string>>(new Set());
   const [bulkLoading,    setBulkLoading]    = useState(false);
   const [bulkError,      setBulkError]      = useState<string | null>(null);
@@ -93,6 +94,11 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
 
   function handleCreated(customer: Customer) {
     setCustomers((prev: Customer[]) => [customer, ...prev]);
+  }
+
+  function handleEdited(customer: Customer) {
+    setCustomers((prev: Customer[]) => prev.map((c: Customer) => c.id === customer.id ? customer : c));
+    setEditCustomer(null);
   }
 
   async function handleDelete(e: React.MouseEvent<HTMLButtonElement>, id: string) {
@@ -272,7 +278,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
                       </span>
                     )}
                     <button
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); router.push(`/customers/${c.id}`); }}
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setEditCustomer(c); }}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50
                                  transition-colors opacity-0 group-hover:opacity-100"
                       title="Bewerken"
@@ -325,12 +331,24 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
       )}
 
       {/* Wizard */}
+      {/* Nieuw aanmaken */}
       <CustomerWizard
         open={wizardOpen}
         allProjects={allProjects}
         onClose={() => setWizardOpen(false)}
         onCreated={handleCreated}
       />
+
+      {/* Bewerken */}
+      {editCustomer && (
+        <CustomerWizard
+          open={!!editCustomer}
+          allProjects={allProjects}
+          onClose={() => setEditCustomer(null)}
+          onCreated={handleEdited}
+          editCustomer={editCustomer}
+        />
+      )}
     </div>
   );
 }

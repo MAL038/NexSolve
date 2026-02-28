@@ -53,6 +53,8 @@ interface Props {
   allProjects: Project[];
   onClose: () => void;
   onCreated: (customer: Customer) => void;
+  /** Optioneel: als dit gezet is, werkt de wizard in edit-modus (PATCH) */
+  editCustomer?: Customer;
 }
 
 // ─── Step metadata ────────────────────────────────────────────
@@ -177,7 +179,7 @@ function SummaryRow({ label, value }: { label: string; value?: string | null }) 
 
 // ─── Main Wizard ──────────────────────────────────────────────
 
-function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props) {
+function CustomerWizardDefault({ open, allProjects, onClose, onCreated, editCustomer }: Props) {
   const [step,    setStep]    = useState(1);
   const [form,    setForm]    = useState<WizardForm>(EMPTY_FORM);
   const [errors,  setErrors]  = useState<Partial<Record<keyof WizardForm, string>>>({});
@@ -191,19 +193,39 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
   const [linkedIds,   setLinkedIds]   = useState<string[]>([]);
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
 
-  // Reset bij openen
+  // Reset bij openen / vul in bij edit-modus
   useEffect(() => {
     if (open) {
       setStep(1);
-      setForm(EMPTY_FORM);
       setErrors({});
       setApiErr("");
       setCreated(null);
       setShowConfetti(false);
       setLinkedIds([]);
       setLinkSearch("");
+      if (editCustomer) {
+        setForm({
+          name:            editCustomer.name,
+          code:            editCustomer.code ?? "",
+          autoCode:        false,
+          status:          editCustomer.status,
+          email:           editCustomer.email ?? "",
+          phone:           editCustomer.phone ?? "",
+          website:         editCustomer.website ?? "",
+          address_street:  editCustomer.address_street ?? "",
+          address_zip:     editCustomer.address_zip ?? "",
+          address_city:    editCustomer.address_city ?? "",
+          address_country: editCustomer.address_country ?? "",
+          contact_name:    editCustomer.contact_name ?? "",
+          contact_role:    editCustomer.contact_role ?? "",
+          contact_email:   editCustomer.contact_email ?? "",
+          contact_phone:   editCustomer.contact_phone ?? "",
+        });
+      } else {
+        setForm(EMPTY_FORM);
+      }
     }
-  }, [open]);
+  }, [open, editCustomer]);
 
   const set = useCallback(<K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -253,6 +275,10 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
     setStep(s => s + 1);
   }
 
+  // In edit-modus: stap 3 toont Opslaan i.p.v. Verder
+  const isEditMode = !!editCustomer;
+  const isLastStep = isEditMode ? step === 3 : step === 3;
+
   function handleBack() {
     if (step > 1) setStep(s => s - 1);
   }
@@ -263,8 +289,12 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
     setLoading(true);
     setApiErr("");
 
-    const res = await fetch("/api/customers", {
-      method: "POST",
+    const isEdit = !!editCustomer;
+    const url    = isEdit ? `/api/customers/${editCustomer!.id}` : "/api/customers";
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
@@ -278,13 +308,17 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
     }
 
     const customer = json as Customer;
-    setCreated(customer);
-    setStep(4);
-    setShowConfetti(true);
     onCreated(customer);
 
-    // Confetti stopt na 4s (geregeld in component zelf)
-    setTimeout(() => setShowConfetti(false), 4500);
+    if (isEdit) {
+      // In edit-modus: meteen sluiten, geen confetti/step 4
+      onClose();
+    } else {
+      setCreated(customer);
+      setStep(4);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 4500);
+    }
   }
 
   // ─── Project koppelen op stap 4 ──────────────────────────
@@ -327,7 +361,7 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
         {/* ── Header ─────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
           <div>
-            <h2 className="text-base font-bold text-slate-800">Nieuwe klant</h2>
+            <h2 className="text-base font-bold text-slate-800">{editCustomer ? `${editCustomer.name} bewerken` : "Nieuwe klant"}</h2>
             <p className="text-xs text-slate-400 mt-0.5">Stap {step} van {STEPS.length}</p>
           </div>
           <button
