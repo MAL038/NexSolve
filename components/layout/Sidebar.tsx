@@ -11,7 +11,7 @@ import clsx from "clsx";
 import { useState, useEffect } from "react";
 import Logo from "@/components/ui/Logo";
 import Avatar from "@/components/ui/Avatar";
-import PdfExportButton from "@/components/ui/PdfExportButton";
+import { ExportModal } from "@/components/ui/ExportModal";
 import { createClient } from "@/lib/supabaseClient";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import type { Profile, ThemeWithChildren } from "@/types";
@@ -228,7 +228,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
           )}
         </div>
 
-        <PdfExportButton scope={pdfScope} variant="sidebar" />
+        <ExportModal variant="sidebar" />
 
         <NavItem href="/settings" icon={Settings} label="Instellingen"
           active={pathname.startsWith("/settings")} onNavigate={onNavigate} />

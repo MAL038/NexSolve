@@ -1,84 +1,107 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
-
 /**
  * GET /api/export/pdf
  *
  * Query params:
- *   scope    = "all" | "theme:{themeId}" | "project:{projectId}"
- *   date     = ISO date string (YYYY-MM-DD) — filters to that day's activity
- *
- * Returns JSON that the client uses to render/download the PDF via jsPDF.
- * (Server-side PDF generation would require puppeteer which isn't available here.)
+ *   scope           = "all" | "projects" | "customers" | "hours"
+ *   from            = YYYY-MM-DD (optioneel)
+ *   to              = YYYY-MM-DD (optioneel)
+ *   include_hours   = true|false
+ *   project_id      = UUID (single project export)
  */
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabaseServer'
+
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(req.url);
-  const scope    = searchParams.get("scope") ?? "all";
-  const dateStr  = searchParams.get("date");  // e.g. "2025-03-15"
+  const { searchParams } = req.nextUrl
+  const scope         = searchParams.get('scope')       ?? 'all'
+  const fromDate      = searchParams.get('from')
+  const toDate        = searchParams.get('to')
+  const includeHours  = searchParams.get('include_hours') === 'true'
+  const projectId     = searchParams.get('project_id')
 
-  // ── Build projects query ──────────────────────────────────
-  let query = supabase
-    .from("projects")
-    .select(`
-      id, name, description, status, created_at, updated_at,
-      theme_id, process_id,
-      customer:customers(name),
-      owner:profiles!projects_owner_id_fkey(full_name, email),
-      subprocesses(id, title, status, created_at),
-      project_members(user_id, role, profile:profiles(full_name, email))
-    `)
-    .order("created_at", { ascending: false });
+  const includeProjects  = scope === 'all' || scope === 'projects'
+  const includeCustomers = scope === 'all' || scope === 'customers'
 
-  // Scope filter
-  if (scope.startsWith("project:")) {
-    query = query.eq("id", scope.replace("project:", ""));
-  } else if (scope.startsWith("theme:")) {
-    query = query.eq("theme_id", scope.replace("theme:", ""));
+  const fetches: Promise<any>[] = []
+
+  // Projects
+  if (includeProjects || projectId) {
+    let q = supabase
+      .from('projects')
+      .select(`
+        id, name, description, status, created_at, updated_at, start_date, end_date,
+        customer:customers(name),
+        owner:profiles!projects_owner_id_fkey(full_name, email),
+        theme:themes(name),
+        process:processes(name),
+        subprocesses(id, title, status),
+        project_members(user_id, role, profile:profiles(full_name))
+      `)
+      .order('created_at', { ascending: false })
+
+    if (projectId) q = q.eq('id', projectId)
+    if (fromDate)  q = q.gte('updated_at', `${fromDate}T00:00:00Z`)
+    if (toDate)    q = q.lte('updated_at', `${toDate}T23:59:59Z`)
+    fetches.push(q)
+  } else {
+    fetches.push(Promise.resolve({ data: [] }))
   }
 
-  // Date filter on updated_at (activity on that day)
-  if (dateStr) {
-    const start = `${dateStr}T00:00:00.000Z`;
-    const end   = `${dateStr}T23:59:59.999Z`;
-    query = query.gte("updated_at", start).lte("updated_at", end);
+  // Customers
+  if (includeCustomers) {
+    fetches.push(
+      supabase
+        .from('customers')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('name')
+    )
+  } else {
+    fetches.push(Promise.resolve({ data: [] }))
   }
 
-  const { data: projects, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Hours
+  if (includeHours) {
+    let q = supabase
+      .from('project_planning')
+      .select(`
+        id, date, hours, notes,
+        project:projects(name),
+        user:profiles!project_planning_user_id_fkey(full_name)
+      `)
+      .order('date', { ascending: false })
+      .limit(200)
 
-  // Fetch theme labels
-  const { data: themes } = await supabase
-    .from("themes")
-    .select("id, name, processes(id, name)");
+    if (fromDate) q = q.gte('date', fromDate)
+    if (toDate)   q = q.lte('date', toDate)
+    fetches.push(q)
+  } else {
+    fetches.push(Promise.resolve({ data: [] }))
+  }
 
-  // Build theme lookup
-  const themeMap: Record<string, string> = {};
-  const processMap: Record<string, string> = {};
-  (themes ?? []).forEach((t: any) => {
-    themeMap[t.id] = t.name;
-    (t.processes ?? []).forEach((p: any) => { processMap[p.id] = p.name; });
-  });
+  const results = await Promise.allSettled(fetches)
 
-  // Enrich projects
-  const enriched = (projects ?? []).map((p: any) => ({
-    ...p,
-    theme_name:   p.theme_id   ? themeMap[p.theme_id]     : null,
-    process_name: p.process_id ? processMap[p.process_id] : null,
-    customer_name: p.customer?.name ?? null,
-    owner_name:    p.owner?.full_name ?? null,
-    subprocesses_done:  (p.subprocesses ?? []).filter((s: any) => s.status === "done").length,
-    subprocesses_total: (p.subprocesses ?? []).length,
-  }));
+  const projects  = results[0].status === 'fulfilled' ? (results[0].value.data ?? []) : []
+  const customers = results[1].status === 'fulfilled' ? (results[1].value.data ?? []) : []
+  const hours     = results[2].status === 'fulfilled' ? (results[2].value.data ?? []) : []
 
   return NextResponse.json({
-    exported_at: new Date().toISOString(),
+    exported_at:    new Date().toISOString(),
     scope,
-    date_filter: dateStr ?? null,
-    count: enriched.length,
-    projects: enriched,
-  });
+    from_date:      fromDate ?? null,
+    to_date:        toDate   ?? null,
+    include_hours:  includeHours,
+    projects,
+    customers,
+    hours,
+    totals: {
+      projects:    projects.length,
+      customers:   customers.length,
+      total_hours: hours.reduce((s: number, h: any) => s + Number(h.hours), 0),
+    },
+  })
 }
