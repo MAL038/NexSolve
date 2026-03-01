@@ -86,11 +86,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const payload = result.data;
+  // Destructure velden die NIET naar de DB gaan (auto_code bestaat niet in de tabel)
+  const { auto_code, code: rawCode, ...dbPayload } = result.data;
 
   // Auto-nummering: roep DB-functie aan als auto_code=true
-  let projectCode: string | null = payload.code ?? null;
-  if (payload.auto_code !== false && !projectCode) {
+  let projectCode: string | null = rawCode ?? null;
+  if (auto_code !== false && !projectCode) {
     const { data: codeData } = await supabase.rpc("next_project_code");
     projectCode = codeData ?? null;
   }
@@ -98,17 +99,17 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from("projects")
     .insert({
-      ...payload,
+      ...dbPayload,
       code:        projectCode,
       owner_id:    user.id,
-      description: payload.description || null,
-      customer_id: payload.customer_id    ?? null,
-      theme_id:    payload.theme_id       ?? null,
-      process_id:  payload.process_id     ?? null,
-      process_type_id: payload.process_type_id ?? null,
-      team_id:     payload.team_id        ?? null,
-      start_date:  payload.start_date     ?? null,
-      end_date:    payload.end_date       ?? null,
+      description: dbPayload.description || null,
+      customer_id: dbPayload.customer_id    ?? null,
+      theme_id:    dbPayload.theme_id       ?? null,
+      process_id:  dbPayload.process_id     ?? null,
+      process_type_id: dbPayload.process_type_id ?? null,
+      team_id:     dbPayload.team_id        ?? null,
+      start_date:  dbPayload.start_date     ?? null,
+      end_date:    dbPayload.end_date       ?? null,
     })
     .select(`
       *,
