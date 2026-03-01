@@ -89,6 +89,7 @@ export interface Project {
   owner_id: string;
   customer_id: string | null;          // nullable – backwards compat
   name: string;
+  code: string | null;                 // uniek projectnummer
   description: string | null;
   theme_id: string | null;
   process_id: string | null;
@@ -96,6 +97,7 @@ export interface Project {
   status: ProjectStatus;
   start_date: string | null;
   end_date: string | null;
+  team_id: string | null;
   created_at: string;
   updated_at: string;
   /** Joined from customers table */
