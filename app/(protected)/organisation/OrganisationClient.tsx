@@ -111,7 +111,7 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
   }
 
   async function handleRemoveMember(userId: string, name: string) {
-    if (!confirm(\`\${name} verwijderen uit de organisatie?\`)) return
+    if (!confirm(`\${name} verwijderen uit de organisatie?`)) return
     setRemovingId(userId)
     const res = await fetch("/api/organisation/invite", {
       method: "DELETE",
@@ -120,7 +120,7 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
     })
     setRemovingId(null)
     if (!res.ok) { showToast("Verwijderen mislukt", false); return }
-    showToast(\`\${name} verwijderd\`)
+    showToast(`\${name} verwijderd`)
     setMembers(prev => prev.filter(m => m.profile.id !== userId))
   }
 
