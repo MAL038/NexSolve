@@ -268,7 +268,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
                     </div>
                   </div>
 
-                  {/* Status badge + delete */}
+                  {/* Status badge + acties */}
                   <div className="flex items-start justify-between gap-2 pl-4">
                     {c.status === "active" ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold
@@ -281,21 +281,22 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
                         <XCircle size={11} /> Inactief
                       </span>
                     )}
-                    <button
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setEditCustomer(c); }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50
-                                 transition-colors opacity-0 group-hover:opacity-100"
-                      title="Bewerken"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleDelete(e, c.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50
-                                 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setEditCustomer(c); }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        title="Bewerken"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleDelete(e, c.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Verwijderen"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Naam + code */}

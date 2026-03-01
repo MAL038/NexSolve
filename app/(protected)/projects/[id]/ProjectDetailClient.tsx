@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
   Layers, ChevronRight, Pencil, Check, Loader2,
   AlertCircle, FileText, Activity, Download, X,
-  LayoutGrid, UserCircle, Hash,
+  LayoutGrid, UserCircle, Hash, FolderKanban,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Avatar from "@/components/ui/Avatar";
@@ -200,19 +200,30 @@ export default function ProjectDetailClient({
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-600 font-medium transition-colors mb-3">
             <ArrowLeft size={13} /> Terug naar projecten
           </Link>
-          <h1 className="text-base font-bold text-slate-800 leading-snug">{project.name}</h1>
-          {project.code && (
-            <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5 mt-0.5">
-              <Hash size={8} />{project.code}
-            </span>
-          )}
-          <div className="mt-2">
+
+          {/* Project icon + naam + code — gelijk aan klant */}
+          <div className="flex items-start gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center
+                            justify-center flex-shrink-0 mt-0.5">
+              <FolderKanban size={16} className="text-brand-600" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-slate-800 leading-tight break-words">{project.name}</h1>
+              {project.code && (
+                <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5 mt-0.5">
+                  <Hash size={8} />{project.code}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-3">
             <StatusBadge status={project.status} />
           </div>
 
           {/* Voortgangsbalk */}
           {totalSubs > 0 && (
-            <div className="mt-3 space-y-1">
+            <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px] text-slate-400">
                 <span>{doneSubs}/{totalSubs} taken</span>
                 <span className="font-bold text-slate-600">{pct}%</span>
@@ -226,6 +237,35 @@ export default function ProjectDetailClient({
                   style={{ width: `${pct}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Gekoppelde klant — prominent blok */}
+          {currentCustomer && (
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Klant</p>
+              <Link
+                href={`/customers/${(currentCustomer as any).id}`}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200
+                           bg-white hover:border-brand-300 hover:bg-brand-50/40 transition-all group"
+              >
+                <div className="w-7 h-7 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                  <Building2 size={13} className="text-brand-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-700 group-hover:text-brand-700
+                                 transition-colors truncate">
+                    {(currentCustomer as any).name}
+                  </p>
+                  {(currentCustomer as any).code && (
+                    <p className="text-[10px] font-mono text-slate-400">
+                      #{(currentCustomer as any).code}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-400
+                                                    flex-shrink-0 transition-colors" />
+              </Link>
             </div>
           )}
         </div>
@@ -262,16 +302,7 @@ export default function ProjectDetailClient({
         </nav>
 
         {/* Snelle metadata onderaan de sidebar */}
-        <div className="mt-auto px-5 py-5 border-t border-slate-100 space-y-4 text-xs">
-          {currentCustomer && (
-            <div className="flex items-center gap-2 text-slate-500">
-              <Building2 size={12} className="text-slate-400 flex-shrink-0" />
-              <Link href={`/customers/${(currentCustomer as any).id}`}
-                className="text-brand-600 hover:underline font-medium truncate">
-                {(currentCustomer as any).name}
-              </Link>
-            </div>
-          )}
+        <div className="mt-auto px-5 py-5 border-t border-slate-100 space-y-3 text-xs">
           {project.owner && (
             <div className="flex items-center gap-2 text-slate-500">
               <Avatar name={(project.owner as any).full_name} url={(project.owner as any).avatar_url} size="xs" />
