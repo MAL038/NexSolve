@@ -210,7 +210,8 @@ export async function DELETE(req: NextRequest) {
   if (user_id === user.id)
     return NextResponse.json({ error: 'Je kunt jezelf niet verwijderen' }, { status: 400 })
 
-  const { error } = await supabase
+  const admin = adminClient()
+  const { error } = await admin
     .from('organisation_members')
     .delete()
     .eq('org_id', profile.current_org_id)
