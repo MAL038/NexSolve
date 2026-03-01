@@ -67,11 +67,22 @@ export interface IntakeRequestEmail {
   intakeId:    string
 }
 
+
+export interface OrgInviteEmail {
+  type:          'org_invite'
+  to:            string
+  recipientName: string
+  inviterName:   string
+  orgName:       string
+  acceptUrl:     string
+}
+
 export type EmailPayload =
   | ProjectInviteEmail
   | DeadlineReminderEmail
   | WeeklyDigestEmail
   | IntakeRequestEmail
+  | OrgInviteEmail
 
 // ─── Status labels ────────────────────────────────────────────
 
@@ -250,6 +261,40 @@ function buildIntakeRequest(data: IntakeRequestEmail) {
   }
 }
 
+
+// ─── Org Invite ───────────────────────────────────────────────
+
+function buildOrgInvite(p: OrgInviteEmail): { subject: string; html: string } {
+  return {
+    subject: `Uitnodiging voor ${p.orgName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+        <div style="background:#0A6645;border-radius:12px;padding:24px;margin-bottom:24px">
+          <h1 style="color:white;font-size:22px;margin:0">Je bent uitgenodigd</h1>
+          <p style="color:#a8d5be;margin:8px 0 0;font-size:14px">voor ${p.orgName}</p>
+        </div>
+        <p style="color:#374151;font-size:15px">Hoi ${p.recipientName},</p>
+        <p style="color:#374151;font-size:15px">
+          <strong>${p.inviterName}</strong> heeft je uitgenodigd om lid te worden van
+          <strong>${p.orgName}</strong> in NexSolve.
+        </p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${p.acceptUrl}"
+             style="background:#0A6645;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+            Uitnodiging accepteren
+          </a>
+        </div>
+        <p style="color:#6B7280;font-size:13px">
+          Als je geen account hebt, word je gevraagd er één aan te maken.
+          De link is 7 dagen geldig.
+        </p>
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0">
+        <p style="color:#9CA3AF;font-size:12px;text-align:center">NexSolve · Projectbeheer voor professionals</p>
+      </div>
+    `,
+  }
+}
+
 // ─── Main sendEmail function ──────────────────────────────────
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
@@ -271,6 +316,7 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
       case 'deadline_reminder': ({ subject, html } = buildDeadlineReminder(payload)); break
       case 'weekly_digest':     ({ subject, html } = buildWeeklyDigest(payload));     break
       case 'intake_request':    ({ subject, html } = buildIntakeRequest(payload));    break
+      case 'org_invite':         ({ subject, html } = buildOrgInvite(payload));         break
     }
 
     const { error } = await resend.emails.send({ from: FROM, to: payload.to, subject, html })

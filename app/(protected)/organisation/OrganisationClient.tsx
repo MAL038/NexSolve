@@ -6,14 +6,42 @@ import {
   Building2, Save, X, Check, Globe, Palette,
   ToggleLeft, ToggleRight, ShieldCheck, Crown,
   FolderKanban, Users, ClipboardList, CalendarDays,
-  Clock, BarChart3,
+  Clock, BarChart3, UserPlus, Mail, Trash2, ChevronDown,
 } from "lucide-react";
 import clsx from "clsx";
-import type { Organisation, OrgModule } from "@/types";
+// Inline types (totdat types/index.ts gedeployed is)
+type OrgPlan   = "trial" | "starter" | "pro" | "enterprise";
+type OrgModule = "projects" | "customers" | "intake" | "planning" | "hrm" | "calendar";
+
+interface Organisation {
+  id:            string;
+  name:          string;
+  slug:          string;
+  logo_url:      string | null;
+  primary_color: string;
+  accent_color:  string;
+  plan:          OrgPlan;
+  is_active:     boolean;
+  created_at:    string;
+  updated_at:    string;
+}
 
 interface ModuleRow {
   module: OrgModule;
   is_enabled: boolean;
+}
+
+interface OrgMember {
+  role: string
+  joined_at: string
+  profile: {
+    id: string
+    full_name: string
+    email: string
+    avatar_url: string | null
+    role: string
+    is_active: boolean
+  }
 }
 
 interface Props {
@@ -41,6 +69,15 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
   const initialModules = Object.fromEntries(modules.map(m => [m.module, m.is_enabled])) as Record<OrgModule, boolean>;
   const [moduleState, setModuleState] = useState<Record<OrgModule, boolean>>(initialModules);
 
+  const [members,      setMembers]      = useState<OrgMember[]>([]);
+  const [membersLoaded,setMembersLoaded] = useState(false);
+  const [inviteEmail,  setInviteEmail]  = useState("");
+  const [inviteName,   setInviteName]   = useState("");
+  const [inviteRole,   setInviteRole]   = useState<"member" | "admin">("member");
+  const [inviting,     setInviting]     = useState(false);
+  const [inviteDone,   setInviteDone]   = useState(false);
+  const [removingId,   setRemovingId]   = useState<string | null>(null);
+
   const [saving,      setSaving]      = useState(false);
   const [savingMod,   setSavingMod]   = useState<OrgModule | null>(null);
   const [toast,       setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
@@ -48,6 +85,43 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
+  }
+
+  async function loadMembers() {
+    const res = await fetch("/api/organisation/invite")
+    if (res.ok) { setMembers(await res.json()); setMembersLoaded(true); }
+  }
+
+  async function handleInvite() {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    const res = await fetch("/api/organisation/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: inviteEmail.trim(), full_name: inviteName.trim() || undefined, org_role: inviteRole }),
+    })
+    const data = await res.json()
+    setInviting(false)
+    if (!res.ok) { showToast(data.error ?? "Uitnodiging mislukt", false); return }
+    setInviteDone(true)
+    showToast(data.message ?? "Uitnodiging verstuurd")
+    setInviteEmail(""); setInviteName(""); setInviteRole("member")
+    setTimeout(() => setInviteDone(false), 2500)
+    loadMembers()
+  }
+
+  async function handleRemoveMember(userId: string, name: string) {
+    if (!confirm(\`\${name} verwijderen uit de organisatie?\`)) return
+    setRemovingId(userId)
+    const res = await fetch("/api/organisation/invite", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    })
+    setRemovingId(null)
+    if (!res.ok) { showToast("Verwijderen mislukt", false); return }
+    showToast(\`\${name} verwijderd\`)
+    setMembers(prev => prev.filter(m => m.profile.id !== userId))
   }
 
   async function handleSaveOrg() {
@@ -285,6 +359,109 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
             );
           })}
         </div>
+      </section>
+
+
+      {/* Teamleden */}
+      <section className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center">
+                <Users size={13} className="text-brand-600" />
+              </div>
+              Leden
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 ml-8">Beheer wie toegang heeft tot jouw organisatie</p>
+          </div>
+          {!membersLoaded && (
+            <button onClick={loadMembers} className="text-xs text-brand-600 hover:underline font-medium">
+              Laden
+            </button>
+          )}
+        </div>
+
+        {/* Uitnodigen */}
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+            <UserPlus size={12} /> Nieuwe gebruiker uitnodigen
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className="input text-sm col-span-2"
+              placeholder="E-mailadres *"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleInvite()}
+              type="email"
+            />
+            <input
+              className="input text-sm"
+              placeholder="Naam (optioneel)"
+              value={inviteName}
+              onChange={e => setInviteName(e.target.value)}
+            />
+            <div className="relative">
+              <select
+                className="input text-sm w-full appearance-none pr-8"
+                value={inviteRole}
+                onChange={e => setInviteRole(e.target.value as "member" | "admin")}
+              >
+                <option value="member">Gebruiker</option>
+                <option value="admin">Beheerder</option>
+              </select>
+              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          <button
+            onClick={handleInvite}
+            disabled={inviting || inviteDone || !inviteEmail.trim()}
+            className={clsx("btn-primary w-full justify-center text-sm", (inviting || !inviteEmail.trim()) && "opacity-60")}
+          >
+            {inviteDone
+              ? <><Check size={14} /> Uitnodiging verstuurd</>
+              : inviting
+              ? "Versturen..."
+              : <><Mail size={14} /> Uitnodiging versturen</>
+            }
+          </button>
+        </div>
+
+        {/* Ledenlijst */}
+        {membersLoaded && (
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+            {members.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">Geen leden gevonden</p>
+            ) : members.map(m => (
+              <div key={m.profile.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/60">
+                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-brand-700">
+                  {m.profile.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{m.profile.full_name || "—"}</p>
+                  <p className="text-xs text-slate-400 truncate">{m.profile.email}</p>
+                </div>
+                <span className={clsx(
+                  "text-xs font-semibold px-2 py-0.5 rounded-lg border flex-shrink-0",
+                  m.role === "owner" && "bg-amber-50 text-amber-700 border-amber-200",
+                  m.role === "admin" && "bg-brand-50 text-brand-700 border-brand-200",
+                  m.role === "member" && "bg-slate-100 text-slate-600 border-slate-200",
+                )}>
+                  {m.role === "owner" ? "Eigenaar" : m.role === "admin" ? "Beheerder" : "Gebruiker"}
+                </span>
+                {m.role !== "owner" && (
+                  <button
+                    onClick={() => handleRemoveMember(m.profile.id, m.profile.full_name)}
+                    disabled={removingId === m.profile.id}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Plan info */}
