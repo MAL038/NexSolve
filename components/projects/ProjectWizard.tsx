@@ -29,6 +29,8 @@ type ProjectStatus = "active" | "in-progress" | "archived";
 interface FormData {
   // Stap 1
   name:        string;
+  code:        string;
+  autoCode:    boolean;
   description: string;
   status:      ProjectStatus;
   // Stap 2
@@ -145,7 +147,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
   const [created, setCreated] = useState<any>(null);
 
   const [form, setForm] = useState<FormData>({
-    name: "", description: "", status: "active",
+    name: "", code: "", autoCode: true, description: "", status: "active",
     theme_id: null, process_id: null, process_type_id: null,
     customer_id: null,
     team_id: null, start_date: "", end_date: "",
@@ -156,6 +158,10 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
   const [teams,     setTeams]     = useState<Team[]>([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [showNewTeam, setShowNewTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamLoading, setNewTeamLoading] = useState(false);
+  const [newTeamError, setNewTeamError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -172,6 +178,8 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
     if (editProject) {
       setForm({
         name:            editProject.name        ?? "",
+        code:            editProject.code        ?? "",
+        autoCode:        false,
         description:     editProject.description ?? "",
         status:          editProject.status       ?? "active",
         theme_id:        editProject.theme_id     ?? null,
@@ -215,6 +223,8 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
     setLoading(true); setError("");
     const payload = {
       name:            form.name.trim(),
+      code:            form.autoCode ? undefined : (form.code.trim() || undefined),
+      auto_code:       form.autoCode,
       description:     form.description.trim() || null,
       status:          form.status,
       theme_id:        form.theme_id        || null,
@@ -251,6 +261,30 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
   }
 
   // ─── Geselecteerde labels voor bevestiging ───────────────────
+
+  // ─── Team snel aanmaken ──────────────────────────────────────
+
+  async function handleCreateTeam() {
+    if (!newTeamName.trim()) { setNewTeamError("Teamnaam is verplicht"); return; }
+    setNewTeamLoading(true); setNewTeamError("");
+    try {
+      const res = await fetch("/api/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newTeamName.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setNewTeamError(json.error ?? "Aanmaken mislukt"); return; }
+      setTeams(prev => [json, ...prev]);
+      set("team_id", json.id);
+      setShowNewTeam(false);
+      setNewTeamName("");
+    } catch {
+      setNewTeamError("Er ging iets mis");
+    } finally {
+      setNewTeamLoading(false);
+    }
+  }
 
   const selectedTheme   = hierarchy.find(t => t.id === form.theme_id);
   const selectedProcess = selectedTheme?.processes.find(p => p.id === form.process_id);
@@ -314,6 +348,48 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
                   placeholder="bijv. ESS Implementatie Q1"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
                 />
+              </div>
+
+              {/* Projectcode */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Projectcode</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => set("autoCode", true)}
+                    className={clsx(
+                      "flex-1 py-2 rounded-xl border text-xs font-semibold transition-all",
+                      form.autoCode
+                        ? "bg-brand-50 border-brand-300 text-brand-700 ring-2 ring-brand-100"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    )}>
+                    Automatisch (PRJ-0001)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("autoCode", false)}
+                    className={clsx(
+                      "flex-1 py-2 rounded-xl border text-xs font-semibold transition-all",
+                      !form.autoCode
+                        ? "bg-brand-50 border-brand-300 text-brand-700 ring-2 ring-brand-100"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    )}>
+                    Zelf invullen
+                  </button>
+                </div>
+                {!form.autoCode && (
+                  <input
+                    value={form.code}
+                    onChange={e => set("code", e.target.value)}
+                    placeholder="bijv. PRJ-2024-Q1"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                  />
+                )}
+                {form.autoCode && (
+                  <p className="text-xs text-slate-400 flex items-center gap-1">
+                    Code wordt automatisch toegekend na aanmaken
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Beschrijving (optioneel)</label>
@@ -544,10 +620,51 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
                       </button>
                     );
                   })}
-                  {teams.length === 0 && (
+                  {teams.length === 0 && !showNewTeam && (
                     <p className="text-sm text-slate-400 text-center py-3">Nog geen teams aangemaakt</p>
                   )}
                 </div>
+
+                {/* Team snel aanmaken */}
+                {!showNewTeam ? (
+                  <button
+                    onClick={() => setShowNewTeam(true)}
+                    className="w-full flex items-center justify-center gap-2 mt-3 px-4 py-2.5 rounded-xl border border-dashed border-brand-300 text-sm text-brand-600 hover:bg-brand-50 transition-colors font-medium"
+                  >
+                    <Users size={14} /> Nieuw team aanmaken
+                  </button>
+                ) : (
+                  <div className="mt-3 p-4 rounded-xl border border-brand-200 bg-brand-50/50 space-y-3">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nieuw team</p>
+                    <input
+                      autoFocus
+                      value={newTeamName}
+                      onChange={e => setNewTeamName(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleCreateTeam()}
+                      placeholder="Teamnaam…"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    />
+                    {newTeamError && (
+                      <p className="text-xs text-red-600">{newTeamError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCreateTeam}
+                        disabled={newTeamLoading}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                      >
+                        {newTeamLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                        Aanmaken
+                      </button>
+                      <button
+                        onClick={() => { setShowNewTeam(false); setNewTeamName(""); setNewTeamError(""); }}
+                        className="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm hover:bg-slate-50 transition-colors"
+                      >
+                        Annuleren
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Deadlines */}
@@ -585,6 +702,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
               <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Samenvatting</p>
                 {[
+                  { label: "Code",     value: created.code ?? "—" },
                   { label: "Project",  value: created.name },
                   { label: "Status",   value: STATUS_OPTIONS.find(s => s.value === form.status)?.label },
                   { label: "Thema",    value: selectedTheme?.name ?? "—" },

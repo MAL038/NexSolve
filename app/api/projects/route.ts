@@ -18,6 +18,8 @@ const optionalDate = () =>
 
 const projectSchema = z.object({
   name:           z.string().min(1).max(200),
+  code:           z.string().max(30).optional().nullable(),
+  auto_code:      z.boolean().optional().default(true),
   description:    z.string().max(2000).optional().or(z.literal("")),
   status:         z.enum(["active", "in-progress", "archived"]).default("active"),
   customer_id:    optionalUuid(),
@@ -85,10 +87,19 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = result.data;
+
+  // Auto-nummering: roep DB-functie aan als auto_code=true
+  let projectCode: string | null = payload.code ?? null;
+  if (payload.auto_code !== false && !projectCode) {
+    const { data: codeData } = await supabase.rpc("next_project_code");
+    projectCode = codeData ?? null;
+  }
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
       ...payload,
+      code:        projectCode,
       owner_id:    user.id,
       description: payload.description || null,
       customer_id: payload.customer_id    ?? null,

@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
   Layers, ChevronRight, Pencil, Check, Loader2,
   AlertCircle, FileText, Activity, Download, X,
-  LayoutGrid, UserCircle,
+  LayoutGrid, UserCircle, Hash,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Avatar from "@/components/ui/Avatar";
@@ -95,7 +95,7 @@ export default function ProjectDetailClient({
 }: Props) {
   const [project,   setProject]   = useState(initialProject);
   const [customers, setCustomers] = useState(initialCustomers);
-  const [activeTab, setActiveTab] = useState<Tab>("taken");
+  const [activeTab, setActiveTab] = useState<Tab>("algemeen");
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [toast,     setToast]     = useState<string | null>(null);
@@ -201,6 +201,11 @@ export default function ProjectDetailClient({
             <ArrowLeft size={13} /> Terug naar projecten
           </Link>
           <h1 className="text-base font-bold text-slate-800 leading-snug">{project.name}</h1>
+          {project.code && (
+            <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5 mt-0.5">
+              <Hash size={8} />{project.code}
+            </span>
+          )}
           <div className="mt-2">
             <StatusBadge status={project.status} />
           </div>
@@ -337,6 +342,18 @@ export default function ProjectDetailClient({
                 </div>
               )}
             </div>
+
+            {/* Projectcode — readonly */}
+            {project.code && (
+              <div className="mb-2">
+                <label className="label">Projectcode</label>
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 font-mono">
+                  <Hash size={13} className="text-slate-400" />
+                  {project.code}
+                  <span className="ml-auto text-[10px] text-slate-400 font-sans">Niet wijzigbaar</span>
+                </div>
+              </div>
+            )}
 
             {/* Naam */}
             <div>

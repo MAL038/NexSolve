@@ -250,8 +250,15 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated, editCust
     const errs: typeof errors = {};
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = "Ongeldig e-mailadres";
-    if (form.website && !/^https?:\/\/.+/.test(form.website))
-      errs.website = "Begin met https://";
+    if (form.website) {
+      let url = form.website.trim();
+      if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
+        set("website", url);
+      }
+      if (!/^https?:\/\/.+\..+/.test(url))
+        errs.website = "Voer een geldige URL in (bijv. www.bedrijf.nl)";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }

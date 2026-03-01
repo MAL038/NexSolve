@@ -7,7 +7,7 @@ import {
   ArrowLeft, Building2, FolderKanban, Mail, Phone,
   Globe, MapPin, User, Hash, CheckCircle2, XCircle,
   Loader2, AlertCircle, Activity, FileText, Link2,
-  Search, X, Save,
+  Search, X, Check,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { DossierList } from "@/components/dossiers/DossierList";
@@ -39,10 +39,11 @@ interface EditState {
   contact_phone:   string;
 }
 
-type Tab = "algemeen" | "contactpersoon" | "projecten" | "dossier" | "activiteit";
+type Tab = "algemeen" | "adres" | "contactpersoon" | "projecten" | "dossier" | "activiteit";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "algemeen",       label: "Algemeen",       icon: Building2    },
+  { id: "adres",          label: "Adres",          icon: MapPin       },
   { id: "contactpersoon", label: "Contactpersoon", icon: User         },
   { id: "projecten",      label: "Projecten",      icon: FolderKanban },
   { id: "dossier",        label: "Dossier",        icon: FileText     },
@@ -52,15 +53,15 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 // ─── Inline editable field ────────────────────────────────────
 
 function InlineField({
-  label, value, onChange, onSave, type = "text", placeholder, href,
+  label, value, onChange, type = "text", placeholder, href, readonly = false,
 }: {
   label:        string;
   value:        string;
-  onChange:     (v: string) => void;
-  onSave:       () => void;
+  onChange?:    (v: string) => void;
   type?:        string;
   placeholder?: string;
   href?:        string;
+  readonly?:    boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -68,30 +69,37 @@ function InlineField({
       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-600 mb-1">{label}</p>
       <div className={clsx(
         "flex items-center gap-2 rounded-xl px-3 py-2 border transition-all",
-        focused
+        readonly
+          ? "border-slate-200 bg-slate-50"
+          : focused
           ? "border-brand-500 ring-2 ring-brand-500/20 bg-white"
           : "border-slate-200 bg-white hover:border-slate-300"
       )}>
         <input
           type={type}
           value={value}
-          placeholder={placeholder ?? `${label}…`}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); onSave(); }}
+          placeholder={readonly ? "—" : (placeholder ?? `${label}…`)}
+          readOnly={readonly}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.value)}
+          onFocus={() => !readonly && setFocused(true)}
+          onBlur={() => setFocused(false)}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400
-                     focus:outline-none min-w-0"
+          className={clsx(
+            "flex-1 bg-transparent text-sm placeholder:text-slate-400 focus:outline-none min-w-0",
+            readonly ? "text-slate-500 cursor-default select-all" : "text-slate-800"
+          )}
         />
-        {focused && <Save size={12} className="text-brand-500 flex-shrink-0" />}
-        {!focused && value && href && (
+        {!readonly && !focused && value && href && (
           <a href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             className="text-slate-400 hover:text-brand-600 transition-colors flex-shrink-0">
             <Globe size={12} />
           </a>
+        )}
+        {readonly && (
+          <span className="text-[10px] text-slate-400 flex-shrink-0 font-sans">Niet wijzigbaar</span>
         )}
       </div>
     </div>
@@ -120,6 +128,7 @@ export default function CustomerDetailClient({
   const [linked,      setLinked]      = useState<Project[]>(initialLinked);
   const [activeTab,   setActiveTab]   = useState<Tab>("algemeen");
   const [saving,      setSaving]      = useState(false);
+  const [dirty,       setDirty]       = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [toast,       setToast]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
@@ -159,7 +168,7 @@ export default function CustomerDetailClient({
   }
 
   function set(key: keyof EditState) {
-    return (v: string) => setEdit((p: EditState) => ({ ...p, [key]: v }));
+    return (v: string) => { setEdit((p: EditState) => ({ ...p, [key]: v })); setDirty(true); };
   }
 
   // Auto-save on blur
@@ -175,6 +184,7 @@ export default function CustomerDetailClient({
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Opslaan mislukt"); return; }
       setCustomer(data as Customer);
+      setDirty(false);
       showToast("Opgeslagen");
     } catch {
       setError("Er ging iets mis");
@@ -182,6 +192,27 @@ export default function CustomerDetailClient({
       setSaving(false);
     }
   }, [edit, customer.id]);
+
+  function handleReset() {
+    setEdit({
+      name:            customer.name,
+      code:            customer.code ?? "",
+      status:          customer.status,
+      email:           customer.email ?? "",
+      phone:           customer.phone ?? "",
+      website:         customer.website ?? "",
+      address_street:  customer.address_street ?? "",
+      address_zip:     customer.address_zip ?? "",
+      address_city:    customer.address_city ?? "",
+      address_country: customer.address_country ?? "",
+      contact_name:    customer.contact_name ?? "",
+      contact_role:    customer.contact_role ?? "",
+      contact_email:   customer.contact_email ?? "",
+      contact_phone:   customer.contact_phone ?? "",
+    });
+    setDirty(false);
+    setError(null);
+  }
 
   async function setStatus(status: CustomerStatus) {
     setEdit((p: EditState) => ({ ...p, status }));
@@ -382,52 +413,86 @@ export default function CustomerDetailClient({
         {/* ── Algemeen ──────────────────────────────────── */}
         {activeTab === "algemeen" && (
           <div className="p-6 max-w-xl space-y-4">
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
-              <Save size={11} /> Velden worden automatisch opgeslagen bij verlaten
-            </p>
 
             <div className="card p-5 space-y-4">
               <SectionLabel>Identiteit</SectionLabel>
+              <InlineField label="Code" value={edit.code} readonly />
               <InlineField label="Naam" value={edit.name}
-                onChange={set("name")} onSave={() => handleSave()}
+                onChange={set("name")}
                 placeholder="Klantnaam" />
-              <InlineField label="Code" value={edit.code}
-                onChange={set("code")} onSave={() => handleSave()}
-                placeholder="bijv. KL-001" />
             </div>
 
             <div className="card p-5 space-y-4">
               <SectionLabel>Contactgegevens</SectionLabel>
               <InlineField label="E-mail" value={edit.email} type="email"
-                onChange={set("email")} onSave={() => handleSave()}
+                onChange={set("email")}
                 placeholder="info@bedrijf.nl"
                 href={edit.email ? `mailto:${edit.email}` : undefined} />
               <InlineField label="Telefoon" value={edit.phone} type="tel"
-                onChange={set("phone")} onSave={() => handleSave()}
+                onChange={set("phone")}
                 placeholder="+31 6 12345678"
                 href={edit.phone ? `tel:${edit.phone}` : undefined} />
               <InlineField label="Website" value={edit.website} type="url"
-                onChange={set("website")} onSave={() => handleSave()}
-                placeholder="https://bedrijf.nl"
+                onChange={set("website")}
+                placeholder="www.bedrijf.nl"
                 href={edit.website || undefined} />
             </div>
 
+            {/* Opslaan / Reset */}
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+              <button onClick={() => handleSave()} disabled={saving || !dirty}
+                className="btn-primary">
+                {saving
+                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                  : <><Check size={14} /> Opslaan</>
+                }
+              </button>
+              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
+                <X size={14} /> Reset
+              </button>
+              {!dirty && !saving && (
+                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Adres ────────────────────────────────────── */}
+        {activeTab === "adres" && (
+          <div className="p-6 max-w-xl space-y-4">
             <div className="card p-5 space-y-4">
-              <SectionLabel>Adres</SectionLabel>
+              <SectionLabel>Adresgegevens</SectionLabel>
               <InlineField label="Straat" value={edit.address_street}
-                onChange={set("address_street")} onSave={() => handleSave()}
+                onChange={set("address_street")}
                 placeholder="Straatnaam 1" />
               <div className="grid grid-cols-2 gap-4">
                 <InlineField label="Postcode" value={edit.address_zip}
-                  onChange={set("address_zip")} onSave={() => handleSave()}
+                  onChange={set("address_zip")}
                   placeholder="1234 AB" />
                 <InlineField label="Stad" value={edit.address_city}
-                  onChange={set("address_city")} onSave={() => handleSave()}
+                  onChange={set("address_city")}
                   placeholder="Amsterdam" />
               </div>
               <InlineField label="Land" value={edit.address_country}
-                onChange={set("address_country")} onSave={() => handleSave()}
+                onChange={set("address_country")}
                 placeholder="Nederland" />
+            </div>
+
+            {/* Opslaan / Reset */}
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+              <button onClick={() => handleSave()} disabled={saving || !dirty}
+                className="btn-primary">
+                {saving
+                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                  : <><Check size={14} /> Opslaan</>
+                }
+              </button>
+              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
+                <X size={14} /> Reset
+              </button>
+              {!dirty && !saving && (
+                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
+              )}
             </div>
           </div>
         )}
@@ -435,25 +500,39 @@ export default function CustomerDetailClient({
         {/* ── Contactpersoon ────────────────────────────── */}
         {activeTab === "contactpersoon" && (
           <div className="p-6 max-w-xl space-y-4">
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
-              <Save size={11} /> Velden worden automatisch opgeslagen bij verlaten
-            </p>
             <div className="card p-5 space-y-4">
               <SectionLabel>Contactpersoon</SectionLabel>
               <InlineField label="Naam" value={edit.contact_name}
-                onChange={set("contact_name")} onSave={() => handleSave()}
+                onChange={set("contact_name")}
                 placeholder="Jan Jansen" />
               <InlineField label="Functie" value={edit.contact_role}
-                onChange={set("contact_role")} onSave={() => handleSave()}
+                onChange={set("contact_role")}
                 placeholder="Directeur" />
               <InlineField label="E-mail" value={edit.contact_email} type="email"
-                onChange={set("contact_email")} onSave={() => handleSave()}
+                onChange={set("contact_email")}
                 placeholder="jan@bedrijf.nl"
                 href={edit.contact_email ? `mailto:${edit.contact_email}` : undefined} />
               <InlineField label="Telefoon" value={edit.contact_phone} type="tel"
-                onChange={set("contact_phone")} onSave={() => handleSave()}
+                onChange={set("contact_phone")}
                 placeholder="+31 6 87654321"
                 href={edit.contact_phone ? `tel:${edit.contact_phone}` : undefined} />
+            </div>
+
+            {/* Opslaan / Reset */}
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+              <button onClick={() => handleSave()} disabled={saving || !dirty}
+                className="btn-primary">
+                {saving
+                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                  : <><Check size={14} /> Opslaan</>
+                }
+              </button>
+              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
+                <X size={14} /> Reset
+              </button>
+              {!dirty && !saving && (
+                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
+              )}
             </div>
           </div>
         )}
