@@ -1,6 +1,44 @@
 // Voeg dit toe BOVEN de Profile interface:
 export type Locale = "en" | "nl" | "de" | "fr";
 
+// ─── Multi-tenancy ────────────────────────────────────────────
+export type OrgPlan = "trial" | "starter" | "pro" | "enterprise";
+export type OrgRole = "owner" | "admin" | "member";
+
+export type OrgModule =
+  | "projects"
+  | "customers"
+  | "intake"
+  | "planning"
+  | "hrm"
+  | "calendar";
+
+export interface Organisation {
+  id:            string;
+  name:          string;
+  slug:          string;
+  logo_url:      string | null;
+  primary_color: string;
+  accent_color:  string;
+  plan:          OrgPlan;
+  is_active:     boolean;
+  created_at:    string;
+  updated_at:    string;
+}
+
+export interface OrganisationMember {
+  org_id:    string;
+  user_id:   string;
+  role:      OrgRole;
+  joined_at: string;
+}
+
+export interface OrganisationModule {
+  org_id:     string;
+  module:     OrgModule;
+  is_enabled: boolean;
+}
+
 // ─── Auth / User ──────────────────────────────────────────────
 export type UserRole = "admin" | "member" | "viewer" | "superuser" | "projectleider";
 export type MemberRole = "member" | "admin";
@@ -13,9 +51,12 @@ export interface Profile {
   role: UserRole;
   is_active: boolean;
   team_id: string | null;
+  current_org_id: string | null;   // actieve organisatie (Fase 1)
   created_at: string;
   updated_at: string;
-  prefered_language: Locale
+  prefered_language: Locale;
+  // Populated optionally
+  organisation?: Organisation;
 }
 
 // ─── Platform-instellingen ────────────────────────────────────
