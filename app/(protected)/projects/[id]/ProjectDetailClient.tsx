@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
   Layers, ChevronRight, Pencil, Check, Loader2,
   AlertCircle, FileText, Activity, Download, X,
-  LayoutGrid, UserCircle, Hash, FolderKanban,
+  LayoutGrid, UserCircle, Hash, FolderKanban, ClipboardList,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Avatar from "@/components/ui/Avatar";
@@ -16,6 +16,7 @@ import PdfExportButton from "@/components/ui/PdfExportButton";
 import { CustomerSelectWithCreate } from "@/components/customers/CustomerSelectWithCreate";
 import { DossierList } from "@/components/dossiers/DossierList";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
+import IntakeTab from "@/components/projects/IntakeTab";
 import { formatDate, relativeTime } from "@/lib/time";
 import clsx from "clsx";
 import type {
@@ -46,7 +47,7 @@ interface EditState {
   customer_id: string | null;
 }
 
-type Tab = "algemeen" | "taken" | "team" | "dossier" | "activiteit" | "exporteren";
+type Tab = "algemeen" | "taken" | "team" | "intake" | "dossier" | "activiteit" | "exporteren";
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string; dot: string }[] = [
   { value: "active",      label: "Actief",        dot: "bg-brand-500" },
@@ -64,6 +65,7 @@ const TABS: TabDef[] = [
   { id: "algemeen",    label: "Algemeen",    icon: LayoutGrid   },
   { id: "taken",       label: "Taken",       icon: GitBranch    },
   { id: "team",        label: "Team",        icon: Users        },
+  { id: "intake",      label: "Intake",      icon: ClipboardList},
   { id: "dossier",     label: "Dossier",     icon: FileText     },
   { id: "activiteit",  label: "Activiteit",  icon: Activity     },
   { id: "exporteren",  label: "Exporteren",  icon: Download     },
@@ -522,6 +524,17 @@ export default function ProjectDetailClient({
               currentUserId={currentUserId}
               owner={project.owner as any}
               initialMembers={(project.project_members ?? []) as ProjectMember[]}
+            />
+          </div>
+        )}
+
+        {/* ── Tab: Intake ──────────────────────────────── */}
+        {activeTab === "intake" && (
+          <div className="p-6 max-w-2xl">
+            <IntakeTab
+              projectId={project.id}
+              projectName={project.name}
+              themeId={project.theme_id}
             />
           </div>
         )}

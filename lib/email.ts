@@ -10,14 +10,14 @@
  *   3. RESEND_FROM=noreply@jouwnexsolve.nl in .env.local
  */
 
-// Resend dynamisch importeren zodat de build niet faalt als het pakket
-// nog niet geïnstalleerd is (graceful degradation).
+// Resend via require() zodat TypeScript geen module-check doet bij compilatie.
+// Werkt zodra 'npm install resend' is uitgevoerd; faalt graceful als het ontbreekt.
 async function getResend() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { Resend } = require('resend') as typeof import('resend')
     const key = process.env.RESEND_API_KEY
     if (!key) return null
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Resend } = require('resend') as typeof import('resend')
     return new Resend(key)
   } catch {
     return null
@@ -58,10 +58,20 @@ export interface WeeklyDigestEmail {
   hoursLogged: number
 }
 
+export interface IntakeRequestEmail {
+  type:        'intake_request'
+  to:          string
+  projectName: string
+  projectCode?: string
+  senderName:  string
+  intakeId:    string
+}
+
 export type EmailPayload =
   | ProjectInviteEmail
   | DeadlineReminderEmail
   | WeeklyDigestEmail
+  | IntakeRequestEmail
 
 // ─── Status labels ────────────────────────────────────────────
 
@@ -216,6 +226,30 @@ function buildWeeklyDigest(data: WeeklyDigestEmail) {
   }
 }
 
+function buildIntakeRequest(data: IntakeRequestEmail) {
+  const codeLabel = data.projectCode ? ` (${data.projectCode})` : ''
+  const content = `
+    ${h1('Intake vragenlijst')}
+    ${p(`Beste relatie,`)}
+    ${p(`${data.senderName} heeft een intake vragenlijst voor u klaargemaakt in verband met het project <strong>${data.projectName}${codeLabel}</strong>.`)}
+    ${p('Om uw project goed te kunnen voorbereiden, vragen wij u de bijgevoegde vragenlijst zo volledig mogelijk in te vullen en deze ingevuld te retourneren.')}
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0;font-size:13px;color:#15803d;font-weight:600;">📋 Wat te doen:</p>
+      <ol style="margin:8px 0 0;padding-left:20px;font-size:13px;color:#166534;line-height:1.8;">
+        <li>Download de bijgevoegde PDF vragenlijst</li>
+        <li>Vul de vragen zo volledig mogelijk in</li>
+        <li>Stuur het ingevulde document terug per e-mail</li>
+      </ol>
+    </div>
+    ${p('Heeft u vragen over de vragenlijst? Neem dan gerust contact op met uw projectcontact.')}
+    ${p(`Met vriendelijke groet,<br/><strong>${data.senderName}</strong>`)}
+  `
+  return {
+    subject: `Intake vragenlijst — ${data.projectName}`,
+    html: baseLayout(content, `Intake vragenlijst voor ${data.projectName}`),
+  }
+}
+
 // ─── Main sendEmail function ──────────────────────────────────
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
@@ -236,6 +270,7 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
       case 'project_invite':    ({ subject, html } = buildProjectInvite(payload));    break
       case 'deadline_reminder': ({ subject, html } = buildDeadlineReminder(payload)); break
       case 'weekly_digest':     ({ subject, html } = buildWeeklyDigest(payload));     break
+      case 'intake_request':    ({ subject, html } = buildIntakeRequest(payload));    break
     }
 
     const { error } = await resend.emails.send({ from: FROM, to: payload.to, subject, html })

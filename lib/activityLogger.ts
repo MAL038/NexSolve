@@ -39,8 +39,11 @@ export type ActivityAction =
   // Members
   | 'member.added'
   | 'member.removed'
+  // Intakes
+  | 'intake.created'
+  | 'intake.sent'
 
-export type EntityType = 'project' | 'customer' | 'dossier' | 'subprocess' | 'member'
+export type EntityType = 'project' | 'customer' | 'dossier' | 'subprocess' | 'member' | 'intake'
 
 export interface ActivityPayload {
   actorId:     string
@@ -92,6 +95,8 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'subprocess.deleted':      'Deeltaak verwijderd',
   'member.added':            'Teamlid toegevoegd',
   'member.removed':          'Teamlid verwijderd',
+  'intake.created':          'Intake aangemaakt',
+  'intake.sent':             'Intake verstuurd',
 }
 
 export const ACTION_ICONS: Record<ActivityAction, string> = {
@@ -110,6 +115,8 @@ export const ACTION_ICONS: Record<ActivityAction, string> = {
   'subprocess.deleted':        '🗑️',
   'member.added':              '👤',
   'member.removed':            '👤',
+  'intake.created':            '📋',
+  'intake.sent':               '📨',
 }
 
 export const ACTION_COLORS: Record<ActivityAction, string> = {
@@ -128,4 +135,6 @@ export const ACTION_COLORS: Record<ActivityAction, string> = {
   'subprocess.deleted':        'bg-red-50 text-red-500',
   'member.added':              'bg-indigo-50 text-indigo-600',
   'member.removed':            'bg-slate-50 text-slate-500',
+  'intake.created':            'bg-teal-50 text-teal-600',
+  'intake.sent':               'bg-blue-50 text-blue-600',
 }
