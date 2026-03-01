@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabaseServer";
 import { logActivity } from "@/lib/activityLogger";
 import { customerUpdateSchema } from "@/lib/validators";
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +22,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   return NextResponse.json({ ...customer, projects: projects ?? [] });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(data);
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

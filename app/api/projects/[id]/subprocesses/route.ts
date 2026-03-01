@@ -9,7 +9,7 @@ const createSchema = z.object({
   position:    z.number().int().optional(),
 });
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -25,7 +25,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

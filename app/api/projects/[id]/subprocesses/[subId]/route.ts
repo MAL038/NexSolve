@@ -10,7 +10,7 @@ const updateSchema = z.object({
   position:    z.number().int().optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; subId: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, subId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(data);
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string; subId: string }> }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, subId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

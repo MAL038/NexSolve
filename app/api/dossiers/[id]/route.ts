@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params
   const supabase = await createClient()
 
@@ -23,7 +23,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   return NextResponse.json({ data })
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params
   const supabase = await createClient()
 

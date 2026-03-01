@@ -15,7 +15,7 @@ function slugify(name: string) {
 }
 
 // POST /api/admin/themas/[themaId]/processen — voeg submodule toe
-export async function POST(req: NextRequest, { params }: { params: Promise<{ themaId: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const supabase = await guardSuperuser();
   if (!supabase) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
 

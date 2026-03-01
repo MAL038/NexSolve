@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { logActivity } from "@/lib/activityLogger";
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string; userId: string }> }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, userId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -37,7 +37,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   return new NextResponse(null, { status: 204 });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; userId: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, userId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -32,7 +32,7 @@ async function guardTeam(supabase: Awaited<ReturnType<typeof createClient>>, tea
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<Record<string, string>> },
 ) {
   const { id } = await params;
   const supabase = await createClient();
@@ -82,7 +82,7 @@ export async function PATCH(
 
 export async function DELETE(
   _: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<Record<string, string>> },
 ) {
   const { id } = await params;
   const supabase = await createClient();

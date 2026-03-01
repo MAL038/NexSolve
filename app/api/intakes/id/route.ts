@@ -6,7 +6,7 @@ import { sendEmail } from '@/lib/email'
 // GET /api/intakes/[id]
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
   const supabase = await createClient()
@@ -26,7 +26,7 @@ export async function GET(
 // PATCH /api/intakes/[id] — status bijwerken of e-mail versturen
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
   const supabase = await createClient()
@@ -102,7 +102,7 @@ export async function PATCH(
 // DELETE /api/intakes/[id]
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
   const supabase = await createClient()

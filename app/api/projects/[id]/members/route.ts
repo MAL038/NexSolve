@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { logActivity } from "@/lib/activityLogger";
+import { sendEmail } from "@/lib/email";
 import { z } from "zod";
 
 const addMemberSchema = z.object({
@@ -8,7 +9,7 @@ const addMemberSchema = z.object({
   role:    z.enum(["member", "admin"]).default("member"),
 });
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,7 +25,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -68,6 +69,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     customerId: project.customer_id,
     metadata:   { project_name: project.name, role: result.data.role },
   });
+
+  // 📧 Uitnodigingse-mail (fire-and-forget)
+  const profile = data.profile as any;
+  if (profile?.email) {
+    const { data: inviter } = await supabase
+      .from('profiles').select('full_name').eq('id', user.id).single();
+    sendEmail({
+      type:          'project_invite',
+      to:            profile.email,
+      recipientName: profile.full_name ?? 'daar',
+      inviterName:   inviter?.full_name ?? 'Een collega',
+      projectName:   project.name,
+      projectUrl:    `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.nexsolve.nl'}/projects/${id}`,
+      role:          result.data.role === 'admin' ? 'Beheerder' : 'Lid',
+    }).catch(() => {}); // nooit blocking
+  }
 
   return NextResponse.json(data, { status: 201 });
 }

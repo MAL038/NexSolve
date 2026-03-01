@@ -22,7 +22,7 @@ function adminClient() {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
   const ctx = await requireSuperuser();
   if (!ctx) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
@@ -64,7 +64,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
   const ctx = await requireSuperuser();
   if (!ctx) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
