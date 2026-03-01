@@ -23,6 +23,7 @@ interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
   isSuperuser?: boolean;
+  isOrgAdmin?:  boolean;
   onNavigate?:  () => void;
 }
 
@@ -34,18 +35,11 @@ const CALENDAR_ITEMS = [
   { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["admin","superuser"] },
 ];
 
-export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }: SidebarProps) {
+export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: isOrgAdminProp, onNavigate }: SidebarProps) {
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/organisation")
-      .then(r => r.json())
-      .then(d => { if (d.org_role === "owner" || d.org_role === "admin") setIsOrgAdmin(true); })
-      .catch(() => {});
-  }, []);
+  const isOrgAdmin = isOrgAdminProp ?? false;
   const isProjectsArea  = pathname.startsWith("/projects");
   const isCalendarArea  = pathname.startsWith("/calendar");
 

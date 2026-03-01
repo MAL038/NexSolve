@@ -18,6 +18,18 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   const isSuperuser = isSu === true;
 
+  // Haal org-rol op server-side zodat de sidebar geen extra fetch nodig heeft
+  let isOrgAdmin = false;
+  if (profile?.current_org_id) {
+    const { data: membership } = await supabase
+      .from("organisation_members")
+      .select("role")
+      .eq("org_id", profile.current_org_id)
+      .eq("user_id", profile.id)
+      .single();
+    isOrgAdmin = membership?.role === "owner" || membership?.role === "admin";
+  }
+
   return (
     <AppShellClient
       sidebar={
@@ -25,6 +37,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
           profile={profile}
           hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
           isSuperuser={isSuperuser}
+          isOrgAdmin={isOrgAdmin}
         />
       }
     >
