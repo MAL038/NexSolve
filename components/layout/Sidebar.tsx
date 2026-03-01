@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FolderKanban, Users, Settings,
   LogOut, Building2, ChevronRight, ShieldCheck,
-  Calendar, CalendarDays, CalendarRange, ChevronDown, Clock,
+  Calendar, CalendarDays, CalendarRange, ChevronDown, Clock, Landmark,
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect } from "react";
@@ -38,6 +38,14 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/organisation")
+      .then(r => r.json())
+      .then(d => { if (d.org_role === "owner" || d.org_role === "admin") setIsOrgAdmin(true); })
+      .catch(() => {});
+  }, []);
   const isProjectsArea  = pathname.startsWith("/projects");
   const isCalendarArea  = pathname.startsWith("/calendar");
 
@@ -155,6 +163,11 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, onNavigate }:
         </div>
 
         <ExportModal variant="sidebar" />
+
+        {isOrgAdmin && (
+          <NavItem href="/organisation" icon={Landmark} label="Organisatie"
+            active={pathname.startsWith("/organisation")} onNavigate={onNavigate} />
+        )}
 
         <NavItem href="/settings" icon={Settings} label="Instellingen"
           active={pathname.startsWith("/settings")} onNavigate={onNavigate} />
