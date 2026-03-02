@@ -11,7 +11,7 @@ import { sendEmail } from '@/lib/email'
 
 const schema = z.object({
   email:    z.string().email('Ongeldig e-mailadres'),
-  org_role: z.enum(['admin', 'member']).default('member'),
+  org_role: z.literal('member').default('member'),
   full_name: z.string().min(1).max(100).optional(),
 })
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     .eq('user_id', user.id)
     .single()
 
-  if (!membership || !['owner', 'admin'].includes(membership.role))
+  if (!membership || membership.role !== 'owner')
     return NextResponse.json({ error: 'Geen rechten om gebruikers uit te nodigen' }, { status: 403 })
 
   // Valideer body
@@ -203,7 +203,7 @@ export async function DELETE(req: NextRequest) {
     .eq('user_id', user.id)
     .single()
 
-  if (!membership || !['owner', 'admin'].includes(membership.role))
+  if (!membership || membership.role !== 'owner')
     return NextResponse.json({ error: 'Geen rechten' }, { status: 403 })
 
   // Owner mag zichzelf niet verwijderen

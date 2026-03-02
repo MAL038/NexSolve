@@ -25,8 +25,8 @@ export default async function OrganisationPage() {
     .eq("user_id", user.id)
     .single();
 
-  const isOrgAdmin = membership?.role === "owner" || membership?.role === "admin";
-  if (!isOrgAdmin) redirect("/dashboard");
+  const isOwner = membership?.role === "owner";
+  if (!isOwner) redirect("/dashboard");
 
   // Haal org-data op
   const { data: org } = await supabase

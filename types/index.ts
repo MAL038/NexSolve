@@ -3,7 +3,7 @@ export type Locale = "en" | "nl" | "de" | "fr";
 
 // ─── Multi-tenancy ────────────────────────────────────────────
 export type OrgPlan = "trial" | "starter" | "pro" | "enterprise";
-export type OrgRole = "owner" | "admin" | "member";
+export type OrgRole = "owner" | "member";
 
 export type OrgModule =
   | "projects"

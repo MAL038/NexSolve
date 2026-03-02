@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const schema = z.object({
   email: z.string().email(),
-  role:  z.enum(["member", "admin"]).default("member"),
+  role:  z.literal("member").default("member"),
 });
 
 export async function POST(req: NextRequest) {

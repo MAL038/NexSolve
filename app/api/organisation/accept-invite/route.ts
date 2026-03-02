@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     .upsert({
       org_id,
       user_id: user.id,
-      role:    org_role ?? 'member',
+      role:    'member',
     }, { onConflict: 'org_id,user_id' })
 
   if (memberErr) return NextResponse.json({ error: memberErr.message }, { status: 500 })

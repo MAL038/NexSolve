@@ -73,7 +73,6 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
   const [membersLoaded,setMembersLoaded] = useState(false);
   const [inviteEmail,  setInviteEmail]  = useState("");
   const [inviteName,   setInviteName]   = useState("");
-  const [inviteRole,   setInviteRole]   = useState<"member" | "admin">("member");
   const [inviting,     setInviting]     = useState(false);
   const [inviteDone,   setInviteDone]   = useState(false);
   const [removingId,   setRemovingId]   = useState<string | null>(null);
@@ -98,14 +97,14 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
     const res = await fetch("/api/organisation/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: inviteEmail.trim(), full_name: inviteName.trim() || undefined, org_role: inviteRole }),
+      body: JSON.stringify({ email: inviteEmail.trim(), full_name: inviteName.trim() || undefined, org_role: "member" }),
     })
     const data = await res.json()
     setInviting(false)
     if (!res.ok) { showToast(data.error ?? "Uitnodiging mislukt", false); return }
     setInviteDone(true)
     showToast(data.message ?? "Uitnodiging verstuurd")
-    setInviteEmail(""); setInviteName(""); setInviteRole("member")
+    setInviteEmail(""); setInviteName("")
     setTimeout(() => setInviteDone(false), 2500)
     loadMembers()
   }
@@ -444,10 +443,9 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
                 <span className={clsx(
                   "text-xs font-semibold px-2 py-0.5 rounded-lg border flex-shrink-0",
                   m.role === "owner" && "bg-amber-50 text-amber-700 border-amber-200",
-                  m.role === "admin" && "bg-brand-50 text-brand-700 border-brand-200",
                   m.role === "member" && "bg-slate-100 text-slate-600 border-slate-200",
                 )}>
-                  {m.role === "owner" ? "Eigenaar" : m.role === "admin" ? "Beheerder" : "Gebruiker"}
+                  {m.role === "owner" ? "Eigenaar" : "Gebruiker"}
                 </span>
                 {m.role !== "owner" && (
                   <button

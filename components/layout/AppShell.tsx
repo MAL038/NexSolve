@@ -27,7 +27,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
       .eq("org_id", profile.current_org_id)
       .eq("user_id", profile.id)
       .single();
-    isOrgAdmin = membership?.role === "owner" || membership?.role === "admin";
+    isOrgAdmin = membership?.role === "owner";
   }
 
   return (

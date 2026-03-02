@@ -237,7 +237,7 @@ export default function TeamClient({
   // Invite form state
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [email,    setEmail]    = useState("");
-  const [role,     setRole]     = useState<"member" | "admin">("member");
+  
   const [sending,  setSending]  = useState(false);
   const [inviteError,   setInviteError]   = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
@@ -275,7 +275,7 @@ export default function TeamClient({
     const res = await fetch("/api/team/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), role }),
+      body: JSON.stringify({ email: email.trim(), role: "member" }),
     });
     const data = await res.json();
     setSending(false);
@@ -436,7 +436,7 @@ export default function TeamClient({
                 value={role} onChange={e => setRole(e.target.value as any)}
               >
                 <option value="member">Teamlid</option>
-                <option value="admin">Admin</option>
+                <option value="admin">Beheerder</option>
               </select>
             </div>
           </div>
