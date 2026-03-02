@@ -32,6 +32,7 @@ interface ActivityRow {
 }
 
 interface Props {
+  orgId:        string;
   org:          Organisation | null;
   modules:      ModuleRow[];
   members:      OrgMember[];
@@ -54,7 +55,7 @@ const PLAN_LABEL: Record<OrgPlan, string> = {
 
 type Tab = "overzicht" | "leden" | "instellingen" | "activiteit";
 
-export default function BeheerClient({ org, modules, members, activity, projectCount }: Props) {
+export default function BeheerClient({ org, orgId, modules, members, activity, projectCount }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("overzicht");
 
   // Instellingen state
@@ -150,7 +151,7 @@ export default function BeheerClient({ org, modules, members, activity, projectC
   async function loadMoreActivity() {
     if (!cursor) return;
     setLoadingMore(true);
-    const res = await fetch(`/api/activity?limit=50&cursor=${cursor}`);
+    const res = await fetch(`/api/activity?limit=50&org_id=${orgId}&cursor=${cursor}`);
     const data = await res.json();
     setLoadingMore(false);
     setActivityList(prev => [...prev, ...(data.data ?? [])]);

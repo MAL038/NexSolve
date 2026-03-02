@@ -5,10 +5,9 @@
  *   project_id   – filter op project
  *   customer_id  – filter op klant
  *   actor_id     – filter op gebruiker
+ *   org_id       – filter op organisatie (voor /beheer)
  *   limit        – max resultaten (default 20, max 50)
  *   cursor       – created_at voor paginering
- *
- * Geeft activiteiten terug met gejoinde actor naam/avatar.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabaseServer'
@@ -22,6 +21,7 @@ export async function GET(req: NextRequest) {
   const projectId  = searchParams.get('project_id')
   const customerId = searchParams.get('customer_id')
   const actorId    = searchParams.get('actor_id')
+  const orgId      = searchParams.get('org_id')
   const cursor     = searchParams.get('cursor')
   const limit      = Math.min(parseInt(searchParams.get('limit') ?? '20'), 50)
 
@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   if (projectId)  query = query.eq('project_id', projectId)
   if (customerId) query = query.eq('customer_id', customerId)
   if (actorId)    query = query.eq('actor_id', actorId)
+  if (orgId)      query = query.eq('org_id', orgId)
   if (cursor)     query = query.lt('created_at', cursor)
 
   const { data, error } = await query

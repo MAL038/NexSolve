@@ -58,6 +58,7 @@ export default async function BeheerPage() {
 
   return (
     <BeheerClient
+      orgId={orgId}
       org={org}
       modules={modules ?? []}
       members={(members ?? []) as any[]}
