@@ -11,7 +11,7 @@
  * - Planningsmodaal: project + persoon + uren kiezen
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Calendar,
   Users, Building2, Loader2, Trash2, Pencil,
@@ -160,7 +160,7 @@ function PlanningModal({
   currentUserId: string;
   userRole:      string;
 }) {
-  const canPlanOthers = userRole === "admin" || userRole === "superuser";
+  const canPlanOthers = isOrgOwner || userRole === "superuser";
 
   const [projectId, setProjectId] = useState(modal.entry?.project_id ?? myProjects[0]?.id ?? "");
   const [userId,    setUserId]    = useState(modal.entry?.user_id    ?? modal.prefillUser?.id ?? currentUserId);
@@ -472,8 +472,8 @@ export default function CalendarClient({
   const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(null);
   const [planModal,    setPlanModal]    = useState<PlanModalState    | null>(null);
 
-  const canSeeOrg  = userRole === "admin" || userRole === "superuser";
-  const canPlan    = userRole === "admin" || userRole === "superuser" ||
+  const canSeeOrg  = isOrgOwner || userRole === "superuser";
+  const canPlan    = isOrgOwner || userRole === "superuser" ||
                      myProjects.some(p => p.status !== "archived"); // eigenaar van minimaal 1 project
 
   // ─── Data laden ──────────────────────────────────────────────
@@ -632,7 +632,7 @@ export default function CalendarClient({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-800">Kalender</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{SCOPE_CFG[scope].label}</p>
+          <p className="text-sm text-slate-400 mt-0.5">{SCOPE_CFG[(scope as CalendarScope)].label}</p>
         </div>
         <div className="flex items-center gap-2">
           {canPlan && (
@@ -792,14 +792,14 @@ export default function CalendarClient({
                     <div className="flex flex-col gap-0.5 w-full px-0.5 mt-0.5">
                       {/* Verlof-dot(s) */}
                       {dayAbs.slice(0, 1).map((ev, j) => (
-                        <div key={j} className={`w-full h-1 rounded-full ${isSel ? "bg-white/60" : EVENT_CFG[ev.type].dot}`} />
+                        <div key={j} className={`w-full h-1 rounded-full ${isSel ? "bg-white/60" : EVENT_CFG[(ev.type as EventType)].dot}`} />
                       ))}
                       {/* Planning-blokjes (unieke projecten) */}
-                      {[...new Set(dayPlan.map(p => p.project_id))].slice(0, 2).map(pid => {
+                      {[...new Set(dayPlan.map(p => p.project_id).filter((id): id is string => id !== null))].slice(0, 2).map(pid => {
                         const c = projectColor(pid);
                         return <div key={pid} className={`w-full h-1 rounded-full ${isSel ? "bg-white/60" : c.dot}`} />;
                       })}
-                      {(dayAbs.length + [...new Set(dayPlan.map(p => p.project_id))].length) > 3 && (
+                      {(dayAbs.length + [...new Set(dayPlan.map(p => p.project_id).filter((id): id is string => id !== null))].length) > 3 && (
                         <span className={`text-[8px] font-bold ${isSel ? "text-white/70" : "text-slate-400"}`}>
                           +{dayAbs.length + [...new Set(dayPlan.map(p => p.project_id))].length - 3}
                         </span>
@@ -893,7 +893,7 @@ export default function CalendarClient({
 
                     {/* Verlof-blokken */}
                     {userAbs.map(ev => {
-                      const c = EVENT_CFG[ev.type];
+                      const c = EVENT_CFG[(ev.type as EventType)];
                       return (
                         <div key={ev.id}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${c.bg} ${c.border} cursor-pointer hover:shadow-sm transition-all ml-10`}
@@ -942,7 +942,7 @@ export default function CalendarClient({
             <div className="space-y-2">
               {/* Eigen verlof */}
               {selectedAbsences.map(ev => {
-                const c = EVENT_CFG[ev.type];
+                const c = EVENT_CFG[(ev.type as EventType)];
                 return (
                   <div key={ev.id}
                     className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${c.bg} ${c.border} cursor-pointer hover:shadow-sm`}

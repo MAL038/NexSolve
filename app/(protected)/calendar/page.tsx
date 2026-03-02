@@ -40,7 +40,7 @@ export default async function CalendarPage({ searchParams }: Props) {
     .from("project_members")
     .select("project_id, role, project:projects!project_members_project_id_fkey(id, name, status)")
     .eq("user_id", user?.id ?? "")
-    .eq("role", "admin");
+    .eq("role", "lead");
 
   // Combineer en dedupliceer
   const projectMap = new Map<string, { id: string; name: string; status: string }>();
@@ -50,9 +50,22 @@ export default async function CalendarPage({ searchParams }: Props) {
     if (p && p.status !== "archived") projectMap.set(p.id, p);
   });
 
-  // Admins/superusers mogen alle niet-gearchiveerde projecten inplannen
+  // Org-owners/superusers mogen alle niet-gearchiveerde projecten inplannen
   let myProjects = Array.from(projectMap.values());
-  if (profile?.role === "admin" || profile?.role === "superuser") {
+  
+  // Check of user org-owner is
+  let isOrgOwner = false;
+  if (profile?.current_org_id) {
+    const { data: ownerMembership } = await supabase
+      .from("organisation_members")
+      .select("role")
+      .eq("org_id", profile.current_org_id)
+      .eq("user_id", profile.id)
+      .single();
+    isOrgOwner = ownerMembership?.role === "owner";
+  }
+
+  if (isOrgOwner || profile?.role === "superuser") {
     const { data: allProjects } = await supabase
       .from("projects")
       .select("id, name, status")
@@ -66,6 +79,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       initialScope={scope}
       currentUserId={user?.id ?? ""}
       userRole={profile?.role ?? "member"}
+      isOrgOwner={isOrgOwner}
       allUsers={(allUsers ?? []) as any}
       myProjects={myProjects}
     />

@@ -32,7 +32,7 @@ interface SidebarProps {
 const CALENDAR_ITEMS = [
   { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",      icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
   { href: "/calendar?scope=team", scope: "team", label: "Kalender team",       icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
-  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["admin","superuser"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["member","admin","viewer","superuser"] },
 ];
 
 export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: isOrgAdminProp, onNavigate }: SidebarProps) {
@@ -159,7 +159,7 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: i
         <ExportModal variant="sidebar" />
 
         {isOrgAdmin && (
-          <NavItem href="/organisation" icon={Landmark} label="Organisatie"
+          <NavItem href="/beheer" icon={Landmark} label="Beheer"
             active={pathname.startsWith("/organisation")} onNavigate={onNavigate} />
         )}
 

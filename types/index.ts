@@ -40,7 +40,7 @@ export interface OrganisationModule {
 }
 
 // ─── Auth / User ──────────────────────────────────────────────
-export type UserRole = "admin" | "member" | "viewer" | "superuser";
+export type UserRole = "member" | "viewer" | "superuser";
 export type MemberRole = "lead" | "member";
 
 export interface Profile {

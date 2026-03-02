@@ -34,7 +34,7 @@ const ROLE_COLORS: Record<string, string> = {
   viewer:       "bg-slate-50 text-slate-400",
 };
 const ROLE_NL: Record<string, string> = {
-  superuser: "Superuser", admin: "Admin", member: "Teamlid",
+  superuser: "Superuser", member: "Teamlid",
   viewer: "Viewer",
 };
 

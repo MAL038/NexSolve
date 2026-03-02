@@ -11,7 +11,6 @@ import type { Profile, UserRole } from "@/types";
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; border: string }> = {
   superuser:     { label: "Superuser",     color: "text-brand-700", bg: "bg-brand-50",  border: "border-brand-200" },
-  admin:         { label: "Admin",         color: "text-blue-700",  bg: "bg-blue-50",   border: "border-blue-200"  },
   member:        { label: "Teamlid",       color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" },
   viewer:        { label: "Viewer",        color: "text-slate-500", bg: "bg-slate-50",  border: "border-slate-200" },
 };
@@ -219,7 +218,6 @@ export default function GebruikersClient({ initialUsers }: Props) {
                   })}
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
-                  {inviteRole === "admin"  && "Kan projecten en klanten beheren van anderen."}
                   {inviteRole === "member" && "Standaard rol — kan deelnemen aan projecten."}
                   {inviteRole === "viewer" && "Alleen-lezen toegang."}
                 </p>
@@ -297,7 +295,6 @@ export default function GebruikersClient({ initialUsers }: Props) {
                   <select value={user.role} onChange={e => changeRole(user, e.target.value as UserRole)}
                     disabled={isLoading} className="absolute inset-0 opacity-0 cursor-pointer w-full">
                     <option value="member">Teamlid</option>
-                    <option value="admin">Admin</option>
                     <option value="superuser">Superuser</option>
                     <option value="viewer">Viewer</option>
                   </select>
