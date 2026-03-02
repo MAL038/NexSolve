@@ -281,7 +281,7 @@ export default function TeamClient({
     setSending(false);
     if (!res.ok) { setInviteError(data.error ?? "Uitnodiging mislukt."); return; }
     setInvites(prev => [data.invite, ...prev]);
-    setEmail(""); setRole("member");
+    setEmail("");
     setInviteSuccess(`Uitnodiging verstuurd naar ${email.trim()} 🎉`);
     setShowInviteForm(false);
     setTimeout(() => setInviteSuccess(""), 5000);
@@ -429,16 +429,7 @@ export default function TeamClient({
                 onKeyDown={e => e.key === "Enter" && sendInvite()} autoFocus
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Rol</label>
-              <select
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 bg-white"
-                value={role} onChange={e => setRole(e.target.value as any)}
-              >
-                <option value="member">Teamlid</option>
-                <option value="admin">Beheerder</option>
-              </select>
-            </div>
+
           </div>
 
           <div className="flex gap-3 justify-end">
