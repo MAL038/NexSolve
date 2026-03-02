@@ -18,10 +18,8 @@ async function requireSuperuser() {
   if (!isSu) throw new Error("Forbidden");
 }
 
-type Params = { params: Promise<{ id: string }> };
-
 // PATCH — organisatie bijwerken (is_active, plan, naam)
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
@@ -47,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // DELETE — organisatie verwijderen
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 

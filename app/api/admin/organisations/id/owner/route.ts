@@ -19,9 +19,7 @@ async function requireSuperuser() {
   if (!isSu) throw new Error("Forbidden");
 }
 
-type Params = { params: Promise<{ id: string }> };
-
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
