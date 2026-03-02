@@ -6,7 +6,7 @@ import {
   Building2, Save, X, Check, Globe, Palette,
   ToggleLeft, ToggleRight, ShieldCheck, Crown,
   FolderKanban, Users, ClipboardList, CalendarDays,
-  Clock, BarChart3, UserPlus, Mail, Trash2, ChevronDown,
+  Clock, BarChart3, UserPlus, Mail, Trash2,
 } from "lucide-react";
 import clsx from "clsx";
 // Inline types (totdat types/index.ts gedeployed is)
@@ -400,17 +400,7 @@ export default function OrganisationClient({ org, modules, orgRole }: Props) {
               value={inviteName}
               onChange={e => setInviteName(e.target.value)}
             />
-            <div className="relative">
-              <select
-                className="input text-sm w-full appearance-none pr-8"
-                value={inviteRole}
-                onChange={e => setInviteRole(e.target.value as "member" | "admin")}
-              >
-                <option value="member">Gebruiker</option>
-                <option value="admin">Beheerder</option>
-              </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
+
           </div>
           <button
             onClick={handleInvite}
