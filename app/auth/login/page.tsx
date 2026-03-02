@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
@@ -12,6 +13,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
   const [serverErr, setServerErr] = useState("");
+  const searchParams = useSearchParams();
+  const melding = searchParams.get("melding");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,6 +32,12 @@ export default function LoginPage() {
     <>
       <h1 className="text-2xl font-bold text-slate-800 mb-1">Welkom terug</h1>
       <p className="text-slate-500 text-sm mb-8">Log in op je NEXSOLVE account</p>
+
+      {melding === "gesloten" && (
+        <div className="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+          Registratie is gesloten. Neem contact op met jouw beheerder voor een uitnodiging.
+        </div>
+      )}
 
       {serverErr && (
         <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{serverErr}</div>
