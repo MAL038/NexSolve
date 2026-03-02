@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Org ophalen met members voor de response
-  const { data: full } = await admin
+  const { data: full, error: fullErr } = await admin
     .from("organisations")
     .select(`
       id, name, slug, plan, is_active, created_at,
@@ -120,6 +120,16 @@ export async function POST(req: NextRequest) {
     `)
     .eq("id", org.id)
     .single();
+
+  if (fullErr) {
+    return NextResponse.json(
+      {
+        ...org,
+        organisation_members: [],
+      },
+      { status: 201 }
+    );
+  }
 
   return NextResponse.json(full, { status: 201 });
 }
