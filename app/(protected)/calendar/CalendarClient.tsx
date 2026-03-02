@@ -57,6 +57,7 @@ interface Props {
   initialScope:  CalendarScope;
   currentUserId: string;
   userRole:      string;
+  isOrgOwner?:   boolean;
   /** Alle users in het systeem — voor filterbalk en planningsmodaal */
   allUsers:      ProfileSnip[];
   /** Projecten waar huidige user rechten op heeft */
@@ -149,7 +150,7 @@ interface PlanModalState {
 
 function PlanningModal({
   modal, onClose, onSave, onDelete,
-  myProjects, allUsers, currentUserId, userRole,
+  myProjects, allUsers, currentUserId, userRole, isOrgOwner,
 }: {
   modal:         PlanModalState;
   onClose:       () => void;
@@ -159,6 +160,7 @@ function PlanningModal({
   allUsers:      ProfileSnip[];
   currentUserId: string;
   userRole:      string;
+  isOrgOwner?:   boolean;
 }) {
   const canPlanOthers = isOrgOwner || userRole === "superuser";
 
@@ -453,7 +455,7 @@ function AbsenceModal({
 // ─── Hoofd component ──────────────────────────────────────────
 
 export default function CalendarClient({
-  initialScope, currentUserId, userRole, allUsers, myProjects,
+  initialScope, currentUserId, userRole, isOrgOwner = false, allUsers, myProjects,
 }: Props) {
   const today  = new Date();
   const [scope,    setScope]    = useState<CalendarScope>(initialScope);
