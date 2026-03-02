@@ -9,7 +9,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 
 const schema = z.object({
-  email:     z.string().email('Ongeldig e-mailadres'),
+  email:     z.string().trim().toLowerCase().email('Ongeldig e-mailadres'),
   role:      z.enum(['member', 'admin', 'viewer', 'superuser']).default('member'),
   full_name: z.string().min(1).max(100).optional(),
 })
@@ -41,17 +41,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 })
 
   const { email, role, full_name } = result.data
+  const normalizedName = full_name?.trim() ?? ''
 
   // Check of e-mail al bestaat
   const { data: existing } = await ctx.supabase
-    .from('profiles').select('id').eq('email', email).maybeSingle()
+    .from('profiles').select('id').ilike('email', email).maybeSingle()
   if (existing)
     return NextResponse.json({ error: 'Dit e-mailadres is al geregistreerd' }, { status: 409 })
 
   const admin = adminClient()
 
+  // Voorkom auth-fouten als de gebruiker al in auth.users staat (bijv. eerdere invite)
+  const { data: usersPage, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 })
+
+  const existingAuthUser = usersPage.users.find(u => u.email?.toLowerCase() === email)
+  if (existingAuthUser) {
+    return NextResponse.json({ error: 'Dit e-mailadres is al geregistreerd in authenticatie' }, { status: 409 })
+  }
+
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: full_name ?? '', role },
     redirectTo: process.env.NEXT_PUBLIC_APP_URL
       ? process.env.NEXT_PUBLIC_APP_URL + '/auth/accept-invite'
       : 'https://app.nexsolve.nl/auth/accept-invite',
@@ -61,11 +70,15 @@ export async function POST(req: NextRequest) {
 
   // Profiel alvast aanmaken met gewenste rol zodat het niet wacht op de trigger
   if (data.user) {
-    await admin.from('profiles').upsert({
+    const { error: profileErr } = await admin.from('profiles').upsert({
       id: data.user.id, email,
-      full_name: full_name ?? '',
+      full_name: normalizedName,
       role, is_active: true,
     }, { onConflict: 'id' })
+
+    if (profileErr) {
+      return NextResponse.json({ error: profileErr.message }, { status: 500 })
+    }
   }
 
   return NextResponse.json({
