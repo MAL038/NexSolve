@@ -19,11 +19,11 @@ async function requireSuperuser() {
 }
 
 // PATCH — organisatie bijwerken (is_active, plan, naam)
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, context: any) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
-  const { id } = await params;
+  const { id } = await context.params;
   const body = await req.json();
   const admin = adminClient();
 
@@ -45,11 +45,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 // DELETE — organisatie verwijderen
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, context: any) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
-  const { id } = await params;
+  const { id } = await context.params;
   const admin = adminClient();
 
   const { error } = await admin

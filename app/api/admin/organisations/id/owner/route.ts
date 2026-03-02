@@ -19,11 +19,11 @@ async function requireSuperuser() {
   if (!isSu) throw new Error("Forbidden");
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, context: any) {
   try { await requireSuperuser(); }
   catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
-  const { id: org_id } = await params;
+  const { id: org_id } = await context.params;
   const { user_id } = await req.json();
 
   if (!user_id) return NextResponse.json({ error: "user_id verplicht" }, { status: 400 });
