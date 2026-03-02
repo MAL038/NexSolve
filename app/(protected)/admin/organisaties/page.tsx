@@ -29,19 +29,14 @@ export default async function OrganisatiesPage() {
 
   const admin = adminClient();
 
-  const [{ data: orgs }, { data: profiles }] = await Promise.all([
+  const [{ data: orgs }, { data: members }, { data: profiles }] = await Promise.all([
     admin
       .from("organisations")
-      .select(`
-        id, name, slug, plan, is_active, created_at,
-        organisation_members(
-          role, user_id,
-          profile:profiles!organisation_members_user_id_fkey(
-            id, full_name, email
-          )
-        )
-      `)
+      .select("id, name, slug, plan, is_active, created_at")
       .order("created_at", { ascending: false }),
+    admin
+      .from("organisation_members")
+      .select("org_id, role, user_id"),
     admin
       .from("profiles")
       .select("id, full_name, email")
@@ -49,9 +44,22 @@ export default async function OrganisatiesPage() {
       .order("full_name"),
   ]);
 
+  const profilesById = new Map((profiles ?? []).map(p => [p.id, p]));
+
+  const initialOrgs = (orgs ?? []).map(org => ({
+    ...org,
+    organisation_members: (members ?? [])
+      .filter(m => m.org_id === org.id)
+      .map(m => ({
+        role: m.role,
+        user_id: m.user_id,
+        profile: profilesById.get(m.user_id) ?? null,
+      })),
+  }));
+
   return (
     <OrganisatiesClient
-      initialOrgs={(orgs as any[]) ?? []}
+      initialOrgs={(initialOrgs as any[]) ?? []}
       profiles={profiles ?? []}
     />
   );

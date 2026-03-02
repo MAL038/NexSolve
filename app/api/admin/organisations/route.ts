@@ -22,10 +22,82 @@ async function requireSuperuser() {
 }
 
 const schema = z.object({
-  name:     z.string().min(1).max(100),
-  plan:     z.enum(["trial", "starter", "pro", "enterprise"]).default("trial"),
+  name: z.string().min(1).max(100),
+  plan: z.enum(["trial", "starter", "pro", "enterprise"]).default("trial"),
   owner_id: z.string().uuid().nullable().optional(),
 });
+
+type OrgBase = {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+type OrgMemberBase = {
+  org_id: string;
+  role: string;
+  user_id: string;
+};
+
+type ProfileBase = {
+  id: string;
+  full_name: string;
+  email: string;
+};
+
+async function fetchOrganisationsWithMembers(admin: ReturnType<typeof adminClient>, orgId?: string) {
+  let orgQuery = admin
+    .from("organisations")
+    .select("id, name, slug, plan, is_active, created_at")
+    .order("created_at", { ascending: false });
+
+  if (orgId) orgQuery = orgQuery.eq("id", orgId);
+
+  const { data: orgs, error: orgErr } = await orgQuery;
+  if (orgErr) return { error: orgErr.message, data: null };
+
+  const orgRows = (orgs ?? []) as OrgBase[];
+  if (orgRows.length === 0) return { error: null, data: [] };
+
+  const orgIds = orgRows.map(o => o.id);
+
+  const { data: members, error: memberErr } = await admin
+    .from("organisation_members")
+    .select("org_id, role, user_id")
+    .in("org_id", orgIds);
+
+  if (memberErr) return { error: memberErr.message, data: null };
+
+  const memberRows = (members ?? []) as OrgMemberBase[];
+  const userIds = [...new Set(memberRows.map(m => m.user_id))];
+
+  let profilesById = new Map<string, ProfileBase>();
+  if (userIds.length > 0) {
+    const { data: profiles, error: profileErr } = await admin
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", userIds);
+
+    if (profileErr) return { error: profileErr.message, data: null };
+    profilesById = new Map((profiles ?? []).map((p: ProfileBase) => [p.id, p]));
+  }
+
+  const data = orgRows.map(org => ({
+    ...org,
+    organisation_members: memberRows
+      .filter(m => m.org_id === org.id)
+      .map(m => ({
+        role: m.role,
+        user_id: m.user_id,
+        profile: profilesById.get(m.user_id) ?? null,
+      })),
+  }));
+
+  return { error: null, data };
+}
 
 // GET — alle organisaties
 export async function GET() {
@@ -36,20 +108,9 @@ export async function GET() {
   }
 
   const admin = adminClient();
-  const { data, error } = await admin
-    .from("organisations")
-    .select(`
-      id, name, slug, plan, is_active, created_at,
-      organisation_members(
-        role, user_id,
-        profile:profiles!organisation_members_user_id_fkey(
-          id, full_name, email
-        )
-      )
-    `)
-    .order("created_at", { ascending: false });
+  const { data, error } = await fetchOrganisationsWithMembers(admin);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error }, { status: 500 });
   return NextResponse.json(data ?? []);
 }
 
@@ -74,7 +135,10 @@ export async function POST(req: NextRequest) {
   while (true) {
     const testSlug = counter === 0 ? slug : `${slug}-${counter}`;
     const { data: exists } = await admin.from("organisations").select("id").eq("slug", testSlug).maybeSingle();
-    if (!exists) { slug = testSlug; break; }
+    if (!exists) {
+      slug = testSlug;
+      break;
+    }
     counter++;
   }
 
@@ -89,39 +153,30 @@ export async function POST(req: NextRequest) {
 
   // Standaard modules activeren
   await admin.from("organisation_modules").insert([
-    { org_id: org.id, module: "projects",  is_enabled: true  },
-    { org_id: org.id, module: "customers", is_enabled: true  },
-    { org_id: org.id, module: "intake",    is_enabled: true  },
-    { org_id: org.id, module: "calendar",  is_enabled: true  },
-    { org_id: org.id, module: "planning",  is_enabled: false },
-    { org_id: org.id, module: "hrm",       is_enabled: false },
+    { org_id: org.id, module: "projects", is_enabled: true },
+    { org_id: org.id, module: "customers", is_enabled: true },
+    { org_id: org.id, module: "intake", is_enabled: true },
+    { org_id: org.id, module: "calendar", is_enabled: true },
+    { org_id: org.id, module: "planning", is_enabled: false },
+    { org_id: org.id, module: "hrm", is_enabled: false },
   ]);
 
   // Owner koppelen indien opgegeven
   if (owner_id) {
-    await admin.from("organisation_members").upsert({
-      org_id: org.id, user_id: owner_id, role: "owner",
-    }, { onConflict: "org_id,user_id" });
+    await admin.from("organisation_members").upsert(
+      {
+        org_id: org.id,
+        user_id: owner_id,
+        role: "owner",
+      },
+      { onConflict: "org_id,user_id" }
+    );
 
-    await admin.from("profiles")
-      .update({ current_org_id: org.id })
-      .eq("id", owner_id);
+    await admin.from("profiles").update({ current_org_id: org.id }).eq("id", owner_id);
   }
 
-  // Org ophalen met members voor de response
-  const { data: full, error: fullErr } = await admin
-    .from("organisations")
-    .select(`
-      id, name, slug, plan, is_active, created_at,
-      organisation_members(
-        role, user_id,
-        profile:profiles!organisation_members_user_id_fkey(id, full_name, email)
-      )
-    `)
-    .eq("id", org.id)
-    .single();
-
-  if (fullErr) {
+  const { data: fullData, error: fullErr } = await fetchOrganisationsWithMembers(admin, org.id);
+  if (fullErr || !fullData || fullData.length === 0) {
     return NextResponse.json(
       {
         ...org,
@@ -131,5 +186,5 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json(full, { status: 201 });
+  return NextResponse.json(fullData[0], { status: 201 });
 }
