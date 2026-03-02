@@ -72,12 +72,18 @@ export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { showMsg(data.error ?? "Aanmaken mislukt", false); return; }
+
     const createdOrg = normalizeOrg(data as Partial<Org>);
-    if (!createdOrg) {
-      showMsg("Organisatie aangemaakt, maar opnieuw laden is nodig om details te tonen", false);
-      return;
+    if (createdOrg) {
+      setOrgs(prev => [createdOrg, ...prev.filter(o => o.id !== createdOrg.id)]);
     }
-    setOrgs(prev => [createdOrg, ...prev]);
+
+    const fresh = await fetch("/api/admin/organisations").then(r => r.json());
+    const freshOrgs = normalizeOrgs(fresh);
+    if (freshOrgs.length > 0) {
+      setOrgs(freshOrgs);
+    }
+
     setShowNew(false);
     setNewName(""); setNewPlan("trial"); setOwnerId("");
     showMsg(`Organisatie "${data.name}" aangemaakt`);
