@@ -27,15 +27,25 @@ const PLAN_COLORS: Record<string, string> = {
 interface Props { initialOrgs: Org[]; profiles: Profile[] }
 
 function normalizeOrg(org: Partial<Org> | null | undefined): Org | null {
-  if (!org?.id || !org?.name || !org?.slug || !org?.created_at) return null;
+  if (!org?.id || !org?.name || !org?.slug) return null;
+
+  const members = Array.isArray(org.organisation_members)
+    ? org.organisation_members
+        .filter(Boolean)
+        .map((m) => ({
+          ...m,
+          profile: m?.profile ?? { id: m?.user_id ?? "", full_name: "Onbekend", email: "" },
+        })) as OrgMember[]
+    : [];
+
   return {
     id: org.id,
     name: org.name,
     slug: org.slug,
     plan: org.plan ?? "trial",
     is_active: org.is_active ?? true,
-    created_at: org.created_at,
-    organisation_members: Array.isArray(org.organisation_members) ? org.organisation_members.filter(Boolean) as OrgMember[] : [],
+    created_at: org.created_at ?? new Date().toISOString(),
+    organisation_members: members,
   };
 }
 
@@ -235,7 +245,7 @@ export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
                     )}
                   </div>
                   <p className="text-xs text-slate-400 truncate">
-                    {org.slug} · {memberCount} lid{memberCount !== 1 ? "en" : ""} · aangemaakt {formatDate(org.created_at)}
+                    {org.slug} · {memberCount} lid{memberCount !== 1 ? "en" : ""} · aangemaakt {org.created_at ? formatDate(org.created_at) : "onbekend"}
                   </p>
                 </div>
 
