@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const addMemberSchema = z.object({
   user_id: z.string().uuid("Invalid user ID"),
-  role:    z.enum(["member", "admin"]).default("member"),
+  role:    z.enum(["member", "lead"]).default("member"),
 });
 
 export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Recor
       inviterName:   inviter?.full_name ?? 'Een collega',
       projectName:   project.name,
       projectUrl:    `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.nexsolve.nl'}/projects/${id}`,
-      role:          result.data.role === 'admin' ? 'Beheerder' : 'Lid',
+      role:          result.data.role === 'lead' ? 'Projectleider' : 'Lid',
     }).catch(() => {}); // nooit blocking
   }
 

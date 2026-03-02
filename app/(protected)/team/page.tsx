@@ -16,8 +16,7 @@ export default async function TeamPage() {
     .order("full_name");
 
   const canManageTeams =
-    profile?.role === "projectleider" ||
-    profile?.role === "admin"         ||
+    profile?.role === "admin"    ||
     profile?.role === "superuser";
 
   return (

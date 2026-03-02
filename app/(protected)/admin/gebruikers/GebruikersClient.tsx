@@ -14,7 +14,6 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; 
   admin:         { label: "Admin",         color: "text-blue-700",  bg: "bg-blue-50",   border: "border-blue-200"  },
   member:        { label: "Teamlid",       color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" },
   viewer:        { label: "Viewer",        color: "text-slate-500", bg: "bg-slate-50",  border: "border-slate-200" },
-  projectleider: { label: "Projectleider", color: "text-green-700", bg: "bg-green-50",  border: "border-green-200" },
 };
 
 interface Props { initialUsers: Profile[] }
@@ -274,7 +273,7 @@ export default function GebruikersClient({ initialUsers }: Props) {
             </button>
           </div>
         ) : filtered.map((user, i) => {
-          const rc = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.member;
+          const rc = ROLE_CONFIG[(user.role as UserRole)] ?? ROLE_CONFIG.member;
           const isLoading = loading === user.id;
           return (
             <div key={user.id} className={clsx(
@@ -301,7 +300,6 @@ export default function GebruikersClient({ initialUsers }: Props) {
                     <option value="admin">Admin</option>
                     <option value="superuser">Superuser</option>
                     <option value="viewer">Viewer</option>
-                    <option value="projectleider">Projectleider</option>
                   </select>
                 </div>
               </div>

@@ -32,11 +32,10 @@ const ROLE_COLORS: Record<string, string> = {
   admin:        "bg-blue-100 text-blue-700",
   member:       "bg-slate-100 text-slate-600",
   viewer:       "bg-slate-50 text-slate-400",
-  projectleider:"bg-green-100 text-green-700",
 };
 const ROLE_NL: Record<string, string> = {
   superuser: "Superuser", admin: "Admin", member: "Teamlid",
-  viewer: "Viewer", projectleider: "Projectleider",
+  viewer: "Viewer",
 };
 
 function StatCard({ icon: Icon, label, value, sub, color, href }: {

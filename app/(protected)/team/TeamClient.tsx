@@ -76,7 +76,7 @@ function TeamModal({
   async function handleSave() {
     if (!name.trim()) { setError("Teamnaam is verplicht"); return; }
     setLoading(true); setError("");
-    const allMemberIds = new Set(memberIds);
+    const allMemberIds = new Set<string>(memberIds);
     if (leaderId) allMemberIds.add(leaderId);
     await onSave({ name: name.trim(), description, leader_id: leaderId, member_ids: Array.from(allMemberIds) });
     setLoading(false);
@@ -237,7 +237,7 @@ export default function TeamClient({
   // Invite form state
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [email,    setEmail]    = useState("");
-  const [role,     setRole]     = useState<"member" | "admin" | "projectleider">("member");
+  const [role,     setRole]     = useState<"member" | "admin">("member");
   const [sending,  setSending]  = useState(false);
   const [inviteError,   setInviteError]   = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
@@ -351,7 +351,7 @@ export default function TeamClient({
 
   const ROLE_LABEL: Record<string, string> = {
     admin: "Admin", member: "Teamlid", viewer: "Viewer",
-    superuser: "Superuser", projectleider: "Projectleider",
+    superuser: "Superuser",
   };
 
   // ─── Render ────────────────────────────────────────────────
@@ -436,7 +436,6 @@ export default function TeamClient({
                 value={role} onChange={e => setRole(e.target.value as any)}
               >
                 <option value="member">Teamlid</option>
-                <option value="projectleider">Projectleider</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -495,12 +494,12 @@ export default function TeamClient({
                 <span className={clsx(
                   "flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border",
                   m.role === "admin"        ? "bg-brand-50 text-brand-700 border-brand-100" :
-                  m.role === "projectleider"? "bg-violet-50 text-violet-700 border-violet-100" :
+                  
                   m.role === "superuser"    ? "bg-amber-50 text-amber-700 border-amber-100" :
                                               "bg-slate-100 text-slate-500 border-slate-200"
                 )}>
                   {m.role === "admin" || m.role === "superuser" ? <Shield size={10} /> :
-                   m.role === "projectleider" ? <Crown size={10} /> : <User size={10} />}
+                   <User size={10} />}
                   {ROLE_LABEL[m.role] ?? m.role}
                 </span>
               </div>

@@ -14,7 +14,7 @@ interface Props {
   initialMembers: ProjectMember[];
 }
 
-const ROLE_ICON = { admin: Shield, member: User };
+const ROLE_ICON = { lead: Shield, member: User };
 
 export default function MembersPanel({ projectId, ownerId, currentUserId, owner, initialMembers }: Props) {
   const [members, setMembers] = useState<ProjectMember[]>(initialMembers);
@@ -28,13 +28,13 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
     setRemoving(null);
   }
 
-  async function changeRole(userId: string, newRole: "member" | "admin") {
+  async function changeRole(userId: string, newRole: "member" | "lead") {
     await fetch(`/api/projects/${projectId}/members/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole }),
     });
-    setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole } : m));
+    setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole as "lead" | "member" } : m));
   }
 
   return (
@@ -66,11 +66,11 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
               <>
                 <select
                   value={m.role}
-                  onChange={e => changeRole(m.user_id, e.target.value as "member" | "admin")}
+                  onChange={e => changeRole(m.user_id, e.target.value as "member" | "lead")}
                   className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 >
                   <option value="member">Teamlid</option>
-                  <option value="admin">Admin</option>
+                  <option value="lead">Projectleider</option>
                 </select>
                 <button
                   onClick={() => removeMember(m.user_id)}
