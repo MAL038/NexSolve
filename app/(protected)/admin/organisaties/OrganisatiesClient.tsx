@@ -26,8 +26,36 @@ const PLAN_COLORS: Record<string, string> = {
 
 interface Props { initialOrgs: Org[]; profiles: Profile[] }
 
+function normalizeOrg(org: Partial<Org> | null | undefined): Org | null {
+  if (!org?.id || !org?.name || !org?.slug) return null;
+
+  const members = Array.isArray(org.organisation_members)
+    ? org.organisation_members
+        .filter(Boolean)
+        .map((m) => ({
+          ...m,
+          profile: m?.profile ?? { id: m?.user_id ?? "", full_name: "Onbekend", email: "" },
+        })) as OrgMember[]
+    : [];
+
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    plan: org.plan ?? "trial",
+    is_active: org.is_active ?? true,
+    created_at: org.created_at ?? new Date().toISOString(),
+    organisation_members: members,
+  };
+}
+
+function normalizeOrgs(orgs: unknown): Org[] {
+  if (!Array.isArray(orgs)) return [];
+  return orgs.map(org => normalizeOrg(org as Partial<Org>)).filter((org): org is Org => Boolean(org));
+}
+
 export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
-  const [orgs,       setOrgs]       = useState<Org[]>(initialOrgs);
+  const [orgs,       setOrgs]       = useState<Org[]>(() => normalizeOrgs(initialOrgs));
   const [showNew,    setShowNew]     = useState(false);
   const [toast,      setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
   const [saving,     setSaving]      = useState(false);
@@ -54,7 +82,18 @@ export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { showMsg(data.error ?? "Aanmaken mislukt", false); return; }
-    setOrgs(prev => [data, ...prev]);
+
+    const createdOrg = normalizeOrg(data as Partial<Org>);
+    if (createdOrg) {
+      setOrgs(prev => [createdOrg, ...prev.filter(o => o.id !== createdOrg.id)]);
+    }
+
+    const fresh = await fetch("/api/admin/organisations").then(r => r.json());
+    const freshOrgs = normalizeOrgs(fresh);
+    if (freshOrgs.length > 0) {
+      setOrgs(freshOrgs);
+    }
+
     setShowNew(false);
     setNewName(""); setNewPlan("trial"); setOwnerId("");
     showMsg(`Organisatie "${data.name}" aangemaakt`);
@@ -89,7 +128,7 @@ export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
     if (!res.ok) { showMsg(data.error ?? "Mislukt", false); return; }
     // Refresh org members
     const fresh = await fetch("/api/admin/organisations").then(r => r.json());
-    setOrgs(fresh);
+    setOrgs(normalizeOrgs(fresh));
     showMsg("Owner bijgewerkt");
   }
 
@@ -206,7 +245,7 @@ export default function OrganisatiesClient({ initialOrgs, profiles }: Props) {
                     )}
                   </div>
                   <p className="text-xs text-slate-400 truncate">
-                    {org.slug} · {memberCount} lid{memberCount !== 1 ? "en" : ""} · aangemaakt {formatDate(org.created_at)}
+                    {org.slug} · {memberCount} lid{memberCount !== 1 ? "en" : ""} · aangemaakt {org.created_at ? formatDate(org.created_at) : "onbekend"}
                   </p>
                 </div>
 
