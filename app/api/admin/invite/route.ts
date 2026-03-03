@@ -142,7 +142,9 @@ export async function POST(req: NextRequest) {
 
   // ── Redirect URL (werkt lokaal + vercel) ──────────────────
   const origin = getOrigin(req);
-  const redirectTo = `${origin}/auth/accept-invite?token=${invite.token}`;
+
+const next = `/auth/accept-invite?token=${invite.token}`;
+const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   // ── Verstuur uitnodigingsmail via Supabase Admin ──────────
   const { error: emailErr } = await admin.auth.admin.inviteUserByEmail(email, {
