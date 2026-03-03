@@ -4,20 +4,34 @@ import { useState } from "react";
 import { Crown, Trash2, Shield, User } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import MemberSearch from "@/components/ui/MemberSearch";
-import type { ProjectMember, Profile } from "@/types";
+import type { ProjectMember, Profile, MemberRole } from "@/types";
 
 interface Props {
-  projectId: string;
-  ownerId: string;
-  currentUserId: string;
-  owner: Pick<Profile, "full_name" | "email" | "avatar_url"> | undefined;
+  projectId:      string;
+  ownerId:        string;
+  currentUserId:  string;
+  owner:          Pick<Profile, "full_name" | "email" | "avatar_url"> | undefined;
   initialMembers: ProjectMember[];
 }
 
-const ROLE_ICON = { lead: Shield, member: User };
+const ROLE_ICON: Record<MemberRole, React.ElementType> = {
+  projectleider: Shield,
+  member:        User,
+};
 
-export default function MembersPanel({ projectId, ownerId, currentUserId, owner, initialMembers }: Props) {
-  const [members, setMembers] = useState<ProjectMember[]>(initialMembers);
+const ROLE_LABEL: Record<MemberRole, string> = {
+  projectleider: "Projectleider",
+  member:        "Teamlid",
+};
+
+export default function MembersPanel({
+  projectId,
+  ownerId,
+  currentUserId,
+  owner,
+  initialMembers,
+}: Props) {
+  const [members,  setMembers]  = useState<ProjectMember[]>(initialMembers);
   const [removing, setRemoving] = useState<string | null>(null);
   const isOwner = currentUserId === ownerId;
 
@@ -28,13 +42,15 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
     setRemoving(null);
   }
 
-  async function changeRole(userId: string, newRole: "member" | "lead") {
+  async function changeRole(userId: string, newRole: MemberRole) {
     await fetch(`/api/projects/${projectId}/members/${userId}`, {
-      method: "PATCH",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: newRole }),
+      body:    JSON.stringify({ role: newRole }),
     });
-    setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole as "lead" | "member" } : m));
+    setMembers(prev =>
+      prev.map(m => m.user_id === userId ? { ...m, role: newRole } : m)
+    );
   }
 
   return (
@@ -53,9 +69,12 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
 
       {/* Members */}
       {members.map(m => {
-        const RoleIcon = ROLE_ICON[m.role];
+        const RoleIcon = ROLE_ICON[m.role] ?? User;
         return (
-          <div key={m.user_id} className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+          <div
+            key={m.user_id}
+            className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors"
+          >
             <Avatar name={m.profile?.full_name} url={m.profile?.avatar_url} size="sm" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-800 truncate">{m.profile?.full_name}</p>
@@ -66,11 +85,11 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
               <>
                 <select
                   value={m.role}
-                  onChange={e => changeRole(m.user_id, e.target.value as "member" | "lead")}
+                  onChange={e => changeRole(m.user_id, e.target.value as MemberRole)}
                   className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 >
                   <option value="member">Teamlid</option>
-                  <option value="lead">Projectleider</option>
+                  <option value="projectleider">Projectleider</option>
                 </select>
                 <button
                   onClick={() => removeMember(m.user_id)}
@@ -82,7 +101,7 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
               </>
             ) : (
               <span className="badge bg-slate-100 text-slate-500 gap-1">
-                <RoleIcon size={11} /> {m.role}
+                <RoleIcon size={11} /> {ROLE_LABEL[m.role] ?? m.role}
               </span>
             )}
           </div>
@@ -96,7 +115,9 @@ export default function MembersPanel({ projectId, ownerId, currentUserId, owner,
       {/* Teamlid toevoegen (alleen eigenaar) */}
       {isOwner && (
         <div className="pt-2 border-t border-slate-100">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Teamlid toevoegen</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            Teamlid toevoegen
+          </p>
           <MemberSearch
             projectId={projectId}
             existingMembers={members}
