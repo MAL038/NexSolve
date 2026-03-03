@@ -1,5 +1,4 @@
 // app/(protected)/admin/gebruikers/page.tsx
-
 import { requireSuperuser } from "@/lib/auth";
 import { createClient } from "@/lib/supabaseServer";
 import GebruikersClient from "./GebruikersClient";
@@ -18,7 +17,7 @@ export default async function AdminGebruikersPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("organisations")
-      .select("id, name, slug, is_active, created_at, updated_at, logo_url, created_by")
+      .select("id, name, slug, logo_url, is_active, created_by, created_at, updated_at")
       .eq("is_active", true)
       .order("name"),
   ]);
