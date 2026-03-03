@@ -143,6 +143,7 @@ export interface Project {
   org_id:          string | null;
   customer_id:     string | null;
   name:            string;
+  code:            string | null;
   description:     string | null;
   theme_id:        string | null;
   process_id:      string | null;
