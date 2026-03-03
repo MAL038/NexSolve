@@ -1,286 +1,237 @@
-// Voeg dit toe BOVEN de Profile interface:
+// ─────────────────────────────────────────────────────────────
+// types/index.ts — NexSolve central type definitions
+//
+// ROL-MODEL SAMENVATTING:
+//   Platform-level  (profiles.role):         "superuser" | "member"
+//   Org-level       (org_members.org_role):   "admin" | "member" | "viewer"
+//   Project-level   (project_members.role):   "projectleider" | "member"
+// ─────────────────────────────────────────────────────────────
+
 export type Locale = "en" | "nl" | "de" | "fr";
 
-// ─── Multi-tenancy ────────────────────────────────────────────
-export type OrgPlan = "trial" | "starter" | "pro" | "enterprise";
-export type OrgRole = "owner" | "member";
+// ── Platform-level rol (op profiles tabel) ────────────────────
+// superuser = platform beheerder, staat boven alle orgs
+// member    = iedereen met een account; org-rol bepaalt rechten binnen een org
+export type UserRole = "superuser" | "member";
 
-export type OrgModule =
-  | "projects"
-  | "customers"
-  | "intake"
-  | "planning"
-  | "hrm"
-  | "calendar";
+// ── Org-level rol (op org_members tabel) ─────────────────────
+// admin  = beheert de org, kan uitnodigen, rollen wijzigen
+// member = normaal lid, kan projecten zien/bewerken
+// viewer = alleen-lezen toegang
+export type OrgRole = "admin" | "member" | "viewer";
 
-export interface Organisation {
-  id:            string;
-  name:          string;
-  slug:          string;
-  logo_url:      string | null;
-  primary_color: string;
-  accent_color:  string;
-  plan:          OrgPlan;
-  is_active:     boolean;
-  created_at:    string;
-  updated_at:    string;
-}
+// ── Project-level rol (op project_members tabel) ─────────────
+// projectleider = beheert het project, kan leden toevoegen
+// member        = werkt mee aan het project
+export type MemberRole = "projectleider" | "member";
 
-export interface OrganisationMember {
-  org_id:    string;
-  user_id:   string;
-  role:      OrgRole;
-  joined_at: string;
-}
-
-export interface OrganisationModule {
-  org_id:     string;
-  module:     OrgModule;
-  is_enabled: boolean;
-}
-
-// ─── Auth / User ──────────────────────────────────────────────
-export type UserRole = "member" | "viewer" | "superuser";
-export type MemberRole = "lead" | "member";
-
+// ─── Profile ──────────────────────────────────────────────────
 export interface Profile {
-  id: string;
-  full_name: string;
-  email: string;
-  avatar_url: string | null;
-  role: UserRole;
-  is_active: boolean;
-  team_id: string | null;
-  current_org_id: string | null;   // actieve organisatie (Fase 1)
+  id:                 string;
+  full_name:          string;
+  email:              string;
+  avatar_url:         string | null;
+  role:               UserRole;
+  org_id:             string | null;   // null = nog niet aan org gekoppeld / superuser
+  is_active:          boolean;
+  created_at:         string;
+  updated_at:         string;
+  preferred_language: Locale;
+}
+
+// ─── Organisation ──────────────────────────────────────────────
+export interface Organisation {
+  id:         string;
+  name:       string;
+  slug:       string;
+  logo_url:   string | null;
+  is_active:  boolean;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
-  prefered_language: Locale;
-  // Populated optionally
-  organisation?: Organisation;
+}
+
+// ─── Org Member ───────────────────────────────────────────────
+export interface OrgMember {
+  org_id:     string;
+  user_id:    string;
+  org_role:   OrgRole;
+  invited_by: string | null;
+  joined_at:  string;
+  /** Joined from profiles */
+  profile?:   Pick<Profile, "id" | "full_name" | "email" | "avatar_url" | "is_active">;
 }
 
 // ─── Platform-instellingen ────────────────────────────────────
 export interface PlatformSettings {
-  id: string;
-  company_name: string;
-  logo_url: string | null;
+  id:            string;
+  company_name:  string;
+  logo_url:      string | null;
   primary_color: string;
-  accent_color: string;
-  updated_at: string;
-  updated_by: string | null;
+  accent_color:  string;
+  updated_at:    string;
+  updated_by:    string | null;
+}
+
+// ─── Invite ───────────────────────────────────────────────────
+export interface TeamInvite {
+  id:          string;
+  email:       string;
+  org_id:      string;
+  org_role:    OrgRole;
+  invited_by:  string;
+  token:       string;
+  accepted_at: string | null;
+  created_at:  string;
+  expires_at:  string;
 }
 
 // ─── Customers ────────────────────────────────────────────────
 export type CustomerStatus = "active" | "inactive";
 
 export interface Customer {
-  id: string;
-  owner_id: string;
-  // Stap 1 – Identiteit
-  name: string;
-  code: string | null;
-  status: CustomerStatus;
-  // Stap 2 – Basisgegevens
-  email: string | null;
-  phone: string | null;
-  website: string | null;
-  address_street: string | null;
-  address_zip: string | null;
-  address_city: string | null;
+  id:              string;
+  owner_id:        string;
+  org_id:          string;
+  name:            string;
+  code:            string | null;
+  status:          CustomerStatus;
+  email:           string | null;
+  phone:           string | null;
+  website:         string | null;
+  address_street:  string | null;
+  address_zip:     string | null;
+  address_city:    string | null;
   address_country: string | null;
-  // Stap 3 – Contactpersoon
-  contact_name: string | null;
-  contact_role: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  // Meta
-  created_at: string;
-  updated_at: string;
-  /** Populated when fetching customer detail with projects */
-  projects?: Project[];
+  contact_name:    string | null;
+  contact_role:    string | null;
+  contact_email:   string | null;
+  contact_phone:   string | null;
+  created_at:      string;
+  updated_at:      string;
+  projects?:       Project[];
 }
 
 export interface CustomerFormData {
-  // Stap 1
-  name: string;
-  code: string;
-  autoCode: boolean;
-  status: CustomerStatus;
-  // Stap 2
-  email: string;
-  phone: string;
-  website: string;
-  address_street: string;
-  address_zip: string;
-  address_city: string;
+  name:            string;
+  code:            string;
+  autoCode:        boolean;
+  status:          CustomerStatus;
+  email:           string;
+  phone:           string;
+  website:         string;
+  address_street:  string;
+  address_zip:     string;
+  address_city:    string;
   address_country: string;
-  // Stap 3
-  contact_name: string;
-  contact_role: string;
-  contact_email: string;
-  contact_phone: string;
+  contact_name:    string;
+  contact_role:    string;
+  contact_email:   string;
+  contact_phone:   string;
 }
-
 
 // ─── Projects ─────────────────────────────────────────────────
 export type ProjectStatus = "active" | "in-progress" | "archived";
 
 export interface Project {
-  id: string;
-  owner_id: string;
-  customer_id: string | null;          // nullable – backwards compat
-  name: string;
-  code: string | null;                 // uniek projectnummer
-  description: string | null;
-  theme_id: string | null;
-  process_id: string | null;
+  id:              string;
+  owner_id:        string;
+  org_id:          string;
+  customer_id:     string | null;
+  name:            string;
+  description:     string | null;
+  theme_id:        string | null;
+  process_id:      string | null;
   process_type_id: string | null;
-  status: ProjectStatus;
-  start_date: string | null;
-  end_date: string | null;
-  team_id: string | null;
-  created_at: string;
-  updated_at: string;
-  /** Joined from customers table */
-  customer?: Pick<Customer, "id" | "name"> | null;
-  /** Joined from profiles */
-  owner?: Pick<Profile, "full_name" | "email" | "avatar_url">;
-  /** Joined members */
+  status:          ProjectStatus;
+  created_at:      string;
+  updated_at:      string;
+  customer?:       Pick<Customer, "id" | "name"> | null;
+  owner?:          Pick<Profile, "full_name" | "email" | "avatar_url">;
   project_members?: ProjectMember[];
 }
 
 export interface ProjectFormData {
-  name: string;
-  description: string;
-  status: ProjectStatus;
-  customer_id?: string | null;
+  name:            string;
+  description:     string;
+  status:          ProjectStatus;
+  customer_id?:    string | null;
+  theme_id?:       string | null;
+  process_id?:     string | null;
+  process_type_id?: string | null;
 }
 
 // ─── Project Members ──────────────────────────────────────────
 export interface ProjectMember {
   project_id: string;
-  user_id: string;
-  role: MemberRole;
+  user_id:    string;
+  role:       MemberRole;
+  added_at:   string;
+  profile?:   Pick<Profile, "id" | "full_name" | "email" | "avatar_url">;
+}
+
+// ─── Teams ────────────────────────────────────────────────────
+export interface Team {
+  id:          string;
+  org_id:      string;
+  name:        string;
+  description: string | null;
+  leader_id:   string | null;
+  created_at:  string;
+  updated_at:  string;
+  members?:    TeamMember[];
+}
+
+export interface TeamMember {
+  team_id:  string;
+  user_id:  string;
   added_at: string;
-  /** Populated via join on profiles */
-  profile?: Pick<Profile, "full_name" | "email" | "avatar_url">;
-}
-
-export interface AddMemberPayload {
-  user_id: string;
-  role?: MemberRole;
-}
-
-// ─── API helpers ──────────────────────────────────────────────
-export interface ApiError {
-  error: string;
+  profile?: Pick<Profile, "id" | "full_name" | "email" | "avatar_url">;
 }
 
 // ─── Subprocesses ─────────────────────────────────────────────
 export type SubprocessStatus = "todo" | "in-progress" | "done" | "blocked";
 
 export interface Subprocess {
-  id: string;
-  project_id: string;
-  title: string;
+  id:          string;
+  project_id:  string;
+  title:       string;
   description: string | null;
-  theme_id: string | null;
-  process_id: string | null;
-  process_type_id: string | null;
-  status: SubprocessStatus;
-  position: number;
-  created_at: string;
-  updated_at: string;
+  status:      SubprocessStatus;
+  position:    number;
+  created_at:  string;
+  updated_at:  string;
 }
 
-export interface SubprocessFormData {
-  title: string;
-  description?: string;
-  status: SubprocessStatus;
-}
-
-// Voeg dit toe aan types/index.ts, na de Subprocess-sectie
-
-// ─── Kalender ─────────────────────────────────────────────────
-export type EventType = "verlof" | "niet_beschikbaar";
-
-export interface CalendarEvent {
-  id: string;
-  user_id: string;
-  title: string;
-  type: EventType;
-  start_date: string;   // YYYY-MM-DD
-  end_date: string;     // YYYY-MM-DD
-  all_day: boolean;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  /** Joined via profiles */
-  profile?: Pick<Profile, "id" | "full_name" | "avatar_url" | "role"> & { id: string };
-}
-
-// ─── Project Planning ─────────────────────────────────────────
-export interface PlanningEntry {
-  id: string;
-  project_id: string;
-  user_id: string;
-  planned_by: string;
-  date: string;         // YYYY-MM-DD
-  hours: number;        // e.g. 4.0, 7.5
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  /** Joined via projects */
-  project?: Pick<Project, "id" | "name" | "status">;
-  /** Joined via profiles */
-  user?: Pick<Profile, "id" | "full_name" | "avatar_url" | "role"> & { id: string };
-}
-
-// ─── Theme Hierarchy ──────────────────────────────────────────
-
+// ─── Themes ───────────────────────────────────────────────────
 export interface Theme {
-  id: string;
-  name: string;
-  slug: string;
-  position: number;
-  created_at: string;
+  id:        string;
+  name:      string;
+  slug:      string;
+  position:  number;
 }
 
 export interface Process {
-  id: string;
+  id:       string;
   theme_id: string;
-  name: string;
-  slug: string;
+  name:     string;
+  slug:     string;
   position: number;
-  created_at: string;
 }
 
 export interface ProcessType {
-  id: string;
+  id:         string;
   process_id: string;
-  name: string;
-  slug: string;
-  position: number;
-  created_at: string;
+  name:       string;
+  slug:       string;
+  position:   number;
 }
 
-/** Full hierarchy tree (used when loading everything at once) */
 export interface ThemeWithChildren extends Theme {
-  processes: ProcessWithChildren[];
+  processes: (Process & { process_types: ProcessType[] })[];
 }
 
-export interface ProcessWithChildren extends Process {
-  process_types: ProcessType[];
-}
-
-/** The three selections a project can hold */
-export interface ThemeSelection {
-  theme_id:        string | null;
-  process_id:      string | null;
-  process_type_id: string | null;
-}
-
-// ─── Aangepaste project-rollen ────────────────────────────────
+// ─── Custom Roles (project-team rollen) ───────────────────────
 export interface CustomRole {
   id:         string;
   name:       string;
@@ -290,62 +241,4 @@ export interface CustomRole {
   is_active:  boolean;
   created_at: string;
   updated_at: string;
-}
-
-// ─── Admin overzicht-types ────────────────────────────────────
-export interface AdminUserRow extends Profile {
-  project_count?: number;
-}
-
-// ─── Teams ────────────────────────────────────────────────────
-export interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  leader_id: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  /** Joined */
-  leader?: Pick<Profile, "id" | "full_name" | "avatar_url">;
-  members?: TeamMember[];
-}
-
-export interface TeamMember {
-  team_id: string;
-  user_id: string;
-  added_at: string;
-  /** Joined */
-  profile?: Pick<Profile, "id" | "full_name" | "email" | "avatar_url" | "role">;
-}
-
-export interface TeamFormData {
-  name: string;
-  description?: string;
-  leader_id?: string | null;
-  member_ids?: string[];
-}
-
-// ─── Project uitbreiding (voeg toe aan bestaande Project interface) ───
-// Voeg deze velden toe aan de bestaande Project interface:
-//   start_date?: string | null;   // YYYY-MM-DD
-//   end_date?:   string | null;   // YYYY-MM-DD
-//   team_id?:    string | null;
-//   team?:       Pick<Team, "id" | "name"> | null;
-
-
-// ─── Activiteitenlog ──────────────────────────────────────────
-export interface ActivityLogEntry {
-  id:          string;
-  actor_id:    string;
-  action:      string;
-  entity_type: string;
-  entity_id:   string;
-  entity_name: string | null;
-  project_id:  string | null;
-  customer_id: string | null;
-  metadata:    Record<string, unknown> | null;
-  created_at:  string;
-  /** Joined */
-  actor?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>;
 }
