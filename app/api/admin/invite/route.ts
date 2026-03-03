@@ -147,16 +147,15 @@ const next = `/auth/accept-invite?token=${invite.token}`;
 const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   // ── Verstuur uitnodigingsmail via Supabase Admin ──────────
-  const { error: emailErr } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: {
-      invited_by: user.id,
-      org_id,
-      org_role,
-      org_name: org.name,
-      invite_token: invite.token, // handig voor debugging/flow
-    },
-  });
+ const { error: emailErr } = await admin.auth.admin.inviteUserByEmail(email, {
+  redirectTo,
+  data: {
+    org_id,
+    org_role,
+    org_name: org.name,
+    invited_by: user.id,
+  },
+});
 
   if (emailErr) {
     // rollback invite record
