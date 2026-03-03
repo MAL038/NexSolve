@@ -34,7 +34,8 @@ export default async function OrgSettingsPage({ params }: Params) {
   if (!org) notFound();
 
   // Haal leden op
-  const { data: members } = await supabase
+  // Supabase geeft profile terug als array bij een join — we normaliseren dat hier
+  const { data: membersRaw } = await supabase
     .from("org_members")
     .select(`
       org_id, user_id, org_role, invited_by, joined_at,
@@ -43,13 +44,19 @@ export default async function OrgSettingsPage({ params }: Params) {
     .eq("org_id", orgId)
     .order("joined_at", { ascending: true });
 
+  // Normaliseer: profile[] → profile (neem eerste element)
+  const members: OrgMember[] = (membersRaw ?? []).map((m: any) => ({
+    ...m,
+    profile: Array.isArray(m.profile) ? m.profile[0] ?? undefined : m.profile,
+  }));
+
   // Haal org_role van huidige user op
   const orgRole = await getOrgRole(orgId);
 
   return (
     <OrgSettingsClient
       org={org as Organisation}
-      initialMembers={(members as OrgMember[]) ?? []}
+      initialMembers={members}
       currentUserId={profile.id}
       currentOrgRole={(orgRole ?? "member") as OrgRole}
     />
