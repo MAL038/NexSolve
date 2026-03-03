@@ -7,6 +7,11 @@ import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
 type Status = "loading" | "need_password" | "success" | "error";
 
+function parseHashParams(hash: string) {
+  const h = hash.startsWith("#") ? hash.slice(1) : hash;
+  return new URLSearchParams(h);
+}
+
 export default function AcceptInvitePage() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -23,8 +28,47 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     async function boot() {
-      // Sessie moet al gezet zijn via /auth/callback (exchangeCodeForSession)
-      const { data: { session } } = await supabase.auth.getSession();
+      // 0) Als Supabase tokens of errors in de hash meegeeft, eerst afhandelen
+      if (typeof window !== "undefined" && window.location.hash) {
+        const hp = parseHashParams(window.location.hash);
+
+        const errorCode = hp.get("error_code");
+        const errorDesc = hp.get("error_description");
+
+        if (errorCode) {
+          setStatus("error");
+          setMessage(
+            errorCode === "otp_expired"
+              ? "Deze uitnodigingslink is verlopen. Stuur een nieuwe uitnodiging."
+              : (errorDesc ? decodeURIComponent(errorDesc) : `Uitnodiging mislukt (${errorCode}).`)
+          );
+          return;
+        }
+
+        const access_token = hp.get("access_token");
+        const refresh_token = hp.get("refresh_token");
+
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            setStatus("error");
+            setMessage(`Sessie zetten mislukt: ${error.message}`);
+            return;
+          }
+
+          // Hash opruimen (tokens weg uit URL)
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname + window.location.search
+          );
+        }
+      }
+
+      // 1) Nu normale check: hebben we een sessie?
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (!session) {
         setStatus("error");
@@ -32,7 +76,7 @@ export default function AcceptInvitePage() {
         return;
       }
 
-      // We laten altijd wachtwoord instellen bij invite-accept
+      // 2) We laten altijd wachtwoord instellen bij invite-accept
       setStatus("need_password");
       setMessage("Stel een wachtwoord in om je account te activeren.");
     }
@@ -42,7 +86,7 @@ export default function AcceptInvitePage() {
 
   async function onActivate(e: React.FormEvent) {
     e.preventDefault();
-    setMessage(null as any);
+    setMessage("" as any);
 
     if (!token) {
       setStatus("error");
@@ -70,10 +114,12 @@ export default function AcceptInvitePage() {
     }
 
     // 2) Lees metadata (keys moeten matchen met invite route)
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const meta = user?.user_metadata ?? {};
 
-    const invitedOrgId = (meta.org_id as string | undefined);
+    const invitedOrgId = meta.org_id as string | undefined;
     const invitedOrgRole = (meta.org_role as string | undefined) ?? "member";
 
     if (!invitedOrgId) {
@@ -90,7 +136,7 @@ export default function AcceptInvitePage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        token,            // jouw team_invites token (belangrijk!)
+        token, // jouw team_invites token
         org_id: invitedOrgId,
         org_role: invitedOrgRole,
       }),
@@ -114,7 +160,6 @@ export default function AcceptInvitePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 max-w-md w-full text-center space-y-4">
-
         {status === "loading" && (
           <>
             <div className="w-14 h-14 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center mx-auto">
@@ -181,7 +226,6 @@ export default function AcceptInvitePage() {
             </button>
           </>
         )}
-
       </div>
     </div>
   );
