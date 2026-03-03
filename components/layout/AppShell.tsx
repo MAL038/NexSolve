@@ -20,11 +20,21 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   const isSuperuser = isSu === true;
 
-  // Controleer org-admin via RPC — alleen als user een org heeft
+  // Haal org-naam + admin-status op als user een org heeft
   let isOrgAdmin = false;
+  let orgName: string | null = null;
+
   if (profile?.org_id) {
-    const { data } = await supabase.rpc("is_org_admin", { p_org_id: profile.org_id });
-    isOrgAdmin = data === true;
+    const [{ data: adminData }, { data: orgData }] = await Promise.all([
+      supabase.rpc("is_org_admin", { p_org_id: profile.org_id }),
+      supabase
+        .from("organisations")
+        .select("name")
+        .eq("id", profile.org_id)
+        .maybeSingle(),
+    ]);
+    isOrgAdmin = adminData === true;
+    orgName    = orgData?.name ?? null;
   }
 
   return (
@@ -36,6 +46,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
           isSuperuser={isSuperuser}
           isOrgAdmin={isOrgAdmin}
           orgId={profile?.org_id ?? null}
+          orgName={orgName}
         />
       }
     >

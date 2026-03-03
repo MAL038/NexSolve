@@ -23,28 +23,36 @@ interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
   isSuperuser?: boolean;
-  isOrgAdmin?:  boolean;      // nieuw — org admin link in sidebar
-  orgId?:       string | null; // nieuw — voor link naar /org/[orgId]/settings
+  isOrgAdmin?:  boolean;
+  orgId?:       string | null;
+  orgName?:     string | null;
   onNavigate?:  () => void;
 }
 
-// ─── Kalender submenu items ───────────────────────────────────
-
 const CALENDAR_ITEMS = [
-  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",      icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
-  { href: "/calendar?scope=team", scope: "team", label: "Kalender team",       icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
-  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",       icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=team", scope: "team", label: "Kalender team",        icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie", icon: CalendarRange, roles: ["member","admin","viewer","superuser"] },
 ];
 
-export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: isOrgAdminProp, onNavigate }: SidebarProps) {
+export default function Sidebar({
+  profile,
+  hierarchy,
+  isSuperuser,
+  isOrgAdmin: isOrgAdminProp,
+  orgId,
+  orgName,
+  onNavigate,
+}: SidebarProps) {
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const isOrgAdmin = isOrgAdminProp ?? false;
+  const isOrgAdmin      = isOrgAdminProp ?? false;
   const isProjectsArea  = pathname.startsWith("/projects");
   const isCalendarArea  = pathname.startsWith("/calendar");
+  const isBeheerArea    = orgId ? pathname.startsWith(`/org/${orgId}`) : false;
 
-  const urlScope   = searchParams.get("scope")   ?? "mine";
+  const urlScope = searchParams.get("scope") ?? "mine";
 
   const [calendarExpanded, setCalendarExpanded] = useState(isCalendarArea);
 
@@ -60,13 +68,9 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: i
 
   const userRole = profile?.role ?? "member";
 
-  // Welke kalender-items mag deze user zien?
   const visibleCalendarItems = CALENDAR_ITEMS.filter(item =>
     item.roles.includes(userRole)
   );
-
-  // PDF export scope
-  const pdfScope = "all";
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
@@ -81,33 +85,25 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: i
 
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
 
-        {/* Dashboard */}
         <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard"
           active={pathname === "/dashboard"} onNavigate={onNavigate} />
 
-        {/* Projecten (met thema-boom) */}
         <div className="space-y-0.5">
           <NavItem href="/projects" icon={FolderKanban} label="Projecten"
             active={isProjectsArea} onNavigate={onNavigate} />
-
-
         </div>
 
-        {/* Klanten */}
         <NavItem href="/customers" icon={Building2} label="Klanten"
           active={pathname.startsWith("/customers")} onNavigate={onNavigate} />
 
-        {/* Team */}
         <NavItem href="/team" icon={Users} label="Team"
           active={pathname.startsWith("/team")} onNavigate={onNavigate} />
 
-        {/* Urenregistratie */}
         <NavItem href="/hours" icon={Clock} label="Urenregistratie"
           active={pathname.startsWith("/hours")} onNavigate={onNavigate} />
 
         {/* ─── Kalender (met submenu) ─────────────────────── */}
         <div className="space-y-0.5">
-          {/* Hoofd kalender-knop — toggle submenu */}
           <button
             onClick={() => {
               setCalendarExpanded((v: boolean) => !v);
@@ -131,7 +127,6 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: i
             />
           </button>
 
-          {/* Submenu */}
           {calendarExpanded && (
             <div className="space-y-0.5 ml-1">
               {visibleCalendarItems.map(item => {
@@ -159,9 +154,15 @@ export default function Sidebar({ profile, hierarchy, isSuperuser, isOrgAdmin: i
 
         <ExportModal variant="sidebar" />
 
-        {isOrgAdmin && (
-          <NavItem href="/beheer" icon={Landmark} label="Beheer"
-            active={pathname.startsWith("/organisation")} onNavigate={onNavigate} />
+        {/* ─── Org beheer (alleen org-admin of superuser) ── */}
+        {(isOrgAdmin || isSuperuser) && orgId && (
+          <NavItem
+            href={`/org/${orgId}/settings`}
+            icon={Landmark}
+            label={orgName ? `Beheer · ${orgName}` : "Beheer"}
+            active={isBeheerArea}
+            onNavigate={onNavigate}
+          />
         )}
 
         <NavItem href="/settings" icon={Settings} label="Instellingen"
