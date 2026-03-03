@@ -15,19 +15,8 @@ export default async function TeamPage() {
     .eq("is_active", true)
     .order("full_name");
 
-  // Check org-owner
-  let isOrgOwner = false;
-  if (profile?.current_org_id) {
-    const { data: ownerMembership } = await supabase
-      .from("organisation_members")
-      .select("role")
-      .eq("org_id", profile.current_org_id)
-      .eq("user_id", profile.id ?? "")
-      .single();
-    isOrgOwner = ownerMembership?.role === "owner";
-  }
-
-  const canManageTeams = isOrgOwner || profile?.role === "superuser";
+  // superuser kan teams beheren; gewone members niet
+  const canManageTeams = profile?.role === "superuser";
 
   return (
     <TeamClient

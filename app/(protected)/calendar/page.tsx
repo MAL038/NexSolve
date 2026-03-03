@@ -1,10 +1,8 @@
 // app/(protected)/calendar/page.tsx
 import { createClient } from "@/lib/supabaseServer";
-import { requireAuth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import CalendarClient from "./CalendarClient";
 import type { CalendarScope } from "./CalendarClient";
-import type { Profile } from "@/types";
 
 export const metadata = { title: "Kalender" };
 
@@ -21,43 +19,40 @@ export default async function CalendarPage({ searchParams }: Props) {
     : "mine";
 
   const session = await requireAuth();
-  if (!session) redirect("/auth/login");
-
   const supabase = await createClient();
+  const profile  = await getCurrentProfile();
 
   // ── Alle actieve gebruikers binnen dezelfde org ────────────
-  // Org-isolatie: alleen users met dezelfde org_id zichtbaar
   const { data: allUsers } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, role, org_id")
+    .select("id, full_name, avatar_url, role")
     .eq("is_active", true)
-    .eq("org_id", session.org_id ?? "")
     .order("full_name");
 
   // ── Projecten waar huidige user rechten op heeft ───────────
   const { data: ownedProjects } = await supabase
     .from("projects")
     .select("id, name, status")
-    .eq("owner_id", session.id)
+    .eq("owner_id", session.user.id)
     .neq("status", "archived");
 
-  const { data: memberProjects } = await supabase
+  // projectleider (vroeger: admin) in project_members
+  const { data: leadProjects } = await supabase
     .from("project_members")
     .select("project_id, role, project:projects!project_members_project_id_fkey(id, name, status)")
-    .eq("user_id", session.id)
+    .eq("user_id", session.user.id)
     .eq("role", "projectleider");
 
-  // Combineer en dedupliceer
   const projectMap = new Map<string, { id: string; name: string; status: string }>();
   (ownedProjects ?? []).forEach(p => projectMap.set(p.id, p));
-  (memberProjects ?? []).forEach(m => {
+  (leadProjects ?? []).forEach(m => {
     const p = m.project as any;
     if (p && p.status !== "archived") projectMap.set(p.id, p);
   });
 
   // Superuser ziet alle niet-gearchiveerde projecten
   let myProjects = Array.from(projectMap.values());
-  if (session.role === "superuser") {
+  if (profile?.role === "superuser") {
     const { data: allProjects } = await supabase
       .from("projects")
       .select("id, name, status")
@@ -69,8 +64,8 @@ export default async function CalendarPage({ searchParams }: Props) {
   return (
     <CalendarClient
       initialScope={scope}
-      currentUserId={session.id}
-      userRole={session.role}
+      currentUserId={session.user.id}
+      userRole={profile?.role ?? "member"}
       allUsers={(allUsers ?? []) as any}
       myProjects={myProjects}
     />
