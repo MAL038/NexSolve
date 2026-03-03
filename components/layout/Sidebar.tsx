@@ -23,7 +23,8 @@ interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
   isSuperuser?: boolean;
-  isOrgAdmin?:  boolean;
+  isOrgAdmin?:  boolean;      // nieuw — org admin link in sidebar
+  orgId?:       string | null; // nieuw — voor link naar /org/[orgId]/settings
   onNavigate?:  () => void;
 }
 

@@ -1,3 +1,4 @@
+// components/layout/AppShell.tsx
 import Sidebar from "@/components/layout/Sidebar";
 import AppShellClient from "@/components/layout/AppShellClient";
 import { getCurrentProfile } from "@/lib/auth";
@@ -6,6 +7,7 @@ import type { ThemeWithChildren } from "@/types";
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
+
   const [profile, { data: hierarchy }, { data: isSu }] = await Promise.all([
     getCurrentProfile(),
     supabase
@@ -18,16 +20,11 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   const isSuperuser = isSu === true;
 
-  // Haal org-rol op server-side zodat de sidebar geen extra fetch nodig heeft
+  // Controleer org-admin via RPC — alleen als user een org heeft
   let isOrgAdmin = false;
-  if (profile?.current_org_id) {
-    const { data: membership } = await supabase
-      .from("organisation_members")
-      .select("role")
-      .eq("org_id", profile.current_org_id)
-      .eq("user_id", profile.id)
-      .single();
-    isOrgAdmin = membership?.role === "owner";
+  if (profile?.org_id) {
+    const { data } = await supabase.rpc("is_org_admin", { p_org_id: profile.org_id });
+    isOrgAdmin = data === true;
   }
 
   return (
@@ -38,6 +35,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
           hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
           isSuperuser={isSuperuser}
           isOrgAdmin={isOrgAdmin}
+          orgId={profile?.org_id ?? null}
         />
       }
     >
