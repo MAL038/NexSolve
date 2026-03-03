@@ -19,6 +19,20 @@ function adminClient() {
   );
 }
 
+// DB accepteert alleen owner|member (constraint)
+type DbOrgRole = "owner" | "member";
+
+function normalizeOrgRole(input: unknown): DbOrgRole {
+  const raw = String(input ?? "member").toLowerCase().trim();
+
+  // jouw app-rol -> db-rol mapping
+  if (raw === "org.admin" || raw === "admin") return "owner";
+  if (raw === "owner") return "owner";
+
+  // alles anders (viewer, member, etc.)
+  return "member";
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -69,8 +83,8 @@ export async function POST(req: NextRequest) {
   if (orgErr) return NextResponse.json({ error: orgErr.message }, { status: 500 });
   if (!org) return NextResponse.json({ error: "Organisatie niet gevonden" }, { status: 404 });
 
-  // 3) Membership upsert (rol vanuit invite)
-  const role = invite.org_role ?? "member";
+  // 3) Membership upsert (rol vanuit invite) -> normalizen naar DB constraint
+  const role: DbOrgRole = normalizeOrgRole(invite.org_role);
 
   const { error: memberErr } = await admin
     .from("organisation_members")
