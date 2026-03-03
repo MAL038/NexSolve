@@ -10,14 +10,7 @@ export default async function AdminGebruikersPage() {
   await requireSuperuser();
   const supabase = await createClient();
 
-  // 🔎 DEBUG
-  const { data: userData } = await supabase.auth.getUser();
-  const { data: isSu } = await supabase.rpc("is_superuser");
-
-  console.log("SERVER USER ID:", userData?.user?.id);
-  console.log("SERVER is_superuser:", isSu);
-
-  const [{ data: users }, { data: orgs, error: orgError }] = await Promise.all([
+  const [{ data: users }, { data: orgs }] = await Promise.all([
     supabase
       .from("profiles")
       .select("*")
@@ -25,13 +18,21 @@ export default async function AdminGebruikersPage() {
 
     supabase
       .from("organisations")
-      .select("id, name, slug, logo_url, is_active, created_by, created_at, updated_at")
+      .select(`
+        id,
+        name,
+        slug,
+        logo_url,
+        primary_color,
+        accent_color,
+        plan,
+        is_active,
+        created_at,
+        updated_at
+      `)
       .eq("is_active", true)
       .order("name"),
   ]);
-
-  console.log("ORGANISATIONS COUNT:", orgs?.length);
-  console.log("ORGANISATIONS ERROR:", orgError);
 
   return (
     <GebruikersClient
