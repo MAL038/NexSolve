@@ -165,6 +165,17 @@ export default function Sidebar({
           />
         )}
 
+        {/* ─── Organisaties overzicht (alleen superuser zonder org) ── */}
+        {isSuperuser && !orgId && (
+          <NavItem
+            href="/org"
+            icon={Landmark}
+            label="Organisaties"
+            active={pathname.startsWith("/org")}
+            onNavigate={onNavigate}
+          />
+        )}
+
         <NavItem href="/settings" icon={Settings} label="Instellingen"
           active={pathname.startsWith("/settings")} onNavigate={onNavigate} />
 
