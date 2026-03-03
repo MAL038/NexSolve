@@ -33,8 +33,15 @@ export async function POST(req: NextRequest) {
   }
   const { email, org_id, org_role } = result.data;
 
+  // ── Admin client (service role) — bypast RLS voor org-lookup ─
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
   // ── Controleer of org bestaat ─────────────────────────────
-  const { data: org } = await supabase
+  const { data: org } = await adminClient
     .from("organisations")
     .select("id, name")
     .eq("id", org_id)
@@ -94,12 +101,6 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Verstuur uitnodigingsmail via Supabase Admin ──────────
-  const adminClient = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
   const { error: emailErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${invite.token}`,
     data: {
