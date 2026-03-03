@@ -47,12 +47,16 @@ export interface PlatformSettings {
 
 // ─── Organisation ─────────────────────────────────────────────
 export interface Organisation {
-  id:         string;
-  name:       string;
-  slug:       string;
-  logo_url:   string | null;
-  is_active:  boolean;
-  created_by: string | null;
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+
+  primary_color: string | null;
+  accent_color: string | null;
+  plan: string | null;
+
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
