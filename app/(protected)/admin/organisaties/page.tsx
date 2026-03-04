@@ -1,66 +1,38 @@
 // app/(protected)/admin/organisaties/page.tsx
-import { createClient } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireSuperuser } from "@/lib/auth";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+import Link from "next/link";
+import { Building2, Plus, ArrowRight } from "lucide-react";
 import OrganisatiesClient from "./OrganisatiesClient";
 
-export const metadata = { title: "Organisaties – Admin" };
+export const metadata = { title: "Organisaties — Admin" };
 
-function adminClient() {
-  return createAdminClient(
+export default async function AdminOrganisatiesPage() {
+  await requireSuperuser();
+
+  // Service role client — superuser heeft geen organisation_members rij
+  // dus de normale client zou lege resultaten geven via RLS
+  const serviceClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
-}
 
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) throw new Error("Forbidden");
-  return supabase;
-}
+  // Haal alle organisaties op met ledencount in één query
+  const { data: orgs, error } = await serviceClient
+    .from("organisations")
+    .select(`
+      id,
+      name,
+      slug,
+      created_at,
+      organisation_members ( count )
+    `)
+    .order("name", { ascending: true });
 
-export default async function OrganisatiesPage() {
-  try {
-    await requireSuperuser();
-  } catch {
-    return null;
+  if (error) {
+    console.error("AdminOrganisatiesPage fetch error:", error.message);
   }
 
-  const admin = adminClient();
-
-  const [{ data: orgs }, { data: members }, { data: profiles }] = await Promise.all([
-    admin
-      .from("organisations")
-      .select("id, name, slug, plan, is_active, created_at")
-      .order("created_at", { ascending: false }),
-    admin
-      .from("organisation_members")
-      .select("org_id, role, user_id"),
-    admin
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("is_active", true)
-      .order("full_name"),
-  ]);
-
-  const profilesById = new Map((profiles ?? []).map(p => [p.id, p]));
-
-  const initialOrgs = (orgs ?? []).map(org => ({
-    ...org,
-    organisation_members: (members ?? [])
-      .filter(m => m.org_id === org.id)
-      .map(m => ({
-        role: m.role,
-        user_id: m.user_id,
-        profile: profilesById.get(m.user_id) ?? null,
-      })),
-  }));
-
-  return (
-    <OrganisatiesClient
-      initialOrgs={(initialOrgs as any[]) ?? []}
-      profiles={profiles ?? []}
-    />
-  );
+  return <OrganisatiesClient organisations={orgs ?? []} />;
 }

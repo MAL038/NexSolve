@@ -1,56 +1,50 @@
-// lib/auth.ts
 import { createClient } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
-import type { Session } from "@supabase/supabase-js";
-import type { Profile, OrgRole } from "@/types";
+import type { Profile } from "@/types";
 
 // ─────────────────────────────────────────────────────────────
-// PLATFORM GUARDS
+// Helpers
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Geeft de Supabase Session terug.
- * Backward-compatible: bestaande pages gebruiken session.user.id
- */
-export async function getSession(): Promise<Session | null> {
+export async function getSession() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }
 
-/**
- * Vereist een ingelogde sessie.
- * Geeft de Supabase Session terug (session.user.id werkt overal).
- * Redirect naar /auth/login als niet ingelogd.
- */
-export async function requireAuth(): Promise<Session> {
-  const session = await getSession();
-  if (!session) redirect("/auth/login");
-  return session;
-}
-
-/**
- * Haal het profiel op van de huidige ingelogde gebruiker.
- * Geeft null terug als niet ingelogd of profiel niet gevonden.
- */
 export async function getCurrentProfile(): Promise<Profile | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Gebruikt de RLS-policy "eigen rij" — geen recursie
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
-  return (data as Profile) ?? null;
+  return data as Profile | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Guards
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Vereist een actieve sessie.
+ * Redirect naar /auth/login als de gebruiker niet is ingelogd.
+ */
+export async function requireAuth() {
+  const session = await getSession();
+  if (!session) redirect("/auth/login");
+  return session;
 }
 
 /**
- * Vereist superuser.
- * Redirect naar /dashboard als niet superuser.
- * Geeft het volledige Profile terug.
+ * Vereist de superuser-rol.
+ * Gebruikt de SECURITY DEFINER RPC `is_superuser()` om RLS-recursie te vermijden.
+ * Redirect naar /dashboard als de gebruiker geen superuser is.
  */
 export async function requireSuperuser(): Promise<Profile> {
   const session = await getSession();
@@ -71,93 +65,55 @@ export async function requireSuperuser(): Promise<Profile> {
   return profile as Profile;
 }
 
-// ─────────────────────────────────────────────────────────────
-// ORG GUARDS
-// ─────────────────────────────────────────────────────────────
-
 /**
- * Haal de org_role op van de huidige user voor een specifieke org.
- * Geeft null terug als de user geen lid is van die org.
+ * Vereist dat de gebruiker org-admin (owner) is van de opgegeven organisatie,
+ * OF een superuser is op platform-niveau.
+ *
+ * Logica:
+ *  1. Superuser → altijd toegang, ongeacht organisation_members
+ *  2. Org-admin  → moet een rij hebben in organisation_members
+ *                  met role = 'owner' voor dit specifieke orgId
+ *  3. Al het andere → redirect naar /dashboard
+ *
+ * Gebruik in server components:
+ *   const profile = await requireOrgAdminOrSuperuser(params.orgId);
  */
-export async function getOrgRole(orgId: string): Promise<OrgRole | null> {
+export async function requireOrgAdminOrSuperuser(orgId: string): Promise<Profile> {
   const supabase = await createClient();
+
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) redirect("/auth/login");
 
-  const { data } = await supabase
-    .from("org_members")
-    .select("org_role")
-    .eq("org_id", orgId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // ── Stap 1: superuser check via SECURITY DEFINER RPC (geen RLS-recursie) ──
+  const { data: isSu } = await supabase.rpc("is_superuser");
 
-  return (data?.org_role as OrgRole) ?? null;
-}
+  if (isSu === true) {
+    // Superuser mag altijd door — haal profiel op via eigen-rij policy
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-/**
- * Vereist org-admin of superuser.
- * Geeft het Profile terug (niet Session — org pages hebben Profile nodig).
- * Redirect naar /dashboard als niet gemachtigd.
- */
-export async function requireOrgAdmin(orgId: string): Promise<Profile> {
-  const session = await getSession();
-  if (!session) redirect("/auth/login");
+    if (!profile) redirect("/dashboard");
+    return profile as Profile;
+  }
 
-  const supabase = await createClient();
+  // ── Stap 2: org-admin check via is_org_admin RPC ──
+  // Consistent met AppShell die dezelfde RPC gebruikt
+  const { data: isOrgAdmin } = await supabase.rpc("is_org_admin", {
+    p_org_id: orgId,
+  });
 
-  // Haal profiel op
+  if (!isOrgAdmin) redirect("/dashboard");
+
+  // ── Stap 3: profiel ophalen voor de org-admin ──
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
-  if (!profile) redirect("/auth/login");
-
-  // Superuser heeft altijd toegang
-  if ((profile as Profile).role === "superuser") return profile as Profile;
-
-  // Controleer org-admin via RPC (SECURITY DEFINER, geen recursie)
-  const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
-  if (!isAdmin) redirect("/dashboard");
-
+  if (!profile) redirect("/dashboard");
   return profile as Profile;
-}
-
-/**
- * Vereist lid van een org (any role) of superuser.
- * Geeft het Profile terug.
- */
-export async function requireOrgMember(orgId: string): Promise<Profile> {
-  const session = await getSession();
-  if (!session) redirect("/auth/login");
-
-  const supabase = await createClient();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", session.user.id)
-    .single();
-
-  if (!profile) redirect("/auth/login");
-
-  if ((profile as Profile).role === "superuser") return profile as Profile;
-
-  const { data: isMember } = await supabase.rpc("is_org_member", { p_org_id: orgId });
-  if (!isMember) redirect("/dashboard");
-
-  return profile as Profile;
-}
-
-// ─────────────────────────────────────────────────────────────
-// CONVENIENCE HELPERS (geen redirect, voor conditionele UI)
-// ─────────────────────────────────────────────────────────────
-
-export function isSuperuser(profile: Profile): boolean {
-  return profile.role === "superuser";
-}
-
-export function isOrgAdmin(orgRole: OrgRole | null): boolean {
-  return orgRole === "admin";
 }

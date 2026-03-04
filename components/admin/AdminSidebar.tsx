@@ -3,20 +3,20 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ShieldCheck, Users, Layers, Settings, ArrowLeft, LogOut, Building2, LayoutDashboard, Activity,
+  ShieldCheck, Users, Layers, Settings, ArrowLeft, LogOut, LayoutDashboard, Building2,
 } from "lucide-react";
 import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabaseClient";
 
+// ── WIJZIGING: Building2 toegevoegd aan imports, Organisaties item in NAV ──
 const NAV = [
-  { href: "/admin",              icon: LayoutDashboard, label: "Overzicht",           exact: true  },
-  { href: "/admin/gebruikers",   icon: Users,           label: "Gebruikers",          exact: false },
-  { href: "/admin/organisaties", icon: Building2,       label: "Organisaties",        exact: false },
-  { href: "/admin/theemas",      icon: Layers,          label: "Themas & submodules", exact: false },
-  { href: "/admin/rollen",       icon: ShieldCheck,     label: "Projectrollen",       exact: false },
-  { href: "/admin/activiteit",   icon: Activity,        label: "Activiteitenlog",     exact: false },
-  { href: "/admin/instellingen", icon: Settings,        label: "Instellingen",        exact: false },
+  { href: "/admin",                icon: LayoutDashboard, label: "Overzicht",           exact: true  },
+  { href: "/admin/gebruikers",     icon: Users,           label: "Gebruikers",          exact: false },
+  { href: "/admin/organisaties",   icon: Building2,       label: "Organisaties",        exact: false },
+  { href: "/admin/theemas",        icon: Layers,          label: "Themas & submodules", exact: false },
+  { href: "/admin/rollen",         icon: ShieldCheck,     label: "Projectrollen",       exact: false },
+  { href: "/admin/instellingen",   icon: Settings,        label: "Instellingen",        exact: false },
 ];
 
 export default function AdminSidebar() {
