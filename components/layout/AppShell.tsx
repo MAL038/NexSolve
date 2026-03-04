@@ -20,21 +20,31 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   const isSuperuser = isSu === true;
 
-  // Haal org-naam + admin-status op als user een org heeft
+  // ── Org-admin context ophalen ──────────────────────────────
+  // Alleen doen als de gebruiker GEEN superuser is — superusers
+  // hebben geen organisation_members rij en de RPC zou false teruggeven.
   let isOrgAdmin = false;
+  let orgId: string | null = null;
   let orgName: string | null = null;
 
-  if (profile?.org_id) {
-    const [{ data: adminData }, { data: orgData }] = await Promise.all([
-      supabase.rpc("is_org_admin", { p_org_id: profile.org_id }),
-      supabase
-        .from("organisations")
-        .select("name")
-        .eq("id", profile.org_id)
-        .maybeSingle(),
-    ]);
-    isOrgAdmin = adminData === true;
-    orgName    = orgData?.name ?? null;
+  if (!isSuperuser && profile) {
+    // Haal de org op waar deze gebruiker owner van is
+    const { data: membership } = await supabase
+      .from("organisation_members")
+      .select("org_id, role, organisations(id, name)")
+      .eq("user_id", profile.id)
+      .eq("role", "owner")
+      .maybeSingle();
+
+    if (membership) {
+      isOrgAdmin = true;
+      orgId      = membership.org_id;
+      // organisations kan een object of array zijn afhankelijk van de join
+      const org  = Array.isArray(membership.organisations)
+        ? membership.organisations[0]
+        : membership.organisations;
+      orgName    = org?.name ?? null;
+    }
   }
 
   return (
@@ -45,7 +55,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
           hierarchy={(hierarchy as ThemeWithChildren[]) ?? []}
           isSuperuser={isSuperuser}
           isOrgAdmin={isOrgAdmin}
-          orgId={profile?.org_id ?? null}
+          orgId={orgId}
           orgName={orgName}
         />
       }

@@ -13,7 +13,7 @@ interface OrgRow {
   name: string;
   slug: string | null;
   created_at: string;
-  organisation_members: { count: number }[];
+  memberCount: number;
 }
 
 interface Props {
@@ -88,7 +88,7 @@ export default function OrganisatiesClient({ organisations }: Props) {
           </div>
         ) : (
           filtered.map((org, i) => {
-            const memberCount = org.organisation_members?.[0]?.count ?? 0;
+            const memberCount = org.memberCount;
             return (
               <Link
                 key={org.id}

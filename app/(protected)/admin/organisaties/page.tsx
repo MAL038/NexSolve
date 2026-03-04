@@ -1,8 +1,6 @@
 // app/(protected)/admin/organisaties/page.tsx
 import { requireSuperuser } from "@/lib/auth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import Link from "next/link";
-import { Building2, Plus, ArrowRight } from "lucide-react";
 import OrganisatiesClient from "./OrganisatiesClient";
 
 export const metadata = { title: "Organisaties — Admin" };
@@ -10,29 +8,36 @@ export const metadata = { title: "Organisaties — Admin" };
 export default async function AdminOrganisatiesPage() {
   await requireSuperuser();
 
-  // Service role client — superuser heeft geen organisation_members rij
-  // dus de normale client zou lege resultaten geven via RLS
   const serviceClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Haal alle organisaties op met ledencount in één query
-  const { data: orgs, error } = await serviceClient
-    .from("organisations")
-    .select(`
-      id,
-      name,
-      slug,
-      created_at,
-      organisation_members ( count )
-    `)
-    .order("name", { ascending: true });
+  // Twee parallelle queries — Supabase embedded count is onbetrouwbaar
+  // voor aggregaties; aparte ledencount is robuuster
+  const [{ data: orgs }, { data: memberRows }] = await Promise.all([
+    serviceClient
+      .from("organisations")
+      .select("id, name, slug, created_at")
+      .order("name", { ascending: true }),
 
-  if (error) {
-    console.error("AdminOrganisatiesPage fetch error:", error.message);
+    serviceClient
+      .from("organisation_members")
+      .select("org_id"),
+  ]);
+
+  // Bouw een map: orgId → aantal leden
+  const countMap: Record<string, number> = {};
+  for (const row of memberRows ?? []) {
+    countMap[row.org_id] = (countMap[row.org_id] ?? 0) + 1;
   }
 
-  return <OrganisatiesClient organisations={orgs ?? []} />;
+  // Voeg memberCount toe aan elke org
+  const orgsWithCount = (orgs ?? []).map(org => ({
+    ...org,
+    memberCount: countMap[org.id] ?? 0,
+  }));
+
+  return <OrganisatiesClient organisations={orgsWithCount} />;
 }
