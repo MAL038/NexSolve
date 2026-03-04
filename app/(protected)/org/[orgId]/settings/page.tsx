@@ -37,9 +37,7 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
     serviceClient
       .from("organisation_members")
       .select(`
-        user_id,
-        role,
-        joined_at,
+        *,
         profile:profiles!organisation_members_user_id_fkey (
           id,
           full_name,
