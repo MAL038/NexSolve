@@ -1,11 +1,13 @@
 "use client";
 
+import React from "react";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FolderKanban, Users, Settings,
-  LogOut, Building2, ChevronRight, Plus, ShieldCheck,
-  Calendar, CalendarDays, CalendarRange, ChevronDown, Clock,
+  LogOut, Building2, ChevronRight, ShieldCheck,
+  Calendar, CalendarDays, CalendarRange, ChevronDown, Clock, Landmark,
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect } from "react";
@@ -16,19 +18,6 @@ import { createClient } from "@/lib/supabaseClient";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import type { Profile, ThemeWithChildren } from "@/types";
 
-const THEME_COLORS: Record<string, {
-  dot: string; active: string; activeBg: string; hoverBg: string; hoverText: string;
-}> = {
-  "algemeen":        { dot: "bg-slate-400",  active: "text-slate-700",  activeBg: "bg-slate-100",  hoverBg: "hover:bg-slate-50",  hoverText: "hover:text-slate-700"  },
-  "crm":             { dot: "bg-blue-400",   active: "text-blue-700",   activeBg: "bg-blue-50",    hoverBg: "hover:bg-blue-50",   hoverText: "hover:text-blue-700"   },
-  "hrm":             { dot: "bg-brand-500",  active: "text-brand-700",  activeBg: "bg-brand-50",   hoverBg: "hover:bg-brand-50",  hoverText: "hover:text-brand-700"  },
-  "ordermanagement": { dot: "bg-amber-400",  active: "text-amber-700",  activeBg: "bg-amber-50",   hoverBg: "hover:bg-amber-50",  hoverText: "hover:text-amber-700"  },
-  "payroll":         { dot: "bg-violet-400", active: "text-violet-700", activeBg: "bg-violet-50",  hoverBg: "hover:bg-violet-50", hoverText: "hover:text-violet-700" },
-  "erp":             { dot: "bg-rose-400",   active: "text-rose-700",   activeBg: "bg-rose-50",    hoverBg: "hover:bg-rose-50",   hoverText: "hover:text-rose-700"   },
-};
-function tc(slug: string) { return THEME_COLORS[slug] ?? THEME_COLORS["algemeen"]; }
-
-// ─── WIJZIGING 1: Props uitgebreid met isOrgAdmin, orgId, orgName ─────────────
 interface SidebarProps {
   profile:      Profile | null;
   hierarchy:    ThemeWithChildren[];
@@ -39,37 +28,33 @@ interface SidebarProps {
   onNavigate?:  () => void;
 }
 
-// ─── Kalender submenu items ───────────────────────────────────
-
 const CALENDAR_ITEMS = [
-  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",      icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
-  { href: "/calendar?scope=team", scope: "team", label: "Kalender team",       icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
-  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie",icon: CalendarRange, roles: ["admin","superuser"] },
+  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender",       icon: Calendar,      roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=team", scope: "team", label: "Kalender team",        icon: CalendarDays,  roles: ["member","admin","viewer","superuser"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie", icon: CalendarRange, roles: ["member","admin","viewer","superuser"] },
 ];
 
 export default function Sidebar({
   profile,
   hierarchy,
   isSuperuser,
-  isOrgAdmin,   // WIJZIGING 2: destructuren
-  orgId,        // WIJZIGING 2: destructuren
-  orgName,      // WIJZIGING 2: destructuren
+  isOrgAdmin: isOrgAdminProp,
+  orgId,
+  orgName,
   onNavigate,
 }: SidebarProps) {
   const pathname     = usePathname();
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const isOrgAdmin      = isOrgAdminProp ?? false;
   const isProjectsArea  = pathname.startsWith("/projects");
   const isCalendarArea  = pathname.startsWith("/calendar");
+  const isBeheerArea    = orgId ? pathname.startsWith(`/org/${orgId}`) : false;
 
-  const urlTheme   = searchParams.get("theme")   ?? "";
-  const urlProcess = searchParams.get("process") ?? "";
-  const urlScope   = searchParams.get("scope")   ?? "mine";
+  const urlScope = searchParams.get("scope") ?? "mine";
 
-  const [expandedTheme,    setExpandedTheme]    = useState<string>(urlTheme);
   const [calendarExpanded, setCalendarExpanded] = useState(isCalendarArea);
 
-  useEffect(() => { if (urlTheme) setExpandedTheme(urlTheme); }, [urlTheme]);
   useEffect(() => { if (isCalendarArea) setCalendarExpanded(true); }, [isCalendarArea]);
 
   async function handleLogout() {
@@ -82,21 +67,9 @@ export default function Sidebar({
 
   const userRole = profile?.role ?? "member";
 
-  // Welke kalender-items mag deze user zien?
   const visibleCalendarItems = CALENDAR_ITEMS.filter(item =>
     item.roles.includes(userRole)
   );
-
-  // PDF export scope
-  const pdfScope = isProjectsArea
-    ? (urlTheme ? (urlProcess ? "subprocess" : "theme") : "all")
-    : "all";
-
-  // WIJZIGING 3: org-instellingen route — alleen tonen als org-admin met orgId
-  const orgSettingsHref = orgId ? `/org/${orgId}/settings` : null;
-  const isOrgSettingsActive = orgSettingsHref
-    ? pathname.startsWith(`/org/${orgId}`)
-    : false;
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
@@ -111,75 +84,28 @@ export default function Sidebar({
 
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
 
-        {/* Dashboard */}
         <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard"
           active={pathname === "/dashboard"} onNavigate={onNavigate} />
 
-        {/* Projecten (met thema-boom) */}
         <div className="space-y-0.5">
           <NavItem href="/projects" icon={FolderKanban} label="Projecten"
-            active={isProjectsArea && !urlTheme} onNavigate={onNavigate} />
-
-          {/* Thema-submenu */}
-          {hierarchy.map(t => {
-            const c   = tc(t.slug ?? "algemeen");
-            const ta  = urlTheme === t.slug;
-            const exp = expandedTheme === t.slug;
-            return (
-              <div key={t.id}>
-                <div className="flex items-center group/theme">
-                  <button
-                    onClick={() => {
-                      router.push(`/projects?theme=${t.slug}`);
-                      setExpandedTheme(exp ? "" : t.slug ?? "");
-                      onNavigate?.();
-                    }}
-                    className={clsx(
-                      "flex-1 flex items-center gap-2.5 pl-6 pr-2 py-2 rounded-xl text-xs font-medium transition-all",
-                      ta ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText}`
-                    )}
-                  >
-                    <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", ta ? c.dot : "bg-slate-200")} />
-                    <span className="flex-1 truncate">{t.name}</span>
-                  </button>
-
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover/theme:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setExpandedTheme(exp ? "" : t.slug ?? "")}
-                      className="p-1 rounded text-slate-300 hover:text-slate-500"
-                    >
-                      <ChevronRight size={12} className={clsx("transition-transform", exp && "rotate-90")} />
-                    </button>
-                  </div>
-                </div>
-
-                {exp && t.processes?.map(p => {
-                  const pa = urlProcess === p.slug;
-                  return (
-                    <div key={p.id} className="flex items-center group/proc">
-                      <button
-                        onClick={() => { router.push(`/projects?theme=${t.slug}&process=${p.slug}`); onNavigate?.(); }}
-                        className={clsx(
-                          "flex-1 flex items-center gap-2 pl-10 pr-2 py-1.5 rounded-xl text-xs transition-all",
-                          pa ? `${c.activeBg} ${c.active} font-semibold` : `text-slate-400 ${c.hoverBg} ${c.hoverText} font-medium`
-                        )}
-                      >
-                        <span className={clsx("w-1 h-1 rounded-full flex-shrink-0", pa ? c.dot : "bg-slate-300")} />
-                        <span className="flex-1 truncate">{p.name}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+            active={isProjectsArea} onNavigate={onNavigate} />
         </div>
 
-        {/* Kalender */}
+        <NavItem href="/customers" icon={Building2} label="Klanten"
+          active={pathname.startsWith("/customers")} onNavigate={onNavigate} />
+
+        <NavItem href="/team" icon={Users} label="Team"
+          active={pathname.startsWith("/team")} onNavigate={onNavigate} />
+
+        <NavItem href="/hours" icon={Clock} label="Urenregistratie"
+          active={pathname.startsWith("/hours")} onNavigate={onNavigate} />
+
+        {/* ─── Kalender (met submenu) ─────────────────────── */}
         <div className="space-y-0.5">
           <button
             onClick={() => {
-              setCalendarExpanded(v => !v);
+              setCalendarExpanded((v: boolean) => !v);
               if (!isCalendarArea) {
                 router.push("/calendar?scope=mine");
                 onNavigate?.();
@@ -200,7 +126,6 @@ export default function Sidebar({
             />
           </button>
 
-          {/* Submenu */}
           {calendarExpanded && (
             <div className="space-y-0.5 ml-1">
               {visibleCalendarItems.map(item => {
@@ -228,34 +153,36 @@ export default function Sidebar({
 
         <ExportModal variant="sidebar" />
 
+        {/* ─── Org beheer (org-admin of superuser met org context) ── */}
+        {/* WIJZIGING 1: superuser krijgt ?from=admin zodat terugknop werkt */}
+        {(isOrgAdmin || isSuperuser) && orgId && (
+          <NavItem
+            href={isSuperuser
+              ? `/org/${orgId}/settings?from=admin`
+              : `/org/${orgId}/settings`
+            }
+            icon={Landmark}
+            label={orgName ? `Beheer · ${orgName}` : "Beheer"}
+            active={isBeheerArea}
+            onNavigate={onNavigate}
+          />
+        )}
+
+        {/* ─── Organisaties overzicht (alleen superuser zonder org) ── */}
+        {/* WIJZIGING 2: /org → /admin/organisaties */}
+        {isSuperuser && !orgId && (
+          <NavItem
+            href="/admin/organisaties"
+            icon={Landmark}
+            label="Organisaties"
+            active={pathname.startsWith("/admin/organisaties")}
+            onNavigate={onNavigate}
+          />
+        )}
+
         <NavItem href="/settings" icon={Settings} label="Instellingen"
           active={pathname.startsWith("/settings")} onNavigate={onNavigate} />
 
-        {/* ── WIJZIGING 4: Organisatie-instellingen voor org-admins ── */}
-        {/* Superusers navigeren via /admin/organisaties, niet hier  */}
-        {isOrgAdmin && !isSuperuser && orgSettingsHref && (
-          <>
-            <div className="my-2 border-t border-slate-100" />
-
-            {/* Label boven het item: org-naam als context */}
-            {orgName && (
-              <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 truncate">
-                {orgName}
-              </p>
-            )}
-
-            <NavItem
-              href={orgSettingsHref}
-              icon={Building2}
-              label="Organisatie-instellingen"
-              active={isOrgSettingsActive}
-              variant="org"
-              onNavigate={onNavigate}
-            />
-          </>
-        )}
-
-        {/* Beheerpaneel — alleen superuser */}
         {isSuperuser && (
           <>
             <div className="my-2 border-t border-slate-100" />
@@ -285,13 +212,12 @@ export default function Sidebar({
   );
 }
 
-// ─── WIJZIGING 5: NavItem krijgt 'org' variant naast 'admin' ─────────────────
 function NavItem({ href, icon: Icon, label, active, variant, onNavigate }: {
   href: string;
   icon: React.ElementType;
   label: string;
   active: boolean;
-  variant?: "admin" | "org";
+  variant?: "admin";
   onNavigate?: () => void;
 }) {
   return (
@@ -301,13 +227,9 @@ function NavItem({ href, icon: Icon, label, active, variant, onNavigate }: {
         ? active
           ? "bg-brand-50 text-brand-700 border border-brand-200"
           : "text-brand-600 hover:bg-brand-50 hover:text-brand-700 border border-transparent"
-        : variant === "org"
-          ? active
-            ? "bg-slate-100 text-slate-800 border border-slate-200"
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-transparent"
-          : active
-            ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
-            : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
+        : active
+          ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
+          : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
     )}>
       <Icon size={18} />
       {label}
