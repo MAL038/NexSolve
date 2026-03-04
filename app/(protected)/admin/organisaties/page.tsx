@@ -14,8 +14,7 @@ export default async function AdminOrganisatiesPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Twee parallelle queries — Supabase embedded count is onbetrouwbaar
-  // voor aggregaties; aparte ledencount is robuuster
+  // Correcte tabel: org_members (niet organisation_members)
   const [{ data: orgs }, { data: memberRows }] = await Promise.all([
     serviceClient
       .from("organisations")
@@ -23,17 +22,15 @@ export default async function AdminOrganisatiesPage() {
       .order("name", { ascending: true }),
 
     serviceClient
-      .from("organisation_members")
+      .from("org_members")
       .select("org_id"),
   ]);
 
-  // Bouw een map: orgId → aantal leden
   const countMap: Record<string, number> = {};
   for (const row of memberRows ?? []) {
     countMap[row.org_id] = (countMap[row.org_id] ?? 0) + 1;
   }
 
-  // Voeg memberCount toe aan elke org
   const orgsWithCount = (orgs ?? []).map(org => ({
     ...org,
     memberCount: countMap[org.id] ?? 0,

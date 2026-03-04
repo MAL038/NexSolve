@@ -29,16 +29,16 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
   const [{ data: org }, { data: members }] = await Promise.all([
     serviceClient
       .from("organisations")
-      // Alle kolommen ophalen zodat het Organisation type volledig gevuld is
       .select("*")
       .eq("id", orgId)
       .maybeSingle(),
 
+    // Correcte tabel: org_members, correcte kolom: org_role
     serviceClient
-      .from("organisation_members")
+      .from("org_members")
       .select(`
         *,
-        profile:profiles!organisation_members_user_id_fkey (
+        profile:profiles!org_members_user_id_fkey (
           id,
           full_name,
           email,
@@ -55,7 +55,6 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
 
   return (
     <div>
-      {/* Broodkruimel — alleen tonen als superuser via admin panel */}
       {isSuperuser && from === "admin" && (
         <div className="px-8 pt-6">
           <Link
@@ -73,7 +72,10 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
         org={org}
         initialMembers={members ?? []}
         currentUserId={profile.id}
-        currentOrgRole={isSuperuser ? "owner" : (members?.find(m => m.user_id === profile.id)?.org_role ?? "member")}
+        currentOrgRole={isSuperuser
+          ? "owner"
+          : (members?.find(m => m.user_id === profile.id)?.org_role ?? "member")
+        }
       />
     </div>
   );

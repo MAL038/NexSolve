@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Building2, Search, ArrowRight, Users, Calendar, ChevronRight,
+  Building2, Search, Users, Calendar, ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -69,7 +69,6 @@ export default function OrganisatiesClient({ organisations }: Props) {
       {/* Tabel */}
       <div className="card overflow-hidden">
 
-        {/* Tabelheader */}
         <div className="grid grid-cols-[1fr_100px_140px_48px] items-center px-5 py-3
                         border-b border-slate-100 bg-slate-50/70">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Organisatie</span>
@@ -78,7 +77,6 @@ export default function OrganisatiesClient({ organisations }: Props) {
           <span />
         </div>
 
-        {/* Rijen */}
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-slate-400">
             <Building2 size={32} className="mx-auto mb-3 opacity-30" />
@@ -87,52 +85,44 @@ export default function OrganisatiesClient({ organisations }: Props) {
             </p>
           </div>
         ) : (
-          filtered.map((org, i) => {
-            const memberCount = org.memberCount;
-            return (
-              <Link
-                key={org.id}
-                href={`/org/${org.id}/settings?from=admin`}
-                className={clsx(
-                  "grid grid-cols-[1fr_100px_140px_48px] items-center px-5 py-4",
-                  "transition-colors hover:bg-slate-50 group",
-                  i !== 0 && "border-t border-slate-100"
+          filtered.map((org, i) => (
+            <Link
+              key={org.id}
+              href={`/org/${org.id}/settings?from=admin`}
+              className={clsx(
+                "grid grid-cols-[1fr_100px_140px_48px] items-center px-5 py-4",
+                "transition-colors hover:bg-slate-50 group",
+                i !== 0 && "border-t border-slate-100"
+              )}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{org.name}</p>
+                {org.slug && (
+                  <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">{org.slug}</p>
                 )}
-              >
-                {/* Naam + slug */}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{org.name}</p>
-                  {org.slug && (
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">{org.slug}</p>
-                  )}
-                </div>
+              </div>
 
-                {/* Ledencount */}
-                <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                  <Users size={13} className="text-slate-400 flex-shrink-0" />
-                  {memberCount}
-                </div>
+              <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                <Users size={13} className="text-slate-400 flex-shrink-0" />
+                {org.memberCount}
+              </div>
 
-                {/* Aanmaakdatum */}
-                <div className="flex items-center gap-1.5 text-sm text-slate-400">
-                  <Calendar size={13} className="flex-shrink-0" />
-                  {formatDate(org.created_at)}
-                </div>
+              <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                <Calendar size={13} className="flex-shrink-0" />
+                {formatDate(org.created_at)}
+              </div>
 
-                {/* Pijl */}
-                <div className="flex justify-end">
-                  <ChevronRight
-                    size={16}
-                    className="text-slate-300 group-hover:text-brand-500 transition-colors"
-                  />
-                </div>
-              </Link>
-            );
-          })
+              <div className="flex justify-end">
+                <ChevronRight
+                  size={16}
+                  className="text-slate-300 group-hover:text-brand-500 transition-colors"
+                />
+              </div>
+            </Link>
+          ))
         )}
       </div>
 
-      {/* Footer count bij actieve search */}
       {search && filtered.length > 0 && (
         <p className="text-xs text-slate-400 text-center">
           {filtered.length} van {organisations.length} organisaties
