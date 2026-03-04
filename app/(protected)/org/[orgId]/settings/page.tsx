@@ -14,8 +14,8 @@ interface Props {
 }
 
 export default async function OrgSettingsPage({ params, searchParams }: Props) {
-  const { orgId }  = await params;
-  const { from }   = await searchParams;
+  const { orgId } = await params;
+  const { from }  = await searchParams;
 
   const profile     = await requireOrgAdminOrSuperuser(orgId);
   const isSuperuser = profile.role === "superuser";
@@ -29,7 +29,8 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
   const [{ data: org }, { data: members }] = await Promise.all([
     serviceClient
       .from("organisations")
-      .select("id, name, slug, created_at")
+      // Alle kolommen ophalen zodat het Organisation type volledig gevuld is
+      .select("*")
       .eq("id", orgId)
       .maybeSingle(),
 
