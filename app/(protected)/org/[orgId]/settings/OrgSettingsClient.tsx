@@ -1,17 +1,11 @@
 "use client";
 // app/(protected)/org/[orgId]/settings/OrgSettingsClient.tsx
-//
-// Org-admin paneel:
-//   - Leden van zijn eigen org beheren (rol wijzigen, verwijderen)
-//   - Nieuwe leden uitnodigen
-//   - Openstaande uitnodigingen intrekken
-//   - Org-naam bewerken (als admin)
 
 import { useState, useEffect } from "react";
 import {
   Users, Mail, Send, Trash2, Loader2, Clock,
   Check, Shield, User, X, ChevronDown, Eye,
-  UserPlus, Building2, Pencil, AlertCircle,
+  UserPlus, Building2, Pencil, AlertCircle, Palette, Image,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import clsx from "clsx";
@@ -32,6 +26,7 @@ interface Props {
   initialMembers: OrgMember[];
   currentUserId:  string;
   currentOrgRole: OrgRole;
+  isSuperuser?:   boolean;   // ← toegevoegd
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -41,17 +36,24 @@ export default function OrgSettingsClient({
   initialMembers,
   currentUserId,
   currentOrgRole,
+  isSuperuser = false,
 }: Props) {
-  const [members,  setMembers]  = useState<OrgMember[]>(initialMembers);
-  const [invites,  setInvites]  = useState<TeamInvite[]>([]);
+  const [members,    setMembers]    = useState<OrgMember[]>(initialMembers);
+  const [invites,    setInvites]    = useState<TeamInvite[]>([]);
   const [invLoading, setInvLoading] = useState(true);
-  const [toast,    setToast]    = useState<{ msg: string; ok: boolean } | null>(null);
-  const [loading,  setLoading]  = useState<string | null>(null);
+  const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
+  const [loading,    setLoading]    = useState<string | null>(null);
 
   // Org naam bewerken
-  const [editName,    setEditName]    = useState(false);
-  const [orgName,     setOrgName]     = useState(org.name);
-  const [nameSaving,  setNameSaving]  = useState(false);
+  const [editName,   setEditName]   = useState(false);
+  const [orgName,    setOrgName]    = useState(org.name);
+  const [nameSaving, setNameSaving] = useState(false);
+
+  // Org instellingen (logo, kleuren)
+  const [logoUrl,       setLogoUrl]       = useState(org.logo_url ?? "");
+  const [primaryColor,  setPrimaryColor]  = useState(org.primary_color ?? "#16a34a");
+  const [accentColor,   setAccentColor]   = useState(org.accent_color ?? "#15803d");
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   // Invite form
   const [showInvite, setShowInvite] = useState(false);
@@ -60,7 +62,11 @@ export default function OrgSettingsClient({
   const [invSending, setInvSending] = useState(false);
   const [invError,   setInvError]   = useState("");
 
-  const isAdmin = currentOrgRole === "admin";
+  // isAdmin: org-admin OF superuser heeft beheertoegang
+  const isAdmin = currentOrgRole === "admin" || isSuperuser;
+
+  // Superuser mag org-admins aanwijzen, org-admin niet
+  const canAssignAdmin = isSuperuser;
 
   // ── Load invites ──────────────────────────────────────────
 
@@ -99,9 +105,33 @@ export default function OrgSettingsClient({
     showToast("Organisatienaam bijgewerkt");
   }
 
+  // ── Org instellingen opslaan (logo + kleuren) ─────────────
+
+  async function saveOrgSettings() {
+    setSettingsSaving(true);
+    const res = await fetch(`/api/org/${org.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        logo_url:      logoUrl.trim() || null,
+        primary_color: primaryColor,
+        accent_color:  accentColor,
+      }),
+    });
+    const data = await res.json();
+    setSettingsSaving(false);
+    if (!res.ok) { showToast(data.error ?? "Fout opgetreden", false); return; }
+    showToast("Instellingen opgeslagen");
+  }
+
   // ── Rol wijzigen ─────────────────────────────────────────
 
   async function changeRole(member: OrgMember, newRole: OrgRole) {
+    // Extra client-side guard: org-admin mag geen admin toewijzen
+    if (newRole === "admin" && !canAssignAdmin) {
+      showToast("Alleen een superuser kan org-admins aanwijzen", false);
+      return;
+    }
     setLoading(member.user_id);
     const res  = await fetch(`/api/org/${org.id}/members/${member.user_id}`, {
       method: "PATCH",
@@ -134,6 +164,11 @@ export default function OrgSettingsClient({
   async function sendInvite() {
     setInvError("");
     if (!invEmail.trim()) { setInvError("E-mailadres is verplicht"); return; }
+    // Extra guard: org-admin mag geen admin uitnodigen
+    if (invRole === "admin" && !canAssignAdmin) {
+      setInvError("Alleen een superuser kan org-admins uitnodigen");
+      return;
+    }
     setInvSending(true);
     const res  = await fetch(`/api/org/${org.id}/invite`, {
       method: "POST",
@@ -146,7 +181,6 @@ export default function OrgSettingsClient({
     showToast(`Uitnodiging verstuurd naar ${invEmail}`);
     setShowInvite(false);
     setInvEmail(""); setInvRole("member");
-    // Refresh invites
     const inv = await fetch(`/api/org/${org.id}/invite`).then(r => r.json());
     if (Array.isArray(inv)) setInvites(inv);
   }
@@ -263,8 +297,9 @@ export default function OrgSettingsClient({
                 value={invRole} onChange={e => setInvRole(e.target.value as OrgRole)}
               >
                 <option value="member">Lid</option>
-                <option value="admin">Org Admin</option>
                 <option value="viewer">Viewer</option>
+                {/* Org Admin optie alleen zichtbaar voor superuser */}
+                {canAssignAdmin && <option value="admin">Org Admin</option>}
               </select>
             </div>
           </div>
@@ -310,7 +345,7 @@ export default function OrgSettingsClient({
                   <p className="text-xs text-slate-400 truncate">{member.profile?.email}</p>
                 </div>
 
-                {/* Rol */}
+                {/* Rol — bewerkbaar als admin, maar admin-optie alleen voor superuser */}
                 {isAdmin && !isSelf ? (
                   <div className="relative">
                     <div className={clsx(
@@ -326,8 +361,9 @@ export default function OrgSettingsClient({
                         className="absolute inset-0 opacity-0 cursor-pointer w-full"
                       >
                         <option value="member">Lid</option>
-                        <option value="admin">Org Admin</option>
                         <option value="viewer">Viewer</option>
+                        {/* Admin optie alleen voor superuser */}
+                        {canAssignAdmin && <option value="admin">Org Admin</option>}
                       </select>
                     </div>
                   </div>
@@ -364,7 +400,6 @@ export default function OrgSettingsClient({
           <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
             <Clock size={14} className="text-amber-500" /> Openstaande uitnodigingen
           </h2>
-
           {invLoading ? (
             <div className="card p-6 flex items-center justify-center">
               <Loader2 size={18} className="animate-spin text-slate-400" />
@@ -385,14 +420,9 @@ export default function OrgSettingsClient({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{inv.email}</p>
-                      <p className="text-xs text-slate-400">
-                        Verloopt over {days} dag{days !== 1 ? "en" : ""}
-                      </p>
+                      <p className="text-xs text-slate-400">Verloopt over {days} dag{days !== 1 ? "en" : ""}</p>
                     </div>
-                    <span className={clsx(
-                      "text-xs font-semibold px-2.5 py-1 rounded-lg border",
-                      rc.bg, rc.color, rc.border
-                    )}>
+                    <span className={clsx("text-xs font-semibold px-2.5 py-1 rounded-lg border", rc.bg, rc.color, rc.border)}>
                       {rc.label}
                     </span>
                     <button onClick={() => revokeInvite(inv.id)}
@@ -406,6 +436,94 @@ export default function OrgSettingsClient({
           )}
         </div>
       )}
+
+      {/* ── Organisatie-instellingen (naam, logo, huisstijl) ── */}
+      {isAdmin && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
+            <Palette size={14} className="text-brand-500" /> Huisstijl & instellingen
+          </h2>
+          <div className="card p-6 space-y-5">
+
+            {/* Logo URL */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                <span className="flex items-center gap-1.5"><Image size={12} /> Logo URL</span>
+              </label>
+              <div className="flex items-center gap-3">
+                {logoUrl && (
+                  <img src={logoUrl} alt="Logo preview" className="w-10 h-10 rounded-lg object-contain border border-slate-200 bg-white p-1" />
+                )}
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={logoUrl}
+                  onChange={e => setLogoUrl(e.target.value)}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                />
+              </div>
+            </div>
+
+            {/* Kleuren */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Primaire kleur
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    placeholder="#16a34a"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Accentkleur
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={e => setAccentColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={e => setAccentColor(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    placeholder="#15803d"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={saveOrgSettings}
+                disabled={settingsSaving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+              >
+                {settingsSaving
+                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                  : <><Check size={14} /> Instellingen opslaan</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
