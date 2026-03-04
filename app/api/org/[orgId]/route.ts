@@ -5,13 +5,21 @@ import { createClient } from "@/lib/supabaseServer";
 import { z } from "zod";
 
 const patchSchema = z.object({
-  name:     z.string().min(1).max(100).optional(),
-  logo_url: z.string().url().nullable().optional(),
+  name:          z.string().min(1).max(100).optional(),
+  logo_url:      z.string().url().nullable().optional(),
+
+  // Huisstijl
+  primary_color: z.string().min(4).max(20).nullable().optional(),
+  accent_color:  z.string().min(4).max(20).nullable().optional(),
+
+  // SaaS-ready org settings
+  plan:          z.string().min(1).max(50).nullable().optional(),
+  is_active:     z.boolean().optional(),
 });
 
 type Params = { params: Promise<{ orgId: string }> };
 
-// ── PATCH: update org naam / logo ─────────────────────────────
+// ── PATCH: update org ─────────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
   const supabase  = await createClient();
@@ -20,8 +28,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   // Superuser of org-admin mag updaten
-  const { data: isSu }    = await supabase.rpc("is_superuser");
-  const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
+  const { data: isSu }     = await supabase.rpc("is_superuser");
+  const { data: isAdmin }  = await supabase.rpc("is_org_admin", { p_org_id: orgId });
 
   if (!isSu && !isAdmin) {
     return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
@@ -29,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json();
   const result = patchSchema.safeParse(body);
+
   if (!result.success) {
     return NextResponse.json({ error: result.error.flatten().fieldErrors }, { status: 400 });
   }

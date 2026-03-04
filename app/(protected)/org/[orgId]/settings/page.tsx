@@ -33,7 +33,6 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
       .eq("id", orgId)
       .maybeSingle(),
 
-    // Correcte tabel: org_members, correcte kolom: org_role
     serviceClient
       .from("org_members")
       .select(`
@@ -53,6 +52,16 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
 
   if (!org) notFound();
 
+  // Normaliseer: profile kan (afhankelijk van join) soms array zijn
+  const normalizedMembers = (members ?? []).map((m: any) => ({
+    ...m,
+    profile: Array.isArray(m.profile) ? m.profile[0] : m.profile,
+  }));
+
+  // org-role voor de current user (als hij member is)
+  const myRow = normalizedMembers.find((m: any) => m.user_id === profile.id);
+  const currentOrgRole = (myRow?.org_role ?? "member") as any;
+
   return (
     <div>
       {isSuperuser && from === "admin" && (
@@ -70,12 +79,10 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
 
       <OrgSettingsClient
         org={org}
-        initialMembers={members ?? []}
+        initialMembers={normalizedMembers}
         currentUserId={profile.id}
-        currentOrgRole={isSuperuser
-          ? "owner"
-          : (members?.find(m => m.user_id === profile.id)?.org_role ?? "member")
-        }
+        currentOrgRole={currentOrgRole}
+        isSuperuser={isSuperuser}
       />
     </div>
   );
