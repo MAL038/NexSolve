@@ -72,8 +72,8 @@ export default async function OrgSettingsPage({ params, searchParams }: Props) {
       <OrgSettingsClient
         org={org}
         initialMembers={members ?? []}
-        currentProfile={profile}
-        isSuperuser={isSuperuser}
+        currentUserId={profile.id}
+        currentOrgRole={isSuperuser ? "owner" : (members?.find(m => m.user_id === profile.id)?.org_role ?? "member")}
       />
     </div>
   );
