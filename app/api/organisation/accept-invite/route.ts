@@ -19,15 +19,15 @@ function adminClient() {
   );
 }
 
-// DB accepteert alleen owner|member (constraint)
-type DbOrgRole = "owner" | "member";
+// DB accepteert alleen admin|member (org_members.org_role constraint)
+type DbOrgRole = "admin" | "member";
 
 function normalizeOrgRole(input: unknown): DbOrgRole {
   const raw = String(input ?? "member").toLowerCase().trim();
 
-  // jouw app-rol -> db-rol mapping
-  if (raw === "org.admin" || raw === "admin") return "owner";
-  if (raw === "owner") return "owner";
+  // app-rol → db-rol mapping
+  // org.admin en owner worden beide 'admin' in org_members
+  if (raw === "org.admin" || raw === "admin" || raw === "owner") return "admin";
 
   // alles anders (viewer, member, etc.)
   return "member";
@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
   if (!invite) return NextResponse.json({ error: "Invite niet gevonden." }, { status: 404 });
 
   if (invite.accepted_at) {
-    // Idempotent: al geaccepteerd
     return NextResponse.json({ success: true, org_name: null, alreadyAccepted: true });
   }
 
@@ -68,7 +67,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invite is verlopen." }, { status: 410 });
   }
 
-  // Extra safety: invite email moet matchen met ingelogde user
   if (invite.email?.toLowerCase() !== (user.email ?? "").toLowerCase()) {
     return NextResponse.json({ error: "Deze invite is niet voor dit account." }, { status: 403 });
   }
@@ -83,16 +81,16 @@ export async function POST(req: NextRequest) {
   if (orgErr) return NextResponse.json({ error: orgErr.message }, { status: 500 });
   if (!org) return NextResponse.json({ error: "Organisatie niet gevonden" }, { status: 404 });
 
-  // 3) Membership upsert (rol vanuit invite) -> normalizen naar DB constraint
-  const role: DbOrgRole = normalizeOrgRole(invite.org_role);
+  // 3) Membership upsert → correcte tabel: org_members, correcte kolom: org_role
+  const orgRole: DbOrgRole = normalizeOrgRole(invite.org_role);
 
   const { error: memberErr } = await admin
-    .from("organisation_members")
+    .from("org_members")
     .upsert(
       {
-        org_id: invite.org_id,
-        user_id: user.id,
-        role,
+        org_id:   invite.org_id,
+        user_id:  user.id,
+        org_role: orgRole,
       },
       { onConflict: "org_id,user_id" }
     );
@@ -123,5 +121,5 @@ export async function POST(req: NextRequest) {
 
   if (acceptErr) return NextResponse.json({ error: acceptErr.message }, { status: 500 });
 
-  return NextResponse.json({ success: true, org_name: org.name, role });
+  return NextResponse.json({ success: true, org_name: org.name, role: orgRole });
 }
