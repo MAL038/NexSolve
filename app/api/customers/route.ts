@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
     .from("customers")
     .insert({
       owner_id:        user.id,
+      org_id:          ctx.orgId,
       name:            fields.name,
       code:            fields.code,
       status:          fields.status ?? "active",
