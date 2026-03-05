@@ -1,37 +1,15 @@
 // app/api/customers/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
 import { customerUpdateSchema } from "@/lib/validators";
+import { requireApiContext } from "@/lib/apiContext";
 
 function nullify(v?: string | null) {
   return v?.trim() || null;
 }
 
-async function getOrgId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data, error } = await supabase
-    .from("organisation_members")
-    .select("org_id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data?.org_id ?? null;
-}
-
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: "No organisation for user" }, { status: 403 });
+  const ctx = await requireApiContext({ module: "customers" });
+  if (!ctx.ok) return ctx.res;
 
   const body = await req.json();
   const result = customerUpdateSchema.safeParse(body);
@@ -57,11 +35,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (fields.contact_email !== undefined)   updatePayload.contact_email   = nullify(fields.contact_email);
   if (fields.contact_phone !== undefined)   updatePayload.contact_phone   = nullify(fields.contact_phone);
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.supabase
     .from("customers")
     .update(updatePayload)
     .eq("id", params.id)
-    .eq("org_id", orgId) // ✅ org-scope, voorkomt cross-tenant edits
+    .eq("org_id", ctx.orgId) // ✅ org-scope, voorkomt cross-tenant edits
     .select()
     .single();
 

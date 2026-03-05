@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { customerSchema } from "@/lib/validators";
+import { requireApiContext } from "@/lib/apiContext";
 
 // ─── Autonummering (serverside, per org) ──────────────────────
 async function generateNextCode(
@@ -30,37 +31,14 @@ function nullify(v?: string | null) {
   return v?.trim() || null;
 }
 
-// ─── Org context helper (user -> org_id) ──────────────────────
-async function getOrgId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data, error } = await supabase
-    .from("organisation_members")
-    .select("org_id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data?.org_id ?? null;
-}
-
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await requireApiContext({ module: "customers" });
+  if (!ctx.ok) return ctx.res;
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: "No organisation for user" }, { status: 403 });
-
-  const { data, error } = await supabase
+  const { data, error } = await ctx.supabase
     .from("customers")
     .select("*")
-    .eq("org_id", orgId)
+    .eq("org_id", ctx.orgId)
     .order("code", { ascending: true, nullsFirst: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -68,20 +46,14 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: "No organisation for user" }, { status: 403 });
+  const ctx = await requireApiContext({ module: "customers" });
+  if (!ctx.ok) return ctx.res;
 
   const body = await req.json();
 
   // Autonummering serverside uitvoeren vóór validatie
   if (body.autoCode === true) {
-    body.code = await generateNextCode(supabase, orgId);
+    body.code = await generateNextCode(ctx.supabase, ctx.orgId);
   }
 
   const result = customerSchema.safeParse(body);
@@ -91,11 +63,11 @@ export async function POST(req: NextRequest) {
 
   const { autoCode, ...fields } = result.data;
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.supabase
     .from("customers")
     .insert({
-      org_id:          orgId,
-      owner_id:        user.id,
+      org_id:          ctx.orgId,
+      owner_id:        ctx.user.id,
       name:            fields.name,
       code:            fields.code,
       status:          fields.status ?? "active",
