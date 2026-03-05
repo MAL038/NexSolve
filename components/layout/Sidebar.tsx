@@ -36,8 +36,8 @@ interface SidebarProps {
   orgName?: string | null;
 
   /**
-   * ✅ Nieuw: modules die aan/uit staan voor de huidige organisatie
-   * Verwacht: organisations.enabled_modules (jsonb) -> Record<string, boolean>
+   * Modules die aan/uit staan voor de huidige organisatie.
+   * Als dit NIET wordt meegegeven, haalt Sidebar het zelf op via /api/org/[orgId]/modules.
    */
   enabledModules?: Record<string, boolean> | null;
 
@@ -45,31 +45,13 @@ interface SidebarProps {
 }
 
 const CALENDAR_ITEMS = [
-  {
-    href: "/calendar?scope=mine",
-    scope: "mine",
-    label: "Mijn kalender",
-    icon: Calendar,
-    roles: ["member", "admin", "viewer", "superuser"],
-  },
-  {
-    href: "/calendar?scope=team",
-    scope: "team",
-    label: "Kalender team",
-    icon: CalendarDays,
-    roles: ["member", "admin", "viewer", "superuser"],
-  },
-  {
-    href: "/calendar?scope=org",
-    scope: "org",
-    label: "Kalender organisatie",
-    icon: CalendarRange,
-    roles: ["member", "admin", "viewer", "superuser"],
-  },
+  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender", icon: Calendar, roles: ["member", "admin", "viewer", "superuser"] },
+  { href: "/calendar?scope=team", scope: "team", label: "Kalender team", icon: CalendarDays, roles: ["member", "admin", "viewer", "superuser"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie", icon: CalendarRange, roles: ["member", "admin", "viewer", "superuser"] },
 ];
 
 function isModuleEnabled(enabled: Record<string, boolean> | null | undefined, key: string) {
-  // Default: aan (handig voor oudere orgs zonder enabled_modules)
+  // Default: aan (handig voor oudere orgs of als modules nog niet geladen zijn)
   return enabled?.[key] ?? true;
 }
 
@@ -80,7 +62,7 @@ export default function Sidebar({
   isOrgAdmin: isOrgAdminProp,
   orgId,
   orgName,
-  enabledModules,
+  enabledModules: enabledModulesProp,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -96,6 +78,39 @@ export default function Sidebar({
   const urlScope = searchParams.get("scope") ?? "mine";
 
   const [calendarExpanded, setCalendarExpanded] = useState(isCalendarArea);
+
+  // ✅ Nieuw: lokale modules-state (fallback als prop niet is meegegeven)
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean> | null>(
+    enabledModulesProp ?? null
+  );
+
+  // Als parent later wél enabledModules meegeeft: syncen
+  useEffect(() => {
+    if (enabledModulesProp) setEnabledModules(enabledModulesProp);
+  }, [enabledModulesProp]);
+
+  // ✅ Nieuw: als enabledModules niet via props komt, laad via API (organisation_modules)
+  useEffect(() => {
+    if (!orgId) return;
+    if (enabledModulesProp) return; // parent regelt het al
+    if (enabledModules) return;     // al geladen
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/org/${orgId}/modules`, { method: "GET" });
+        const data = await res.json();
+        if (!cancelled) setEnabledModules(data ?? {});
+      } catch {
+        if (!cancelled) setEnabledModules({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, enabledModulesProp, enabledModules]);
 
   useEffect(() => {
     if (isCalendarArea) setCalendarExpanded(true);
@@ -120,17 +135,16 @@ export default function Sidebar({
   // ✅ Stap 11 (client-side): redirect als module uit staat
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    // Alleen zinvol als we org-context + modules hebben
-    // (Superuser zonder orgId: laat admin views met rust)
     if (!orgId) return;
+    if (!enabledModules) return; // wacht tot modules geladen zijn
 
     const guards: Array<{ key: string; match: (p: string) => boolean; redirectTo: string }> = [
       { key: "dashboard", match: (p) => p === "/dashboard", redirectTo: "/dashboard" },
-      { key: "projects", match: (p) => p.startsWith("/projects"), redirectTo: "/dashboard" },
+      { key: "projects",  match: (p) => p.startsWith("/projects"), redirectTo: "/dashboard" },
       { key: "customers", match: (p) => p.startsWith("/customers"), redirectTo: "/dashboard" },
-      { key: "team", match: (p) => p.startsWith("/team"), redirectTo: "/dashboard" },
-      { key: "time", match: (p) => p.startsWith("/hours"), redirectTo: "/dashboard" },
-      { key: "calendar", match: (p) => p.startsWith("/calendar"), redirectTo: "/dashboard" },
+      { key: "team",      match: (p) => p.startsWith("/team"), redirectTo: "/dashboard" },
+      { key: "time",      match: (p) => p.startsWith("/hours"), redirectTo: "/dashboard" },
+      { key: "calendar",  match: (p) => p.startsWith("/calendar"), redirectTo: "/dashboard" },
       // Export is modal; geen route guard nodig
     ];
 
@@ -146,12 +160,12 @@ export default function Sidebar({
   // ✅ Stap 10B: menu-items conditioneel renderen
   // ─────────────────────────────────────────────────────────────
   const showDashboard = isModuleEnabled(enabledModules, "dashboard");
-  const showProjects = isModuleEnabled(enabledModules, "projects");
+  const showProjects  = isModuleEnabled(enabledModules, "projects");
   const showCustomers = isModuleEnabled(enabledModules, "customers");
-  const showTeam = isModuleEnabled(enabledModules, "team");
-  const showHours = isModuleEnabled(enabledModules, "time");
-  const showCalendar = isModuleEnabled(enabledModules, "calendar");
-  const showExport = isModuleEnabled(enabledModules, "export");
+  const showTeam      = isModuleEnabled(enabledModules, "team");
+  const showHours     = isModuleEnabled(enabledModules, "time");
+  const showCalendar  = isModuleEnabled(enabledModules, "calendar");
+  const showExport    = isModuleEnabled(enabledModules, "export");
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
@@ -216,7 +230,6 @@ export default function Sidebar({
           />
         )}
 
-        {/* ─── Kalender (met submenu) ─────────────────────── */}
         {showCalendar && (
           <div className="space-y-0.5">
             <button
@@ -270,7 +283,6 @@ export default function Sidebar({
 
         {showExport && <ExportModal variant="sidebar" />}
 
-        {/* ─── Org beheer (org-admin of superuser met org context) ── */}
         {(isOrgAdmin || isSuperuser) && orgId && (
           <NavItem
             href={isSuperuser ? `/org/${orgId}/settings?from=admin` : `/org/${orgId}/settings`}
@@ -281,7 +293,6 @@ export default function Sidebar({
           />
         )}
 
-        {/* ─── Organisaties overzicht (alleen superuser zonder org) ── */}
         {isSuperuser && !orgId && (
           <NavItem
             href="/admin/organisaties"
@@ -315,7 +326,6 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* Profiel + uitloggen */}
       <div className="border-t border-slate-100 pt-4 mt-4 flex-shrink-0">
         <Link
           href="/profile"

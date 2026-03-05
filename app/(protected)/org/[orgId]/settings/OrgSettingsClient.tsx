@@ -111,11 +111,8 @@ export default function OrgSettingsClient({
   const [loading, setLoading] = useState<string | null>(null);
 
   // ✅ Stap 9B: enabled_modules state (lazy init)
-  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
-    // organisation type kan enabled_modules missen -> any fallback
-    const fromDb = (org as any).enabled_modules as Record<string, boolean> | undefined | null;
-    return fromDb ?? defaultEnabledModules();
-  });
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({});
+  const [modulesLoading, setModulesLoading] = useState(true);
   const [modulesSaving, setModulesSaving] = useState(false);
 
   // Org naam bewerken
@@ -146,14 +143,11 @@ export default function OrgSettingsClient({
 
   // ── Load invites ──────────────────────────────────────────
   useEffect(() => {
-    fetch(`/api/org/${org.id}/invite`)
-      .then((r) => r.json())
-      .then((data) => {
-        setInvites(Array.isArray(data) ? data : []);
-        setInvLoading(false);
-      })
-      .catch(() => setInvLoading(false));
-  }, [org.id]);
+  fetch(`/api/org/${org.id}/modules`)
+    .then(r => r.json())
+    .then(data => { setEnabledModules(data ?? {}); setModulesLoading(false); })
+    .catch(() => setModulesLoading(false));
+}, [org.id]);
 
   // ── Helpers ───────────────────────────────────────────────
   function showToast(msg: string, ok = true) {
@@ -218,24 +212,24 @@ export default function OrgSettingsClient({
   }
 
   // ✅ Stap 9C: modules opslaan
-  async function saveModules() {
-    setModulesSaving(true);
+async function saveModules() {
+  setModulesSaving(true);
 
-    const res = await fetch(`/api/org/${org.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled_modules: enabledModules }),
-    });
+  const res = await fetch(`/api/org/${org.id}/modules`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ modules: enabledModules }),
+  });
 
-    const data = await res.json();
-    setModulesSaving(false);
+  const data = await res.json();
+  setModulesSaving(false);
 
-    if (!res.ok) {
-      showToast(data.error ? JSON.stringify(data.error) : "Fout opgetreden", false);
-      return;
-    }
-    showToast("Modules opgeslagen");
+  if (!res.ok) {
+    showToast(data.error ? JSON.stringify(data.error) : "Fout opgetreden", false);
+    return;
   }
+  showToast("Modules opgeslagen");
+}
 
   async function changeRole(member: OrgMember, newRole: OrgRole) {
     if (newRole === "admin" && !canAssignAdmin) {
