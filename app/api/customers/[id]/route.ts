@@ -1,18 +1,15 @@
-// app/api/customers/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { customerUpdateSchema } from "@/lib/validators";
-import { requireApiContext } from "@/lib/apiContext";
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
-function nullify(v?: string | null) {
-  return v?.trim() || null;
-}
-
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await requireApiContext({ module: "customers" });
   if (!ctx.ok) return ctx.res;
 
   const body = await req.json();
   const result = customerUpdateSchema.safeParse(body);
+
   if (!result.success) {
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
   }
@@ -20,6 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const fields = result.data;
 
   const updatePayload: Record<string, unknown> = {};
+
   if (fields.name !== undefined)            updatePayload.name            = fields.name;
   if (fields.code !== undefined)            updatePayload.code            = fields.code;
   if (fields.status !== undefined)          updatePayload.status          = fields.status;
@@ -38,8 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data, error } = await ctx.supabase
     .from("customers")
     .update(updatePayload)
-    .eq("id", params.id)
-    .eq("org_id", ctx.orgId) // ✅ org-scope, voorkomt cross-tenant edits
+    .eq("id", id)
+    .eq("org_id", ctx.orgId)
     .select()
     .single();
 
