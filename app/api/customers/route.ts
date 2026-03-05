@@ -3,22 +3,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { customerSchema } from "@/lib/validators";
 
-// ─── Autonummering (serverside, per team via owner_id) ────────
+// ─── Autonummering (serverside, per org) ──────────────────────
 async function generateNextCode(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  ownerId: string,
+  orgId: string,
 ): Promise<string> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("customers")
     .select("code")
-    .eq("owner_id", ownerId)
+    .eq("org_id", orgId)
     .not("code", "is", null);
 
+  if (error) throw error;
   if (!data || data.length === 0) return "0001";
 
   const maxNum = data
-    .map(r => parseInt(r.code ?? "0", 10))
-    .filter(n => !isNaN(n))
+    .map((r) => parseInt(r.code ?? "0", 10))
+    .filter((n) => !isNaN(n))
     .reduce((max, n) => Math.max(max, n), 0);
 
   return String(maxNum + 1).padStart(4, "0");
@@ -29,15 +30,37 @@ function nullify(v?: string | null) {
   return v?.trim() || null;
 }
 
+// ─── Org context helper (user -> org_id) ──────────────────────
+async function getOrgId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("organisation_members")
+    .select("org_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.org_id ?? null;
+}
+
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: "No organisation for user" }, { status: 403 });
 
   const { data, error } = await supabase
     .from("customers")
     .select("*")
-    .eq("owner_id", user.id)
+    .eq("org_id", orgId)
     .order("code", { ascending: true, nullsFirst: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,27 +69,33 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: "No organisation for user" }, { status: 403 });
 
   const body = await req.json();
 
   // Autonummering serverside uitvoeren vóór validatie
   if (body.autoCode === true) {
-    body.code = await generateNextCode(supabase, user.id);
+    body.code = await generateNextCode(supabase, orgId);
   }
 
   const result = customerSchema.safeParse(body);
-  if (!result.success)
+  if (!result.success) {
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+  }
 
   const { autoCode, ...fields } = result.data;
 
   const { data, error } = await supabase
     .from("customers")
     .insert({
+      org_id:          orgId,
       owner_id:        user.id,
-      org_id:          ctx.orgId,
       name:            fields.name,
       code:            fields.code,
       status:          fields.status ?? "active",
@@ -86,61 +115,14 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    if (error.code === "23505")
-      return NextResponse.json({ error: `Code '${fields.code}' is al in gebruik.` }, { status: 409 });
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: `Code '${fields.code}' is al in gebruik.` },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data, { status: 201 });
-}
-
-
-// ─────────────────────────────────────────────────────────────
-// app/api/customers/[id]/route.ts  (PATCH gedeelte)
-// ─────────────────────────────────────────────────────────────
-// Vervang de bestaande PATCH handler met onderstaande versie:
-
-export async function PATCH_HANDLER(req: NextRequest, id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json();
-  const { customerUpdateSchema } = await import("@/lib/validators");
-  const result = customerUpdateSchema.safeParse(body);
-  if (!result.success)
-    return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
-
-  const fields = result.data;
-
-  const updatePayload: Record<string, unknown> = {};
-  if (fields.name !== undefined)            updatePayload.name            = fields.name;
-  if (fields.code !== undefined)            updatePayload.code            = fields.code;
-  if (fields.status !== undefined)          updatePayload.status          = fields.status;
-  if (fields.email !== undefined)           updatePayload.email           = nullify(fields.email);
-  if (fields.phone !== undefined)           updatePayload.phone           = nullify(fields.phone);
-  if (fields.website !== undefined)         updatePayload.website         = nullify(fields.website);
-  if (fields.address_street !== undefined)  updatePayload.address_street  = nullify(fields.address_street);
-  if (fields.address_zip !== undefined)     updatePayload.address_zip     = nullify(fields.address_zip);
-  if (fields.address_city !== undefined)    updatePayload.address_city    = nullify(fields.address_city);
-  if (fields.address_country !== undefined) updatePayload.address_country = nullify(fields.address_country);
-  if (fields.contact_name !== undefined)    updatePayload.contact_name    = nullify(fields.contact_name);
-  if (fields.contact_role !== undefined)    updatePayload.contact_role    = nullify(fields.contact_role);
-  if (fields.contact_email !== undefined)   updatePayload.contact_email   = nullify(fields.contact_email);
-  if (fields.contact_phone !== undefined)   updatePayload.contact_phone   = nullify(fields.contact_phone);
-
-  const { data, error } = await supabase
-    .from("customers")
-    .update(updatePayload)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    if (error.code === "23505")
-      return NextResponse.json({ error: `Code '${fields.code}' is al in gebruik.` }, { status: 409 });
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
 }
