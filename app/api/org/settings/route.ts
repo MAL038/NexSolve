@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { createClient } from "@/lib/supabaseServer";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getUserContext } from "@/lib/getUserContext";
 

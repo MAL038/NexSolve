@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
+import { requireSuperuser } from "@/lib/api";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  // SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) return null;
-  return { supabase, currentUserId: user.id };
-}
 
 function adminClient() {
   return createAdminClient(

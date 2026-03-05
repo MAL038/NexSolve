@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireApiContext } from '@/lib/api'
 
-import { requireApiContext } from "@/lib/apiContext";
 export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase } = auth.ctx;
+
   const { data, error } = await supabase
     .from('dossiers_with_details')
     .select('*')
@@ -21,9 +22,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<Record<s
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   // Haal het dossier op om eigenaarschap te controleren
   const { data: dossier, error: fetchError } = await supabase

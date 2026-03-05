@@ -1,31 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
-
-type SuperuserContext = {
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  user: NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof createClient>>["auth"]["getUser"]>>["data"]["user"]>;
-};
-
-async function requireSuperuser(): Promise<SuperuserContext | null> {
-  const supabase = await createClient();
-
-  const { data, error: userErr } = await supabase.auth.getUser();
-  const user = data?.user;
-  if (userErr || !user) return null;
-
-  // SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
-  const { data: isSu, error: suErr } = await supabase.rpc("is_superuser");
-  if (suErr || !isSu) return null;
-
-  return { supabase, user };
-}
+import { requireSuperuser } from "@/lib/api";
 
 export async function GET() {
-  const ctx = await requireSuperuser();
-  if (!ctx) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  const su = await requireSuperuser();
+  if (!su.ok) return su.res;
+  const sb = su.supabase;
 
-  const { data, error } = await ctx.supabase
+  const { data, error } = await sb
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });

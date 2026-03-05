@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireApiContext } from "@/lib/apiContext";
 import { logActivity } from '@/lib/activityLogger'
+import { requireApiContext } from '@/lib/api'
 
 const PAGE_SIZE = 25
 
 export async function GET(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
+
   const { searchParams } = req.nextUrl
   const projectId = searchParams.get('project_id')
   const customerId = searchParams.get('customer_id')
@@ -49,9 +50,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
+
   const body = await req.json()
   const { title, type, description, project_id, customer_id, file_url, file_name, file_size } = body
 

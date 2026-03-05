@@ -4,7 +4,7 @@
 // Superusers worden ook doorgelaten.
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { createClient } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -17,9 +17,12 @@ type Params = { params: Promise<{ orgId: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-    const ctx = await requireApiContext({ requireSuperuser: true });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase  = await createClient();
+
+  // ── Auth ──────────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
   // Superuser of org-admin mag uitnodigen
   const { data: isSu }   = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
@@ -126,9 +129,11 @@ export async function POST(req: NextRequest, { params }: Params) {
 // ── GET: openstaande uitnodigingen voor deze org ──────────────
 export async function GET(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-    const ctx = await requireApiContext({ requireSuperuser: true });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase  = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
   const { data: isSu }   = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
   if (!isSu && !isAdmin) {
@@ -149,9 +154,11 @@ export async function GET(req: NextRequest, { params }: Params) {
 // ── DELETE: trek uitnodiging in ───────────────────────────────
 export async function DELETE(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-    const ctx = await requireApiContext({ requireSuperuser: true });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase  = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
   const { data: isSu }   = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
   if (!isSu && !isAdmin) {

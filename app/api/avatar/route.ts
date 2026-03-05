@@ -1,10 +1,10 @@
 // app/api/profile/avatar/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 export async function POST(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -50,9 +50,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // Verwijder avatar en zet null in profiel
   await supabase.storage.from("avatars").remove([
     `${user.id}/avatar.jpg`,

@@ -1,6 +1,6 @@
 // app/api/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { z } from "zod";
 import { LOCALE_COOKIE } from "@/lib/i18n";
 
@@ -11,9 +11,9 @@ const profileUpdateSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const body = await req.json();
   const parsed = profileUpdateSchema.safeParse(body);
   if (!parsed.success) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { createClient } from "@/lib/supabaseServer";
+
 const SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
 export async function GET() {
@@ -15,9 +16,10 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-    const ctx = await requireApiContext({ requireSuperuser: true });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (!profile || profile.role !== "superuser") return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
 

@@ -1,62 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiContext } from "@/lib/api";
+import { logActivity } from "@/lib/activityLogger";
 import { customerUpdateSchema } from "@/lib/validators";
-import { requireApiContext } from "@/lib/apiContext";
 
-function nullify(v?: string | null) {
-  return v?.trim() || null;
-}
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
+  const { data: customer, error } = await supabase
+    .from("customers").select("*").eq("id", id).single();
+  if (error) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const ctx = await requireApiContext({ module: "customers" });
-  if (!ctx.ok) return ctx.res;
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("*, project_members(count)")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ ...customer, projects: projects ?? [] });
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const result = customerUpdateSchema.safeParse(body);
-
-  if (!result.success) {
+  if (!result.success)
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+
+  // Lege strings omzetten naar null voor optionele velden
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const [key, value] of Object.entries(result.data)) {
+    payload[key] = value === "" ? null : value;
   }
 
-  const fields = result.data;
-
-  const updatePayload: Record<string, unknown> = {};
-
-  if (fields.name !== undefined)            updatePayload.name            = fields.name;
-  if (fields.code !== undefined)            updatePayload.code            = fields.code;
-  if (fields.status !== undefined)          updatePayload.status          = fields.status;
-  if (fields.email !== undefined)           updatePayload.email           = nullify(fields.email);
-  if (fields.phone !== undefined)           updatePayload.phone           = nullify(fields.phone);
-  if (fields.website !== undefined)         updatePayload.website         = nullify(fields.website);
-  if (fields.address_street !== undefined)  updatePayload.address_street  = nullify(fields.address_street);
-  if (fields.address_zip !== undefined)     updatePayload.address_zip     = nullify(fields.address_zip);
-  if (fields.address_city !== undefined)    updatePayload.address_city    = nullify(fields.address_city);
-  if (fields.address_country !== undefined) updatePayload.address_country = nullify(fields.address_country);
-  if (fields.contact_name !== undefined)    updatePayload.contact_name    = nullify(fields.contact_name);
-  if (fields.contact_role !== undefined)    updatePayload.contact_role    = nullify(fields.contact_role);
-  if (fields.contact_email !== undefined)   updatePayload.contact_email   = nullify(fields.contact_email);
-  if (fields.contact_phone !== undefined)   updatePayload.contact_phone   = nullify(fields.contact_phone);
-
-  const { data, error } = await ctx.supabase
+  const { data, error } = await supabase
     .from("customers")
-    .update(updatePayload)
+    .update(payload)
     .eq("id", id)
-    .eq("org_id", ctx.orgId)
     .select()
     .single();
 
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json(
-        { error: `Code '${fields.code}' is al in gebruik.` },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logActivity(supabase, {
+    actorId:    user.id,
+    action:     "customer.updated",
+    entityType: "customer",
+    entityId:   id,
+    entityName: data.name,
+    customerId: id,
+  });
 
   return NextResponse.json(data);
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: customer } = await supabase
+    .from("customers").select("name").eq("id", id).single();
+
+  const { error } = await supabase.from("customers").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logActivity(supabase, {
+    actorId:    user.id,
+    action:     "customer.deleted",
+    entityType: "customer",
+    entityId:   id,
+    entityName: customer?.name,
+    customerId: id,
+  });
+
+  return new NextResponse(null, { status: 204 });
 }

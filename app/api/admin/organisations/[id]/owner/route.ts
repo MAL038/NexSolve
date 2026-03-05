@@ -2,8 +2,7 @@
 // Koppelt een bestaande gebruiker als owner aan een organisatie
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
+import { requireSuperuser } from "@/lib/api";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 function adminClient() {
@@ -12,12 +11,6 @@ function adminClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
-}
-
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) throw new Error("Forbidden");
 }
 
 export async function POST(req: NextRequest, context: any) {

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireApiContext } from '@/lib/api'
 
-import { requireApiContext } from "@/lib/apiContext";
 export async function POST(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
+
   const formData = await req.formData()
   const file = formData.get('file') as File
 

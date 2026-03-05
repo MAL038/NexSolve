@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
-
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  // Gebruik SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) return null;
-  return supabase;
-}
-
+import { requireSuperuser } from "@/lib/api";
 export async function POST(req: NextRequest) {
-  const sb = await requireSuperuser();
-  if (!sb) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  const su = await requireSuperuser();
+  if (!su.ok) return su.res;
+  const sb = su.supabase;
 
   const body = await req.json();
   if (!body.name?.trim()) return NextResponse.json({ error: "Naam is verplicht" }, { status: 400 });

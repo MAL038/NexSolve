@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { logActivity } from "@/lib/activityLogger";
 import { sendEmail } from "@/lib/email";
 import { z } from "zod";
@@ -11,9 +11,9 @@ const addMemberSchema = z.object({
 
 export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { data, error } = await supabase
     .from("project_members")
     .select("*, profile:profiles(full_name, email, avatar_url)")
@@ -26,9 +26,10 @@ export async function GET(_: NextRequest, { params }: { params: Promise<Record<s
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { data: project } = await supabase
     .from("projects").select("owner_id, name, customer_id").eq("id", id).single();
 

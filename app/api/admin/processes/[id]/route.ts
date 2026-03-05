@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
-
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  // Gebruik SECURITY DEFINER RPC — leest rol buiten RLS om, geen recursie
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) return null;
-  return supabase;
-}
-
+import { requireSuperuser } from "@/lib/api";
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const sb = await requireSuperuser();
-  if (!sb) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  const su = await requireSuperuser();
+  if (!su.ok) return su.res;
+  const sb = su.supabase;
 
   const { id } = await params;
   const body = await req.json();
@@ -38,8 +27,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const sb = await requireSuperuser();
-  if (!sb) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  const su = await requireSuperuser();
+  if (!su.ok) return su.res;
+  const sb = su.supabase;
 
   const { id } = await params;
   const { error } = await sb.from("processes").delete().eq("id", id);

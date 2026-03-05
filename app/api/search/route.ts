@@ -5,11 +5,11 @@
  * Elke categorie geeft max `limit` resultaten (default 5).
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from '@/lib/api'
 export async function GET(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { searchParams } = req.nextUrl
   const q     = searchParams.get('q')?.trim() ?? ''
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '5'), 10)

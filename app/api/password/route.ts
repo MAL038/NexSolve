@@ -1,6 +1,6 @@
 // app/api/profile/password/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { z } from "zod";
 
 const passwordSchema = z.object({
@@ -8,9 +8,9 @@ const passwordSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const body = await req.json();
   const parsed = passwordSchema.safeParse(body);
   if (!parsed.success) {

@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
-import { createClient } from "@/lib/supabaseServer";
-
-async function requireSuperuser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: isSu } = await supabase.rpc("is_superuser");
-  if (!isSu) return null;
-  return { supabase, userId: user.id };
-}
-
+import { requireSuperuser } from "@/lib/api";
 export async function GET() {
   const ctx = await requireSuperuser();
   if (!ctx) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });

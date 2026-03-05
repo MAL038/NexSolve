@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { logActivity } from "@/lib/activityLogger";
 // email import removed — status emails not in scope
 import { z } from "zod";
@@ -19,9 +19,9 @@ const updateSchema = z.object({
 
 export async function GET(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { data, error } = await supabase
     .from("projects")
     .select(`
@@ -41,9 +41,10 @@ export async function GET(_: NextRequest, { params }: { params: Promise<Record<s
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // Haal huidige status op voor change detection
   const { data: current } = await supabase
     .from("projects").select("name, status, customer_id").eq("id", id).single();
@@ -92,9 +93,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Reco
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // Snapshot naam voor de log
   const { data: project } = await supabase
     .from("projects").select("name, customer_id").eq("id", id).single();

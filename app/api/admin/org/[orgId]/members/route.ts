@@ -3,14 +3,17 @@
 
 // ── route.ts ──────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { createClient } from "@/lib/supabaseServer";
+
 type Params = { params: Promise<{ orgId: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-    const ctx = await requireApiContext({ requireSuperuser: true });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase  = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
   const { data: isSu }     = await supabase.rpc("is_superuser");
   const { data: isMember } = await supabase.rpc("is_org_member", { p_org_id: orgId });
 

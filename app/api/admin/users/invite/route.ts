@@ -4,7 +4,7 @@
  * Body: { email, role, full_name? }
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireApiContext } from "@/lib/apiContext";
+import { requireSuperuser } from "@/lib/api";
 import { createClient } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { z } from 'zod'
@@ -14,15 +14,6 @@ const schema = z.object({
   role:      z.enum(['member', 'viewer', 'superuser']).default('member'),
   full_name: z.string().min(1).max(100).optional(),
 })
-
-async function requireSuperuser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: isSu } = await supabase.rpc('is_superuser')
-  if (!isSu) return null
-  return { supabase, currentUserId: user.id }
-}
 
 function adminClient() {
   return createAdminClient(

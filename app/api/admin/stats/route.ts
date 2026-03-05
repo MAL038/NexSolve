@@ -4,18 +4,9 @@
  * Gebruikt service role key — bypassed RLS volledig.
  */
 import { NextResponse } from 'next/server'
-import { requireApiContext } from "@/lib/apiContext";
+import { requireSuperuser } from "@/lib/api";
 import { createClient } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-
-async function requireSuperuser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: isSu } = await supabase.rpc('is_superuser')
-  if (!isSu) return null
-  return true
-}
 
 function serviceClient() {
   return createAdminClient(

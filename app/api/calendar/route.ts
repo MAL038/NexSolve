@@ -1,6 +1,6 @@
 // app/api/calendar/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { z } from "zod";
 
 const eventSchema = z.object({
@@ -13,9 +13,9 @@ const eventSchema = z.object({
 
 // GET /api/calendar?scope=mine|team|org&month=2026-02
 export async function GET(req: NextRequest) {
-    const ctx = await requireApiContext({ module: "calendar" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { searchParams } = new URL(req.url);
   const scope = searchParams.get("scope") ?? "mine";
   const month = searchParams.get("month"); // bijv. "2026-02"
@@ -94,9 +94,10 @@ export async function GET(req: NextRequest) {
 
 // POST /api/calendar
 export async function POST(req: NextRequest) {
-    const ctx = await requireApiContext({ module: "calendar" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const result = eventSchema.safeParse(body);
   if (!result.success)

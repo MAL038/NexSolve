@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import type { ThemeWithChildren } from "@/types";
 
 /**
@@ -23,9 +23,9 @@ import type { ThemeWithChildren } from "@/types";
  * ]
  */
 export async function GET() {
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { data, error } = await supabase
     .from("themes")
     .select(`

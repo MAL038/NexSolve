@@ -1,6 +1,6 @@
 // app/api/projects/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from "@/lib/api";
 import { logActivity } from "@/lib/activityLogger";
 import { z } from "zod";
 
@@ -32,9 +32,9 @@ const projectSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { searchParams } = new URL(req.url);
   const themeSlug   = searchParams.get("theme");
   const processSlug = searchParams.get("process");
@@ -67,9 +67,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const ctx = await requireApiContext({ module: "projects" });
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   let body: unknown;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });

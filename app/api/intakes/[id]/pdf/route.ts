@@ -3,15 +3,15 @@
 // Retourneert JSON met de HTML-string zodat de client de PDF kan bouwen
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireApiContext } from "@/lib/apiContext";
+import { requireApiContext } from '@/lib/api'
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-    const ctx = await requireApiContext();
-  if (!ctx.ok) return ctx.res;
-  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
   const { data: intake, error } = await supabase
     .from('project_intakes')
     .select('*')
