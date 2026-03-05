@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient } from "@/lib/supabaseServer";
 
 type SuperuserContext = {

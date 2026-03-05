@@ -9,13 +9,11 @@
  * Geeft JSON terug — de client bouwt het .xlsx bestand via SheetJS.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
-
+import { requireApiContext } from "@/lib/apiContext";
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { searchParams } = req.nextUrl
   const includeHours = searchParams.get('include_hours') === 'true'
   const fromDate     = searchParams.get('from')  // YYYY-MM-DD

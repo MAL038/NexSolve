@@ -4,13 +4,11 @@
 // Wordt gebruikt door de layout om de sidebar te configureren.
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
-
+import { requireApiContext } from "@/lib/apiContext";
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   // Haal profiel op met actieve org
   const { data: profile } = await supabase
     .from('profiles')
@@ -53,10 +51,9 @@ export async function GET() {
 // PATCH /api/organisation — org-instellingen bijwerken (naam, logo, kleuren)
 // Alleen voor org owner/admin
 export async function PATCH(req: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json()
   const { name, logo_url, primary_color, accent_color } = body
 

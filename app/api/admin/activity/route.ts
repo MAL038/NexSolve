@@ -4,6 +4,7 @@
  * Gebruikt service role key.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 

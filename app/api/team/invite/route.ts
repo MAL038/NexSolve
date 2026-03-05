@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -9,10 +9,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "team" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json();
   const result = schema.safeParse(body);
   if (!result.success)
@@ -87,10 +86,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "team" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data, error } = await supabase
     .from("team_invites")
     .select("*")

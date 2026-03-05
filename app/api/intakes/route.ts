@@ -1,14 +1,13 @@
 // app/api/intakes/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
+import { requireApiContext } from "@/lib/apiContext";
 import { logActivity } from '@/lib/activityLogger'
 
 // GET /api/intakes?project_id=xxx
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const projectId = new URL(req.url).searchParams.get('project_id')
   if (!projectId) return NextResponse.json({ error: 'project_id vereist' }, { status: 400 })
 
@@ -24,10 +23,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/intakes — genereer nieuwe intake voor een project
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json()
   const { project_id, selected_section_ids } = body
 

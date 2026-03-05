@@ -3,17 +3,15 @@
 // Retourneert JSON met de HTML-string zodat de client de PDF kan bouwen
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
-
+import { requireApiContext } from "@/lib/apiContext";
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: intake, error } = await supabase
     .from('project_intakes')
     .select('*')

@@ -1,6 +1,6 @@
 // app/api/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 import { LOCALE_COOKIE } from "@/lib/i18n";
 
@@ -11,10 +11,9 @@ const profileUpdateSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json();
   const parsed = profileUpdateSchema.safeParse(body);
   if (!parsed.success) {

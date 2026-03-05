@@ -5,7 +5,7 @@
 // Na acceptatie wordt de user lid van die org met de opgegeven org_role.
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -171,11 +171,9 @@ const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
 // ── GET: lijst van alle openstaande uitnodigingen (superuser) ─
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext({ requireSuperuser: true });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: isSu } = await supabase.rpc("is_superuser");
   if (!isSu) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
 
@@ -197,11 +195,9 @@ export async function GET(req: NextRequest) {
 
 // ── DELETE: trek een uitnodiging in (superuser) ───────────────
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext({ requireSuperuser: true });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: isSu } = await supabase.rpc("is_superuser");
   if (!isSu) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
 

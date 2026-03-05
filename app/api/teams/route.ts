@@ -1,6 +1,6 @@
 // app/api/teams/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 
 const teamSchema = z.object({
@@ -10,19 +10,16 @@ const teamSchema = z.object({
   member_ids:  z.array(z.string().uuid()).optional(),
 });
 
-async function guardCanManage(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+async function requireCanManageTeams(supabase: any) {
   const { data: ok } = await supabase.rpc("can_manage_teams");
-  if (!ok) return null;
-  return user;
+  return !!ok;
 }
 
 // GET /api/teams
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await requireApiContext({ module: "team" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, orgId: ctxOrgId } = ctx;
 
   const { data, error } = await supabase
     .from("teams")
@@ -34,6 +31,7 @@ export async function GET() {
         profile:profiles!team_members_user_id_fkey(id, full_name, email, avatar_url, role)
       )
     `)
+    .eq("org_id", ctxOrgId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -42,14 +40,20 @@ export async function GET() {
 
 // POST /api/teams
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const user = await guardCanManage(supabase);
-  if (!user) return NextResponse.json({ error: "Geen toestemming om teams aan te maken" }, { status: 403 });
+  const ctx = await requireApiContext({ module: "team", minRole: "org.admin" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId } = ctx;
+
+  const canManage = await requireCanManageTeams(supabase);
+  if (!canManage) {
+    return NextResponse.json({ error: "Geen toestemming om teams aan te maken" }, { status: 403 });
+  }
 
   const body = await req.json();
   const result = teamSchema.safeParse(body);
-  if (!result.success)
+  if (!result.success) {
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+  }
 
   const { member_ids, ...teamData } = result.data;
 
@@ -58,6 +62,7 @@ export async function POST(req: NextRequest) {
     .from("teams")
     .insert({
       ...teamData,
+      org_id: ctxOrgId,
       description: teamData.description || null,
       created_by: user.id,
     })
@@ -71,7 +76,8 @@ export async function POST(req: NextRequest) {
   if (teamData.leader_id) allMemberIds.add(teamData.leader_id); // teamleider is altijd lid
 
   if (allMemberIds.size > 0) {
-    const memberRows = Array.from(allMemberIds).map(uid => ({
+    const memberRows = Array.from(allMemberIds).map((uid) => ({
+      org_id: ctxOrgId,
       team_id: team.id,
       user_id: uid,
     }));
@@ -90,6 +96,7 @@ export async function POST(req: NextRequest) {
       )
     `)
     .eq("id", team.id)
+    .eq("org_id", ctxOrgId)
     .single();
 
   return NextResponse.json(full, { status: 201 });

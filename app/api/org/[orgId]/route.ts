@@ -1,7 +1,7 @@
 // app/api/org/[orgId]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 
 const hexColor = z
@@ -29,13 +29,9 @@ type Params = { params: Promise<{ orgId: string }> };
 // ── PATCH: update org ─────────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   // Superuser of org-admin mag updaten
   const { data: isSu } = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
@@ -75,13 +71,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // ── GET: haal org op ──────────────────────────────────────────
 export async function GET(req: NextRequest, { params }: Params) {
   const { orgId } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: isMember } = await supabase.rpc("is_org_member", { p_org_id: orgId });
   const { data: isSu } = await supabase.rpc("is_superuser");
 

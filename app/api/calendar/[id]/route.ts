@@ -1,6 +1,6 @@
 // app/api/calendar/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -16,10 +16,9 @@ export async function PATCH(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "calendar" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json();
   const result = updateSchema.safeParse(body);
   if (!result.success)
@@ -43,10 +42,9 @@ export async function DELETE(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "calendar" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { error } = await supabase
     .from("calendar_events")
     .delete()

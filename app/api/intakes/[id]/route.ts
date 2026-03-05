@@ -1,6 +1,6 @@
 // app/api/intakes/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
+import { requireApiContext } from "@/lib/apiContext";
 import { sendEmail } from '@/lib/email'
 
 // GET /api/intakes/[id]
@@ -9,10 +9,9 @@ export async function GET(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data, error } = await supabase
     .from('project_intakes')
     .select('*')
@@ -29,10 +28,9 @@ export async function PATCH(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json()
   const { action, email_to, sender_name } = body
 
@@ -105,10 +103,9 @@ export async function DELETE(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { error } = await supabase
     .from('project_intakes')
     .delete()

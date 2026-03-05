@@ -1,6 +1,6 @@
 // app/api/planning/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 
 const planningSchema = z.object({
@@ -41,10 +41,9 @@ async function canPlan(supabase: Awaited<ReturnType<typeof createClient>>, userI
 
 // GET /api/planning?month=2026-02&scope=mine|team|org
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "time" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month");
   const scope = searchParams.get("scope") ?? "mine";
@@ -81,10 +80,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/planning
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "time" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const body = await req.json();
   const result = planningSchema.safeParse(body);
   if (!result.success)

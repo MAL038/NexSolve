@@ -1,14 +1,10 @@
-import { createClient } from '@/lib/supabaseServer'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { requireApiContext } from "@/lib/apiContext";
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const formData = await req.formData()
   const file = formData.get('file') as File
 

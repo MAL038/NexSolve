@@ -4,7 +4,7 @@
 // Body: { email, full_name?, org_role }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { sendEmail } from '@/lib/email'
@@ -24,10 +24,9 @@ function adminClient() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   // Haal actieve org op
   const { data: profile } = await supabase
     .from('profiles')
@@ -148,10 +147,9 @@ export async function POST(req: NextRequest) {
 
 // GET — Haal leden van de actieve org op
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: profile } = await supabase
     .from('profiles')
     .select('current_org_id')
@@ -179,10 +177,9 @@ export async function GET() {
 // DELETE — Verwijder lid uit org
 // Body: { user_id }
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { user_id } = await req.json()
   if (!user_id) return NextResponse.json({ error: 'user_id verplicht' }, { status: 400 })
 

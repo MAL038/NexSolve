@@ -1,6 +1,7 @@
 // app/api/admin/organisations/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 

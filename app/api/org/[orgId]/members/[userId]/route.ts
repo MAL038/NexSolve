@@ -1,7 +1,7 @@
 // app/api/org/[orgId]/members/[userId]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { z } from "zod";
 
 type Params = { params: Promise<{ orgId: string; userId: string }> };
@@ -13,11 +13,9 @@ const patchSchema = z.object({
 // ── PATCH: wijzig org_role van een member ─────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { orgId, userId } = await params;
-  const supabase          = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: isSu }   = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
   if (!isSu && !isAdmin) {
@@ -65,11 +63,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // ── DELETE: verwijder member uit org ──────────────────────────
 export async function DELETE(req: NextRequest, { params }: Params) {
   const { orgId, userId } = await params;
-  const supabase          = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: isSu }   = await supabase.rpc("is_superuser");
   const { data: isAdmin } = await supabase.rpc("is_org_admin", { p_org_id: orgId });
   if (!isSu && !isAdmin) {

@@ -3,6 +3,7 @@
 // de sessie heeft gezet. Valideert invite-token en koppelt user aan org.
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiContext } from "@/lib/apiContext";
 import { createClient } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { z } from "zod";

@@ -3,13 +3,11 @@
 // zodat de IntakeModal kan tonen welke secties beschikbaar zijn.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabaseServer'
-
+import { requireApiContext } from "@/lib/apiContext";
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const ctx = await requireApiContext();
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const themeId = new URL(req.url).searchParams.get('theme_id') || null
 
   // Generieke template (theme_id is null)

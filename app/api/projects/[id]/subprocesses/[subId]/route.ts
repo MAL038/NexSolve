@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { requireApiContext } from "@/lib/apiContext";
 import { logActivity } from "@/lib/activityLogger";
 import { z } from "zod";
 
@@ -12,10 +12,9 @@ const updateSchema = z.object({
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, subId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "projects" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: current } = await supabase
     .from("subprocesses").select("title, status").eq("id", subId).single();
 
@@ -61,10 +60,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Reco
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, subId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireApiContext({ module: "projects" });
+  if (!ctx.ok) return ctx.res;
+  const { supabase, user, orgId: ctxOrgId, orgRole, isSuperuser } = ctx;
   const { data: sub } = await supabase
     .from("subprocesses").select("title").eq("id", subId).single();
 
