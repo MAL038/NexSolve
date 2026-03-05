@@ -1,3 +1,10 @@
+import { NextRequest, NextResponse } from "next/server";
+import { customerUpdateSchema } from "@/lib/validators";
+import { requireApiContext } from "@/lib/apiContext";
+
+function nullify(v?: string | null) {
+  return v?.trim() || null;
+}
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
