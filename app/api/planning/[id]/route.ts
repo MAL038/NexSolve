@@ -1,12 +1,13 @@
-// app/api/planning/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { requireApiContext } from "@/lib/api";
+import { NextResponse } from "next/server";
 import { z } from "zod";
+
+import { apiRoute } from "@/lib/api";
+import { createClient } from "@/lib/supabaseServer";
 
 const updateSchema = z.object({
   hours: z.number().min(0.5).max(24).optional(),
   notes: z.string().max(300).optional().or(z.literal("")),
-  date:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 async function canModify(
@@ -22,80 +23,70 @@ async function canModify(
 
   if (!entry) return { allowed: false, entry: null };
 
-  const { data: profile } = await supabase
-    .from("profiles").select("role").eq("id", userId).single();
-  if (profile?.role === "admin" || profile?.role === "superuser")
-    return { allowed: true, entry };
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", userId).single();
+  if (profile?.role === "admin" || profile?.role === "superuser") return { allowed: true, entry };
 
   if (entry.planned_by === userId) return { allowed: true, entry };
 
-  const { data: project } = await supabase
-    .from("projects").select("owner_id").eq("id", entry.project_id).single();
+  const { data: project } = await supabase.from("projects").select("owner_id").eq("id", entry.project_id).single();
   if (project?.owner_id === userId) return { allowed: true, entry };
 
   return { allowed: false, entry };
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<Record<string, string>> },
-) {
-  const { id } = await params;
-  const auth = await requireApiContext();
-  if (!auth.ok) return auth.res;
-  const { supabase, user } = auth.ctx;
-  const { allowed, entry } = await canModify(supabase, user.id, id);
-  if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+type Params = { id: string };
 
-  const body = await req.json();
-  const result = updateSchema.safeParse(body);
-  if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+export const PATCH = apiRoute<Params>(
+  { requireOrg: false },
+  async ({ supabase, user, params, body }) => {
+    const { allowed, entry } = await canModify(supabase, user.id, params.id);
+    if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
 
-  // Capaciteitscheck na update
-  const targetDate = result.data.date ?? entry!.date;
-  const newHours   = result.data.hours ?? Number(entry!.hours);
+    const result = updateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+    }
 
-  const { data: existing } = await supabase
-    .from("project_planning")
-    .select("hours")
-    .eq("user_id", entry!.user_id)
-    .eq("date", targetDate)
-    .neq("id", id); // exclude huidige entry
+    const targetDate = result.data.date ?? entry!.date;
+    const newHours = result.data.hours ?? Number(entry!.hours);
 
-  const totalOther = (existing ?? []).reduce((s, r) => s + Number(r.hours), 0);
-  const newTotal   = totalOther + newHours;
+    const { data: existing } = await supabase
+      .from("project_planning")
+      .select("hours")
+      .eq("user_id", entry!.user_id)
+      .eq("date", targetDate)
+      .neq("id", params.id);
 
-  const { data, error } = await supabase
-    .from("project_planning")
-    .update({ ...result.data, notes: result.data.notes || null })
-    .eq("id", id)
-    .select(`
-      *,
-      project:projects!project_planning_project_id_fkey(id, name, status),
-      user:profiles!project_planning_user_id_fkey(id, full_name, avatar_url, role)
-    `)
-    .single();
+    const totalOther = (existing ?? []).reduce((s, r) => s + Number(r.hours), 0);
+    const newTotal = totalOther + newHours;
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({
-    ...data,
-    warning: newTotal > 8 ? `Totaal ${newTotal}u op ${targetDate} (max 8u aanbevolen)` : null,
-  });
-}
+    const { data, error } = await supabase
+      .from("project_planning")
+      .update({ ...result.data, notes: result.data.notes || null })
+      .eq("id", params.id)
+      .select(`
+        *,
+        project:projects!project_planning_project_id_fkey(id, name, status),
+        user:profiles!project_planning_user_id_fkey(id, full_name, avatar_url, role)
+      `)
+      .single();
 
-export async function DELETE(
-  _: NextRequest,
-  { params }: { params: Promise<Record<string, string>> },
-) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({
+      ...data,
+      warning: newTotal > 8 ? `Totaal ${newTotal}u op ${targetDate} (max 8u aanbevolen)` : null,
+    });
+  }
+);
 
-  const { allowed } = await canModify(supabase, user.id, id);
-  if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+export const DELETE = apiRoute<Params>(
+  { requireOrg: false, parseBody: false },
+  async ({ supabase, user, params }) => {
+    const { allowed } = await canModify(supabase, user.id, params.id);
+    if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
 
-  const { error } = await supabase.from("project_planning").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return new NextResponse(null, { status: 204 });
-}
+    const { error } = await supabase.from("project_planning").delete().eq("id", params.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return new NextResponse(null, { status: 204 });
+  }
+);
