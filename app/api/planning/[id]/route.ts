@@ -23,24 +23,44 @@ async function canModify(
 
   if (!entry) return { allowed: false, entry: null };
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", userId).single();
-  if (profile?.role === "admin" || profile?.role === "superuser") return { allowed: true, entry };
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .single();
 
-  if (entry.planned_by === userId) return { allowed: true, entry };
+  if (profile?.role === "admin" || profile?.role === "superuser") {
+    return { allowed: true, entry };
+  }
 
-  const { data: project } = await supabase.from("projects").select("owner_id").eq("id", entry.project_id).single();
-  if (project?.owner_id === userId) return { allowed: true, entry };
+  if (entry.planned_by === userId) {
+    return { allowed: true, entry };
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", entry.project_id)
+    .single();
+
+  if (project?.owner_id === userId) {
+    return { allowed: true, entry };
+  }
 
   return { allowed: false, entry };
 }
 
 type Params = { id: string };
 
-export const PATCH = apiRoute<Params>(
+export const PATCH = apiRoute(
   { requireOrg: false },
   async ({ supabase, user, params, body }) => {
-    const { allowed, entry } = await canModify(supabase, user.id, params.id);
-    if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+    const { id } = params as Params;
+
+    const { allowed, entry } = await canModify(supabase, user.id, id);
+    if (!allowed) {
+      return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+    }
 
     const result = updateSchema.safeParse(body);
     if (!result.success) {
@@ -55,15 +75,18 @@ export const PATCH = apiRoute<Params>(
       .select("hours")
       .eq("user_id", entry!.user_id)
       .eq("date", targetDate)
-      .neq("id", params.id);
+      .neq("id", id);
 
-    const totalOther = (existing ?? []).reduce((s, r) => s + Number(r.hours), 0);
+    const totalOther = (existing ?? []).reduce(
+  (s: number, r: { hours: number | string | null }) => s + Number(r.hours ?? 0),
+  0
+);
     const newTotal = totalOther + newHours;
 
     const { data, error } = await supabase
       .from("project_planning")
       .update({ ...result.data, notes: result.data.notes || null })
-      .eq("id", params.id)
+      .eq("id", id)
       .select(`
         *,
         project:projects!project_planning_project_id_fkey(id, name, status),
@@ -71,7 +94,10 @@ export const PATCH = apiRoute<Params>(
       `)
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({
       ...data,
       warning: newTotal > 8 ? `Totaal ${newTotal}u op ${targetDate} (max 8u aanbevolen)` : null,
@@ -79,14 +105,25 @@ export const PATCH = apiRoute<Params>(
   }
 );
 
-export const DELETE = apiRoute<Params>(
+export const DELETE = apiRoute(
   { requireOrg: false, parseBody: false },
   async ({ supabase, user, params }) => {
-    const { allowed } = await canModify(supabase, user.id, params.id);
-    if (!allowed) return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+    const { id } = params as Params;
 
-    const { error } = await supabase.from("project_planning").delete().eq("id", params.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { allowed } = await canModify(supabase, user.id, id);
+    if (!allowed) {
+      return NextResponse.json({ error: "Geen toestemming" }, { status: 403 });
+    }
+
+    const { error } = await supabase
+      .from("project_planning")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return new NextResponse(null, { status: 204 });
   }
 );
