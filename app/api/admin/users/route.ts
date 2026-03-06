@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/api";
 
 export async function GET() {
-  const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+const su = await requireSuperuser();
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { data, error } = await sb
     .from("profiles")

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/api";
 export async function GET() {
-  const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+ const su = await requireSuperuser();
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { data, error } = await sb
     .from("themes")
@@ -16,9 +18,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+const su = await requireSuperuser();
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const body = await req.json();
   if (!body.name?.trim()) return NextResponse.json({ error: "Naam is verplicht" }, { status: 400 });

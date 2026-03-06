@@ -4,9 +4,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+const su = await requireSuperuser();
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { id } = await params;
   const body = await req.json();
@@ -27,9 +29,11 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+const su = await requireSuperuser();
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { id } = await params;
   const { error } = await sb.from("themes").delete().eq("id", id);
