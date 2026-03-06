@@ -4,7 +4,7 @@ import { requireApiContext } from "./requireApiContext";
 type HandlerContext = {
   req: NextRequest;
   supabase: any;
-  user: any;
+  user: { id: string };
   orgId: string | null;
   params: any;
   body: any;
@@ -12,6 +12,7 @@ type HandlerContext = {
 
 type Options = {
   module?: string;
+  requireOrg?: boolean;
 };
 
 export function apiRoute(
@@ -22,7 +23,10 @@ export function apiRoute(
     req: NextRequest,
     context: { params?: Promise<any> }
   ) {
-    const auth = await requireApiContext({ module: options.module });
+    const auth = await requireApiContext({
+      requireOrg: options.requireOrg ?? false,
+      module: options.module,
+    });
 
     if (!auth.ok) {
       return auth.res;
