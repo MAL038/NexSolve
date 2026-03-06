@@ -19,9 +19,11 @@ const updateSchema = z.object({
 
 type Params = { id: string };
 
-export const GET = apiRoute<Params>(
+export const GET = apiRoute(
   { requireOrg: false, parseBody: false },
   async ({ supabase, params }) => {
+    const { id } = params as Params;
+
     const { data, error } = await supabase
       .from("projects")
       .select(`
@@ -32,21 +34,26 @@ export const GET = apiRoute<Params>(
           profile:profiles(full_name, email, avatar_url)
         )
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
-    if (error) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (error) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     return NextResponse.json(data);
   }
 );
 
-export const PATCH = apiRoute<Params>(
+export const PATCH = apiRoute(
   { requireOrg: false },
   async ({ supabase, user, params, body }) => {
+    const { id } = params as Params;
+
     const { data: current } = await supabase
       .from("projects")
       .select("name, status, customer_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     const result = updateSchema.safeParse(body);
@@ -57,20 +64,22 @@ export const PATCH = apiRoute<Params>(
     const { data, error } = await supabase
       .from("projects")
       .update({ ...result.data, updated_at: new Date().toISOString() })
-      .eq("id", params.id)
+      .eq("id", id)
       .select("*, customer:customers(id, name)")
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     if (result.data.status && current && result.data.status !== current.status) {
       await logActivity(supabase, {
         actorId: user.id,
         action: "project.status_changed",
         entityType: "project",
-        entityId: params.id,
+        entityId: id,
         entityName: data.name,
-        projectId: params.id,
+        projectId: id,
         customerId: data.customer_id,
         metadata: { from: current.status, to: result.data.status },
       });
@@ -79,9 +88,9 @@ export const PATCH = apiRoute<Params>(
         actorId: user.id,
         action: "project.updated",
         entityType: "project",
-        entityId: params.id,
+        entityId: id,
         entityName: data.name,
-        projectId: params.id,
+        projectId: id,
         customerId: data.customer_id,
       });
     }
@@ -90,23 +99,31 @@ export const PATCH = apiRoute<Params>(
   }
 );
 
-export const DELETE = apiRoute<Params>(
+export const DELETE = apiRoute(
   { requireOrg: false, parseBody: false },
   async ({ supabase, user, params }) => {
+    const { id } = params as Params;
+
     const { data: project } = await supabase
       .from("projects")
       .select("name, customer_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
-    const { error } = await supabase.from("projects").delete().eq("id", params.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     await logActivity(supabase, {
       actorId: user.id,
       action: "project.deleted",
       entityType: "project",
-      entityId: params.id,
+      entityId: id,
       entityName: project?.name,
       customerId: project?.customer_id,
     });

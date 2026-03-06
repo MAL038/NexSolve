@@ -59,7 +59,7 @@ export const GET = apiRoute(
   }
 );
 
-export const POST = apiRoute<Record<string, string>, CreateBody>(
+export const POST = apiRoute(
   { requireOrg: false },
   async ({ supabase, user, body }) => {
     const requestBody: CreateBody = { ...(body ?? {}) };
