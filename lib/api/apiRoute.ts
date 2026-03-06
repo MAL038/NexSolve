@@ -13,6 +13,7 @@ type HandlerContext = {
 type Options = {
   module?: string;
   requireOrg?: boolean;
+  parseBody?: boolean;
 };
 
 export function apiRoute(
@@ -40,8 +41,9 @@ export function apiRoute(
     }
 
     let body: any = null;
+    const shouldParseBody = options.parseBody ?? req.method !== "GET";
 
-    if (req.method !== "GET") {
+    if (shouldParseBody) {
       try {
         body = await req.json();
       } catch {
