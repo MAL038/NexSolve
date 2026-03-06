@@ -5,8 +5,10 @@ export async function PATCH(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { id } = await params;
   const body = await req.json();
@@ -30,8 +32,10 @@ export async function DELETE(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const su = await requireSuperuser();
-  if (!su.ok) return su.res;
-  const sb = su.supabase;
+if (!su.ok) return su.res;
+
+const { supabase } = su.ctx;
+const sb = supabase;
 
   const { id } = await params;
   const { error } = await sb.from("custom_roles").delete().eq("id", id);
