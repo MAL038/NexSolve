@@ -24,12 +24,11 @@ export async function PATCH(
   if (!result.success)
     return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
 
-  // RLS zorgt ervoor dat alleen de eigenaar kan updaten
   const { data, error } = await supabase
     .from("calendar_events")
     .update({ ...result.data, notes: result.data.notes || null })
     .eq("id", id)
-    .eq("user_id", user.id) // extra zekerheid
+    .eq("user_id", user.id)
     .select(`*, profile:profiles!calendar_events_user_id_fkey(id, full_name, avatar_url, role)`)
     .single();
 
@@ -42,9 +41,9 @@ export async function DELETE(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { error } = await supabase
     .from("calendar_events")

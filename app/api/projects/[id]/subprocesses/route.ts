@@ -26,9 +26,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<Record<s
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const body = await req.json();
   const result = createSchema.safeParse(body);

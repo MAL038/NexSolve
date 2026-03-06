@@ -28,9 +28,9 @@ export async function PATCH(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const body = await req.json()
   const { action, email_to, sender_name } = body
@@ -104,9 +104,9 @@ export async function DELETE(
   { params }: { params: Promise<Record<string, string>> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { error } = await supabase
     .from('project_intakes')

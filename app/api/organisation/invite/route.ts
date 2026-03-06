@@ -147,9 +147,9 @@ export async function POST(req: NextRequest) {
 
 // GET — Haal leden van de actieve org op
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -178,9 +178,9 @@ export async function GET() {
 // DELETE — Verwijder lid uit org
 // Body: { user_id }
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { user_id } = await req.json()
   if (!user_id) return NextResponse.json({ error: 'user_id verplicht' }, { status: 400 })

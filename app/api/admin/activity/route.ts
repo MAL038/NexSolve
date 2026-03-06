@@ -5,7 +5,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperuser } from "@/lib/api";
-import { createClient } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 function serviceClient() {
@@ -17,14 +16,14 @@ function serviceClient() {
 }
 
 export async function GET(req: NextRequest) {
-  const ok = await requireSuperuser()
-  if (!ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireSuperuser()
+  if (!auth.ok) return auth.res
 
   const { searchParams } = req.nextUrl
-  const actorId    = searchParams.get('actor_id')
-  const action     = searchParams.get('action')
-  const cursor     = searchParams.get('cursor')
-  const limit      = Math.min(parseInt(searchParams.get('limit') ?? '30'), 100)
+  const actorId = searchParams.get('actor_id')
+  const action = searchParams.get('action')
+  const cursor = searchParams.get('cursor')
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? '30'), 100)
 
   const db = serviceClient()
 
@@ -35,8 +34,8 @@ export async function GET(req: NextRequest) {
     .limit(limit)
 
   if (actorId) query = query.eq('actor_id', actorId)
-  if (action)  query = query.eq('action', action)
-  if (cursor)  query = query.lt('created_at', cursor)
+  if (action) query = query.eq('action', action)
+  if (cursor) query = query.lt('created_at', cursor)
 
   const { data, error } = await query
 

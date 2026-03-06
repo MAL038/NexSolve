@@ -5,7 +5,6 @@
  */
 import { NextResponse } from 'next/server'
 import { requireSuperuser } from "@/lib/api";
-import { createClient } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 function serviceClient() {
@@ -17,15 +16,15 @@ function serviceClient() {
 }
 
 export async function GET() {
-  const ok = await requireSuperuser()
-  if (!ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireSuperuser()
+  if (!auth.ok) return auth.res
 
   const db = serviceClient()
 
-  const now        = new Date()
+  const now = new Date()
   const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30)
-  const sevenDaysAgo  = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
-  const startOfMonth  = new Date(now.getFullYear(), now.getMonth(), 1)
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
   const [
     { count: totalUsers },
@@ -43,16 +42,12 @@ export async function GET() {
     db.from('profiles').select('*', { count: 'exact', head: true }),
     db.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
     db.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', false),
-    db.from('profiles').select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfMonth.toISOString()),
+    db.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth.toISOString()),
 
     db.from('projects').select('*', { count: 'exact', head: true }),
-    db.from('projects').select('*', { count: 'exact', head: true })
-      .in('status', ['active', 'in-progress']),
-    db.from('projects').select('*', { count: 'exact', head: true })
-      .eq('status', 'archived'),
+    db.from('projects').select('*', { count: 'exact', head: true }).in('status', ['active', 'in-progress']),
+    db.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'archived'),
 
-    // Projecten die 30+ dagen niet bijgewerkt zijn en niet gearchiveerd
     db.from('projects')
       .select('id, name, status, updated_at, owner:profiles!projects_owner_id_fkey(full_name)')
       .lt('updated_at', thirtyDaysAgo.toISOString())
@@ -60,37 +55,32 @@ export async function GET() {
       .order('updated_at', { ascending: true })
       .limit(5),
 
-    // Uren deze maand
     db.from('project_planning')
       .select('hours')
       .gte('date', startOfMonth.toISOString().split('T')[0]),
 
-    // Recente registraties (7 dagen)
     db.from('profiles')
       .select('id, full_name, email, role, created_at')
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: false })
       .limit(5),
 
-    // Gebruikers met meeste activiteit
     db.from('activity_log')
       .select('actor_id, actor:profiles!activity_log_actor_id_fkey(full_name, avatar_url)')
       .gte('created_at', startOfMonth.toISOString())
       .limit(200),
   ])
 
-  const totalHoursMonth = (hoursThisMonth ?? [])
-    .reduce((s: number, h: any) => s + Number(h.hours), 0)
+  const totalHoursMonth = (hoursThisMonth ?? []).reduce((s: number, h: any) => s + Number(h.hours), 0)
 
-  // Activiteit per gebruiker tellen
   const activityCount: Record<string, { name: string; avatar: string | null; count: number }> = {}
   ;(topUsers ?? []).forEach((row: any) => {
     const id = row.actor_id
     if (!activityCount[id]) {
       activityCount[id] = {
-        name:   row.actor?.full_name ?? 'Onbekend',
+        name: row.actor?.full_name ?? 'Onbekend',
         avatar: row.actor?.avatar_url ?? null,
-        count:  0,
+        count: 0,
       }
     }
     activityCount[id].count++
@@ -101,17 +91,17 @@ export async function GET() {
 
   return NextResponse.json({
     users: {
-      total:        totalUsers ?? 0,
-      active:       activeUsers ?? 0,
-      blocked:      blockedUsers ?? 0,
+      total: totalUsers ?? 0,
+      active: activeUsers ?? 0,
+      blocked: blockedUsers ?? 0,
       newThisMonth: newUsersThisMonth ?? 0,
       recentSignups: recentSignups ?? [],
     },
     projects: {
-      total:    totalProjects ?? 0,
-      active:   activeProjects ?? 0,
+      total: totalProjects ?? 0,
+      active: activeProjects ?? 0,
       archived: archivedProjects ?? 0,
-      stale:    staleProjectsData ?? [],
+      stale: staleProjectsData ?? [],
     },
     hours: {
       thisMonth: Math.round(totalHoursMonth * 10) / 10,

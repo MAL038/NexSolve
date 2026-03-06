@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/intakes — genereer nieuwe intake voor een project
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const body = await req.json()
   const { project_id, selected_section_ids } = body

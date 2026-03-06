@@ -51,9 +51,9 @@ export async function GET() {
 // PATCH /api/organisation — org-instellingen bijwerken (naam, logo, kleuren)
 // Alleen voor org owner/admin
 export async function PATCH(req: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const body = await req.json()
   const { name, logo_url, primary_color, accent_color } = body

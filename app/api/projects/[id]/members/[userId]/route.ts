@@ -38,9 +38,9 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<Recor
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, userId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { data: project } = await supabase
     .from("projects").select("owner_id").eq("id", id).single();

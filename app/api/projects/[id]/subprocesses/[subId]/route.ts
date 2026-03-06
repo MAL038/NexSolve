@@ -60,9 +60,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Reco
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const { id, subId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
 
   const { data: sub } = await supabase
     .from("subprocesses").select("title").eq("id", subId).single();
