@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
-import type { Profile } from "@/types";
+import type { Profile, OrgRole } from "@/types";
 
 export async function getSession() {
   const supabase = await createClient();
@@ -44,6 +44,34 @@ export async function requireSuperuser(): Promise<Profile> {
 
   if (!profile) redirect("/dashboard");
   return profile as Profile;
+}
+
+/**
+ * Geeft de org_role van de huidige gebruiker terug voor de opgegeven org.
+ *
+ * - Superusers hebben geen rij in org_members → fallback: "admin"
+ *   (ze hebben platform-brede toegang, dus admin is de juiste weergave)
+ * - Gewone leden krijgen hun werkelijke org_role terug
+ * - Geen rij gevonden én geen superuser → null
+ */
+export async function getOrgRole(orgId: string): Promise<OrgRole | null> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Superuser heeft geen org_members rij — geef "admin" terug als fallback
+  const { data: isSu } = await supabase.rpc("is_superuser");
+  if (isSu === true) return "admin";
+
+  const { data } = await supabase
+    .from("org_members")
+    .select("org_role")
+    .eq("org_id", orgId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return (data?.org_role as OrgRole) ?? null;
 }
 
 /**
