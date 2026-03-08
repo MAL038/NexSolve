@@ -7,6 +7,21 @@
 @layer base {
   * { box-sizing: border-box; }
 
+  :root {
+    --brand-primary: #0A6645;
+    --brand-accent:  #085a3c;
+    --brand-50:  color-mix(in srgb, var(--brand-primary)  8%, white);
+    --brand-100: color-mix(in srgb, var(--brand-primary) 15%, white);
+    --brand-200: color-mix(in srgb, var(--brand-primary) 30%, white);
+    --brand-300: color-mix(in srgb, var(--brand-primary) 55%, white);
+    --brand-400: color-mix(in srgb, var(--brand-primary) 75%, white);
+    --brand-500: var(--brand-primary);
+    --brand-600: var(--brand-accent);
+    --brand-700: color-mix(in srgb, var(--brand-accent) 85%, black);
+    --brand-800: color-mix(in srgb, var(--brand-accent) 65%, black);
+    --brand-900: color-mix(in srgb, var(--brand-accent) 45%, black);
+  }
+
   html {
     font-family: 'Poppins', sans-serif;
     -webkit-font-smoothing: antialiased;

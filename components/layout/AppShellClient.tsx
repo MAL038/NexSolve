@@ -6,9 +6,13 @@ import { Menu, X } from "lucide-react";
 export default function AppShellClient({
   sidebar,
   children,
+  primaryColor,
+  accentColor,
 }: {
   sidebar: React.ReactNode;
   children: React.ReactNode;
+  primaryColor?: string | null;
+  accentColor?:  string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -32,8 +36,26 @@ export default function AppShellClient({
     };
   }, [open]);
 
+  const p = primaryColor ?? "#0A6645";
+  const a = accentColor  ?? "#085a3c";
+
+  const brandVars = (primaryColor || accentColor) ? {
+    "--brand-primary": p,
+    "--brand-accent":  a,
+    "--brand-50":  `color-mix(in srgb, ${p}  8%, white)`,
+    "--brand-100": `color-mix(in srgb, ${p} 15%, white)`,
+    "--brand-200": `color-mix(in srgb, ${p} 30%, white)`,
+    "--brand-300": `color-mix(in srgb, ${p} 55%, white)`,
+    "--brand-400": `color-mix(in srgb, ${p} 75%, white)`,
+    "--brand-500": p,
+    "--brand-600": a,
+    "--brand-700": `color-mix(in srgb, ${a} 85%, black)`,
+    "--brand-800": `color-mix(in srgb, ${a} 65%, black)`,
+    "--brand-900": `color-mix(in srgb, ${a} 45%, black)`,
+  } as React.CSSProperties : undefined;
+
   return (
-    <div className="flex min-h-dvh bg-slate-50">
+    <div className="flex min-h-dvh bg-slate-50" style={brandVars}>
       {/* Mobile overlay */}
       {open && (
         <button
