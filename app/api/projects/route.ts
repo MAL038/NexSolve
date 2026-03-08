@@ -43,7 +43,6 @@ export const GET = apiRoute(
       .select(`
         *,
         customer:customers!projects_customer_id_fkey(id, name),
-        owner:profiles!projects_owner_id_fkey(full_name, email, avatar_url),
         project_members(user_id, role,
           profile:profiles!project_members_user_id_fkey(full_name, email, avatar_url)
         ),
@@ -107,7 +106,6 @@ export const POST = apiRoute(
       .select(`
         *,
         customer:customers!projects_customer_id_fkey(id, name),
-        owner:profiles!projects_owner_id_fkey(full_name, email, avatar_url),
         team:teams!projects_team_id_fkey(id, name)
       `)
       .single();

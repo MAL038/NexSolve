@@ -184,7 +184,9 @@ export function ExportModal({ variant = 'button', defaultScope = 'all' }: Props)
   const [loading,   setLoading]   = useState(false)
   const [done,      setDone]      = useState(false)
   const [error,     setError]     = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
@@ -225,7 +227,13 @@ export function ExportModal({ variant = 'button', defaultScope = 'all' }: Props)
     }
   }
 
-  const openModal = () => { setOpen(true); setError(null); setDone(false) }
+  const openModal = () => {
+    if (variant === 'sidebar' && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPopupStyle({ position: 'fixed', top: rect.top, left: rect.right + 8 })
+    }
+    setOpen(true); setError(null); setDone(false)
+  }
 
   const TriggerButton = () => {
     if (variant === 'sidebar') return (
@@ -246,15 +254,18 @@ export function ExportModal({ variant = 'button', defaultScope = 'all' }: Props)
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={triggerRef}>
       <TriggerButton />
       {open && (
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setOpen(false)} />
-          <div className={clsx(
-            'absolute z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl w-80',
-            variant === 'sidebar' ? 'left-full top-0 ml-2' : 'right-0 top-full mt-2'
-          )}>
+          <div
+            style={variant === 'sidebar' ? popupStyle : undefined}
+            className={clsx(
+              'z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl w-80',
+              variant === 'sidebar' ? 'fixed' : 'absolute right-0 top-full mt-2'
+            )}
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <FileDown size={16} className="text-brand-600" />
