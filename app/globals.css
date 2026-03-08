@@ -8,18 +8,18 @@
   * { box-sizing: border-box; }
 
   :root {
-    --brand-primary: #0A6645;
-    --brand-accent:  #085a3c;
-    --brand-50:  color-mix(in srgb, var(--brand-primary)  8%, white);
-    --brand-100: color-mix(in srgb, var(--brand-primary) 15%, white);
-    --brand-200: color-mix(in srgb, var(--brand-primary) 30%, white);
-    --brand-300: color-mix(in srgb, var(--brand-primary) 55%, white);
-    --brand-400: color-mix(in srgb, var(--brand-primary) 75%, white);
-    --brand-500: var(--brand-primary);
-    --brand-600: var(--brand-accent);
-    --brand-700: color-mix(in srgb, var(--brand-accent) 85%, black);
-    --brand-800: color-mix(in srgb, var(--brand-accent) 65%, black);
-    --brand-900: color-mix(in srgb, var(--brand-accent) 45%, black);
+    /* RGB-tupels (r g b) — zodat Tailwind opacity-modifiers werken: rgb(var(--brand-N-rgb) / 0.4) */
+    /* Standaard: NexSolve groen #0A6645 als primair, #085a3c als accent                          */
+    --brand-50-rgb:  235 243 240;   /* #0A6645  8% op wit  */
+    --brand-100-rgb: 218 232 227;   /* #0A6645 15% op wit  */
+    --brand-200-rgb: 182 209 199;   /* #0A6645 30% op wit  */
+    --brand-300-rgb: 120 171 153;   /* #0A6645 55% op wit  */
+    --brand-400-rgb:  71 140 116;   /* #0A6645 75% op wit  */
+    --brand-500-rgb:  10 102  69;   /* #0A6645              */
+    --brand-600-rgb:   8  90  60;   /* #085a3c              */
+    --brand-700-rgb:   7  77  51;   /* #085a3c 85% op zwart */
+    --brand-800-rgb:   5  59  39;   /* #085a3c 65% op zwart */
+    --brand-900-rgb:   4  41  27;   /* #085a3c 45% op zwart */
   }
 
   html {
