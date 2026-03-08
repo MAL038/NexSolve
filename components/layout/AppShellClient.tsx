@@ -36,22 +36,33 @@ export default function AppShellClient({
     };
   }, [open]);
 
-  const p = primaryColor ?? "#0A6645";
-  const a = accentColor  ?? "#085a3c";
+  // ── Hulpfuncties voor kleurberekening ──────────────────────
+  function hexToRgb(hex: string): [number, number, number] | null {
+    const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) return null;
+    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  }
+  function mixWhite([r, g, b]: [number, number, number], t: number): string {
+    return `${Math.round(r*t+255*(1-t))} ${Math.round(g*t+255*(1-t))} ${Math.round(b*t+255*(1-t))}`;
+  }
+  function mixBlack([r, g, b]: [number, number, number], t: number): string {
+    return `${Math.round(r*t)} ${Math.round(g*t)} ${Math.round(b*t)}`;
+  }
 
-  const brandVars = (primaryColor || accentColor) ? {
-    "--brand-primary": p,
-    "--brand-accent":  a,
-    "--brand-50":  `color-mix(in srgb, ${p}  8%, white)`,
-    "--brand-100": `color-mix(in srgb, ${p} 15%, white)`,
-    "--brand-200": `color-mix(in srgb, ${p} 30%, white)`,
-    "--brand-300": `color-mix(in srgb, ${p} 55%, white)`,
-    "--brand-400": `color-mix(in srgb, ${p} 75%, white)`,
-    "--brand-500": p,
-    "--brand-600": a,
-    "--brand-700": `color-mix(in srgb, ${a} 85%, black)`,
-    "--brand-800": `color-mix(in srgb, ${a} 65%, black)`,
-    "--brand-900": `color-mix(in srgb, ${a} 45%, black)`,
+  const pRgb = hexToRgb(primaryColor ?? "");
+  const aRgb = hexToRgb(accentColor  ?? "");
+
+  const brandVars = (pRgb && aRgb) ? {
+    "--brand-50-rgb":  mixWhite(pRgb, 0.08),
+    "--brand-100-rgb": mixWhite(pRgb, 0.15),
+    "--brand-200-rgb": mixWhite(pRgb, 0.30),
+    "--brand-300-rgb": mixWhite(pRgb, 0.55),
+    "--brand-400-rgb": mixWhite(pRgb, 0.75),
+    "--brand-500-rgb": `${pRgb[0]} ${pRgb[1]} ${pRgb[2]}`,
+    "--brand-600-rgb": `${aRgb[0]} ${aRgb[1]} ${aRgb[2]}`,
+    "--brand-700-rgb": mixBlack(aRgb, 0.85),
+    "--brand-800-rgb": mixBlack(aRgb, 0.65),
+    "--brand-900-rgb": mixBlack(aRgb, 0.45),
   } as React.CSSProperties : undefined;
 
   return (
