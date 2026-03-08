@@ -12,6 +12,7 @@
 
 create table if not exists public.teams (
   id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references public.organisations(id) on delete cascade,
   name        text not null,
   description text,
   leader_id   uuid references public.profiles(id) on delete set null,
@@ -19,6 +20,10 @@ create table if not exists public.teams (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Zorg dat bestaande tabellen ook org_id hebben (idempotent)
+alter table public.teams
+  add column if not exists org_id uuid references public.organisations(id) on delete cascade;
 
 create table if not exists public.team_members (
   team_id  uuid not null references public.teams(id) on delete cascade,
@@ -28,6 +33,7 @@ create table if not exists public.team_members (
 );
 
 -- Indexes
+create index if not exists teams_org_id_idx         on public.teams(org_id);
 create index if not exists teams_leader_id_idx      on public.teams(leader_id);
 create index if not exists teams_created_by_idx     on public.teams(created_by);
 create index if not exists team_members_user_id_idx on public.team_members(user_id);
