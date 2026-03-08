@@ -351,7 +351,7 @@ export default function TeamClient({
 
   const ROLE_LABEL: Record<string, string> = {
     admin: "Admin", member: "Teamlid", viewer: "Viewer",
-    superuser: "Superuser",
+    superuser: "Superuser", projectleider: "Projectleider",
   };
 
   // ─── Render ────────────────────────────────────────────────
