@@ -29,7 +29,6 @@ export const GET = apiRoute(
       .select(`
         *,
         customer:customers(id, name),
-        owner:profiles!projects_owner_id_fkey(full_name, email, avatar_url),
         project_members(user_id, role, added_at,
           profile:profiles(full_name, email, avatar_url)
         )
