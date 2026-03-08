@@ -19,7 +19,7 @@ async function guardCanManage(supabase: any) {
 export async function GET() {
   const auth = await requireApiContext();
   if (!auth.ok) return auth.res;
-  const { supabase } = auth.ctx;
+  const { supabase, orgId } = auth.ctx;
   const { data, error } = await supabase
     .from("teams")
     .select(`
@@ -30,6 +30,7 @@ export async function GET() {
         profile:profiles!team_members_user_id_fkey(id, full_name, email, avatar_url, role)
       )
     `)
+    .eq("org_id", orgId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -39,7 +40,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = await requireApiContext();
   if (!auth.ok) return auth.res;
-  const { supabase, user } = auth.ctx;
+  const { supabase, user, orgId } = auth.ctx;
 
   const canManage = await guardCanManage(supabase);
   if (!canManage) {
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       ...teamData,
       description: teamData.description || null,
       created_by: user.id,
+      org_id: orgId,
     })
     .select("*")
     .single();
