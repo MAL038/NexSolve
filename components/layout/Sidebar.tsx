@@ -45,9 +45,9 @@ interface SidebarProps {
 }
 
 const CALENDAR_ITEMS = [
-  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender", icon: Calendar, roles: ["member", "admin", "viewer", "superuser"] },
-  { href: "/calendar?scope=team", scope: "team", label: "Kalender team", icon: CalendarDays, roles: ["member", "admin", "viewer", "superuser"] },
-  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie", icon: CalendarRange, roles: ["member", "admin", "viewer", "superuser"] },
+  { href: "/calendar?scope=mine", scope: "mine", label: "Mijn kalender", icon: Calendar, roles: ["member", "admin", "viewer", "superuser", "projectleider"] },
+  { href: "/calendar?scope=team", scope: "team", label: "Kalender team", icon: CalendarDays, roles: ["member", "admin", "viewer", "superuser", "projectleider"] },
+  { href: "/calendar?scope=org",  scope: "org",  label: "Kalender organisatie", icon: CalendarRange, roles: ["member", "admin", "viewer", "superuser", "projectleider"] },
 ];
 
 function isModuleEnabled(enabled: Record<string, boolean> | null | undefined, key: string) {

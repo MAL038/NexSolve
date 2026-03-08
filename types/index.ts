@@ -2,7 +2,7 @@
 // types/index.ts — NexSolve centrale type definities
 //
 // ROL-MODEL:
-//   Platform-level  (profiles.role):        "superuser" | "member"
+//   Platform-level  (profiles.role):        "superuser" | "admin" | "projectleider" | "member" | "viewer"
 //   Org-level       (org_members.org_role):  "admin" | "member" | "viewer"
 //   Project-level   (project_members.role):  "projectleider" | "member"
 // ─────────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@
 export type Locale = "en" | "nl" | "de" | "fr";
 
 // ── Platform-level rol ────────────────────────────────────────
-export type UserRole = "superuser" | "member";
+export type UserRole = "superuser" | "admin" | "projectleider" | "member" | "viewer";
 
 // ── Org-level rol ─────────────────────────────────────────────
 export type OrgRole = "admin" | "member" | "viewer";

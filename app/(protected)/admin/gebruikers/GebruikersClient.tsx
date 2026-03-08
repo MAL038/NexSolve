@@ -19,8 +19,11 @@ import type { Profile, Organisation, UserRole } from "@/types";
 // ── Config ────────────────────────────────────────────────────
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string; border: string }> = {
-  superuser: { label: "Superuser", color: "text-brand-700", bg: "bg-brand-50",  border: "border-brand-200" },
-  member:    { label: "Gebruiker", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" },
+  superuser:     { label: "Superuser",     color: "text-brand-700",  bg: "bg-brand-50",   border: "border-brand-200" },
+  admin:         { label: "Admin",          color: "text-brand-600",  bg: "bg-brand-50",   border: "border-brand-100" },
+  projectleider: { label: "Projectleider", color: "text-indigo-700", bg: "bg-indigo-50",  border: "border-indigo-200" },
+  member:        { label: "Gebruiker",     color: "text-slate-600",  bg: "bg-slate-100",  border: "border-slate-200" },
+  viewer:        { label: "Viewer",        color: "text-slate-500",  bg: "bg-slate-50",   border: "border-slate-200" },
 };
 
 const ORG_ROLE_LABELS = { admin: "Org Admin", member: "Lid", viewer: "Viewer" };
@@ -322,6 +325,9 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
                     className="absolute inset-0 opacity-0 cursor-pointer w-full"
                   >
                     <option value="member">Gebruiker</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="projectleider">Projectleider</option>
+                    <option value="admin">Admin</option>
                     <option value="superuser">Superuser</option>
                   </select>
                 </div>

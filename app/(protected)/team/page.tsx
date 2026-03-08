@@ -15,8 +15,8 @@ export default async function TeamPage() {
     .eq("is_active", true)
     .order("full_name");
 
-  // superuser kan teams beheren; gewone members niet
-  const canManageTeams = profile?.role === "superuser";
+  // superuser, admin en projectleider kunnen teams beheren
+  const canManageTeams = ["superuser", "admin", "projectleider"].includes(profile?.role ?? "");
 
   return (
     <TeamClient
