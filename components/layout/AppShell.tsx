@@ -19,6 +19,22 @@ export default async function AppShell({ children }: { children: React.ReactNode
     supabase.rpc("is_superuser"),
   ]);
 
+  // ── Org-kleuren ophalen voor theming ──────────────────────────
+  let orgPrimaryColor: string | null = null;
+  let orgAccentColor:  string | null = null;
+
+  if (profile) {
+    const { data: branding } = await supabase
+      .from("org_members")
+      .select("organisations(primary_color, accent_color)")
+      .eq("user_id", profile.id)
+      .maybeSingle();
+
+    const org = (branding?.organisations as any);
+    orgPrimaryColor = org?.primary_color ?? null;
+    orgAccentColor  = org?.accent_color  ?? null;
+  }
+
   const isSuperuser = isSu === true;
 
   // ── Org-context ophalen ───────────────────────────────────────
@@ -86,6 +102,8 @@ export default async function AppShell({ children }: { children: React.ReactNode
 
   return (
     <AppShellClient
+      primaryColor={orgPrimaryColor}
+      accentColor={orgAccentColor}
       sidebar={
         <Sidebar
           profile={profile}
