@@ -12,7 +12,7 @@ import {
   Users, Mail, Send, Trash2, Loader2, Clock,
   Check, Shield, User, X, ChevronDown, Eye,
   UserPlus, Building2, Pencil, AlertCircle,
-  Upload, ImageOff,
+  Upload, ImageOff, Palette,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import clsx from "clsx";
@@ -58,6 +58,11 @@ export default function OrgSettingsClient({
   const logoFileRef                   = useRef<HTMLInputElement>(null);
   const [logoUrl,     setLogoUrl]     = useState<string | null>(org.logo_url ?? null);
   const [logoLoading, setLogoLoading] = useState(false);
+
+  // Huisstijl
+  const [primaryColor,    setPrimaryColor]    = useState(org.primary_color ?? "#16a34a");
+  const [accentColor,     setAccentColor]     = useState(org.accent_color ?? "#15803d");
+  const [settingsSaving,  setSettingsSaving]  = useState(false);
 
   // Invite form
   const [showInvite, setShowInvite] = useState(false);
@@ -196,6 +201,24 @@ export default function OrgSettingsClient({
     if (!res.ok) { const d = await res.json(); showToast(d.error ?? "Verwijderen mislukt", false); return; }
     setLogoUrl(null);
     showToast("Logo verwijderd");
+  }
+
+  // ── Huisstijl opslaan ─────────────────────────────────────
+
+  async function saveOrgSettings() {
+    setSettingsSaving(true);
+    const res = await fetch(`/api/org/${org.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        primary_color: primaryColor,
+        accent_color:  accentColor,
+      }),
+    });
+    const data = await res.json();
+    setSettingsSaving(false);
+    if (!res.ok) { showToast(data.error ?? "Fout opgetreden", false); return; }
+    showToast("Huisstijl opgeslagen");
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -490,6 +513,74 @@ export default function OrgSettingsClient({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Huisstijl (kleuren) ── */}
+      {isAdmin && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
+            <Palette size={14} className="text-brand-500" /> Huisstijl
+          </h2>
+          <div className="card p-6 space-y-5">
+
+            {/* Kleuren */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Primaire kleur
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    placeholder="#16a34a"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Accentkleur
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={e => setAccentColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={e => setAccentColor(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    placeholder="#15803d"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={saveOrgSettings}
+                disabled={settingsSaving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+              >
+                {settingsSaving
+                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                  : <><Check size={14} /> Huisstijl opslaan</>
+                }
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
