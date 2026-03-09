@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, FolderKanban, Mail, Phone,
   Globe, MapPin, User, Hash, CheckCircle2, XCircle,
-  Loader2, AlertCircle, Activity, FileText, Link2,
-  Search, X, Check,
+  Loader2, AlertCircle, FileText, Activity, Link2,
+  Search, X, Check, Pencil,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { DossierList } from "@/components/dossiers/DossierList";
@@ -39,79 +39,23 @@ interface EditState {
   contact_phone:   string;
 }
 
-type Tab = "algemeen" | "adres" | "contactpersoon" | "projecten" | "dossier" | "activiteit";
+type Tab = "algemeen" | "projecten" | "dossier" | "activiteit";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "algemeen",       label: "Algemeen",       icon: Building2    },
-  { id: "adres",          label: "Adres",          icon: MapPin       },
-  { id: "contactpersoon", label: "Contactpersoon", icon: User         },
-  { id: "projecten",      label: "Projecten",      icon: FolderKanban },
-  { id: "dossier",        label: "Dossier",        icon: FileText     },
-  { id: "activiteit",     label: "Activiteit",     icon: Activity     },
+  { id: "algemeen",   label: "Algemeen",   icon: Building2    },
+  { id: "projecten",  label: "Projecten",  icon: FolderKanban },
+  { id: "dossier",    label: "Dossier",    icon: FileText     },
+  { id: "activiteit", label: "Activiteit", icon: Activity     },
 ];
 
-// ─── Inline editable field ────────────────────────────────────
+// ─── Helper: labelled data row ────────────────────────────────
 
-function InlineField({
-  label, value, onChange, type = "text", placeholder, href, readonly = false,
-}: {
-  label:        string;
-  value:        string;
-  onChange?:    (v: string) => void;
-  type?:        string;
-  placeholder?: string;
-  href?:        string;
-  readonly?:    boolean;
-}) {
-  const [focused, setFocused] = useState(false);
+function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-600 mb-1">{label}</p>
-      <div className={clsx(
-        "flex items-center gap-2 rounded-xl px-3 py-2 border transition-all",
-        readonly
-          ? "border-slate-200 bg-slate-50"
-          : focused
-          ? "border-brand-500 ring-2 ring-brand-500/20 bg-white"
-          : "border-slate-200 bg-white hover:border-slate-300"
-      )}>
-        <input
-          type={type}
-          value={value}
-          placeholder={readonly ? "—" : (placeholder ?? `${label}…`)}
-          readOnly={readonly}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.value)}
-          onFocus={() => !readonly && setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          className={clsx(
-            "flex-1 bg-transparent text-sm placeholder:text-slate-400 focus:outline-none min-w-0",
-            readonly ? "text-slate-500 cursor-default select-all" : "text-slate-800"
-          )}
-        />
-        {!readonly && !focused && value && href && (
-          <a href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="text-slate-400 hover:text-brand-600 transition-colors flex-shrink-0">
-            <Globe size={12} />
-          </a>
-        )}
-        {readonly && (
-          <span className="text-[10px] text-slate-400 flex-shrink-0 font-sans">Niet wijzigbaar</span>
-        )}
-      </div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+      <div className="text-sm text-slate-700 leading-snug">{children}</div>
     </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500
-                  pb-2 border-b border-slate-100 mb-4">
-      {children}
-    </p>
   );
 }
 
@@ -128,7 +72,7 @@ export default function CustomerDetailClient({
   const [linked,      setLinked]      = useState<Project[]>(initialLinked);
   const [activeTab,   setActiveTab]   = useState<Tab>("algemeen");
   const [saving,      setSaving]      = useState(false);
-  const [dirty,       setDirty]       = useState(false);
+  const [editOpen,    setEditOpen]    = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [toast,       setToast]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
@@ -167,33 +111,7 @@ export default function CustomerDetailClient({
     setTimeout(() => setToast(null), 3000);
   }
 
-  function set(key: keyof EditState) {
-    return (v: string) => { setEdit((p: EditState) => ({ ...p, [key]: v })); setDirty(true); };
-  }
-
-  // Auto-save on blur
-  const handleSave = useCallback(async (overrides?: Partial<EditState>) => {
-    setSaving(true); setError(null);
-    const payload = { ...edit, ...overrides };
-    try {
-      const res = await fetch(`/api/customers/${customer.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Opslaan mislukt"); return; }
-      setCustomer(data as Customer);
-      setDirty(false);
-      showToast("Opgeslagen");
-    } catch {
-      setError("Er ging iets mis");
-    } finally {
-      setSaving(false);
-    }
-  }, [edit, customer.id]);
-
-  function handleReset() {
+  function openEdit() {
     setEdit({
       name:            customer.name,
       code:            customer.code ?? "",
@@ -210,9 +128,30 @@ export default function CustomerDetailClient({
       contact_email:   customer.contact_email ?? "",
       contact_phone:   customer.contact_phone ?? "",
     });
-    setDirty(false);
     setError(null);
+    setEditOpen(true);
   }
+
+  const handleSave = useCallback(async (overrides?: Partial<EditState>) => {
+    setSaving(true); setError(null);
+    const payload = { ...edit, ...overrides };
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Opslaan mislukt"); return; }
+      setCustomer(data as Customer);
+      if (!overrides) setEditOpen(false);
+      showToast("Opgeslagen");
+    } catch {
+      setError("Er ging iets mis");
+    } finally {
+      setSaving(false);
+    }
+  }, [edit, customer.id]);
 
   async function setStatus(status: CustomerStatus) {
     setEdit((p: EditState) => ({ ...p, status }));
@@ -244,6 +183,15 @@ export default function CustomerDetailClient({
     setLinkLoading(null);
   }
 
+  // Samengesteld adres
+  const addressParts = [
+    customer.address_street,
+    customer.address_zip && customer.address_city
+      ? `${customer.address_zip} ${customer.address_city}`
+      : (customer.address_zip ?? customer.address_city ?? null),
+    customer.address_country,
+  ].filter(Boolean);
+
   return (
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
@@ -262,8 +210,8 @@ export default function CustomerDetailClient({
 
         <div className="px-5 pt-5 pb-4 border-b border-slate-200">
           <Link href="/customers"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
-                       font-semibold transition-colors mb-3">
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-600
+                       font-medium transition-colors mb-3">
             <ArrowLeft size={13} /> Terug naar klanten
           </Link>
 
@@ -283,7 +231,7 @@ export default function CustomerDetailClient({
             </div>
           </div>
 
-          {/* Status — twee knoppen, vol gekleurd = actief */}
+          {/* Status knoppen */}
           <div className="flex gap-1.5">
             <button onClick={() => setStatus("active")}
               className={clsx(
@@ -308,9 +256,9 @@ export default function CustomerDetailClient({
           {/* Projecten stats */}
           <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
             {[
-              { label: "Totaal",  value: stats.total,    color: "text-slate-800" },
+              { label: "Totaal",  value: stats.total,    color: "text-slate-800"   },
               { label: "Actief",  value: stats.active,   color: "text-emerald-700" },
-              { label: "Archief", value: stats.archived, color: "text-slate-500" },
+              { label: "Archief", value: stats.archived, color: "text-slate-500"   },
             ].map(s => (
               <div key={s.label} className="text-center">
                 <p className={clsx("text-lg font-bold", s.color)}>{s.value}</p>
@@ -320,7 +268,7 @@ export default function CustomerDetailClient({
           </div>
         </div>
 
-        {/* Tabs — actief = vol groen */}
+        {/* Tab navigatie */}
         <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1">
           {TABS.map(tab => {
             const Icon   = tab.icon;
@@ -348,7 +296,7 @@ export default function CustomerDetailClient({
           })}
         </nav>
 
-        {/* Quick meta */}
+        {/* Quick meta onderaan */}
         <div className="px-5 py-4 border-t border-slate-200 space-y-2 text-xs text-slate-500">
           {customer.email && (
             <a href={`mailto:${customer.email}`}
@@ -400,146 +348,245 @@ export default function CustomerDetailClient({
           })}
         </div>
 
-        {error && (
-          <div className="mx-6 mt-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200
-                          rounded-xl text-sm text-red-700 font-medium">
-            <AlertCircle size={14} className="flex-shrink-0" /> {error}
-            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
         {/* ── Algemeen ──────────────────────────────────── */}
         {activeTab === "algemeen" && (
-          <div className="p-6 max-w-xl space-y-4">
+          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
 
-            <div className="card p-5 space-y-4">
-              <SectionLabel>Identiteit</SectionLabel>
-              <InlineField label="Code" value={edit.code} readonly />
-              <InlineField label="Naam" value={edit.name}
-                onChange={set("name")}
-                placeholder="Klantnaam" />
-            </div>
-
-            <div className="card p-5 space-y-4">
-              <SectionLabel>Contactgegevens</SectionLabel>
-              <InlineField label="E-mail" value={edit.email} type="email"
-                onChange={set("email")}
-                placeholder="info@bedrijf.nl"
-                href={edit.email ? `mailto:${edit.email}` : undefined} />
-              <InlineField label="Telefoon" value={edit.phone} type="tel"
-                onChange={set("phone")}
-                placeholder="+31 6 12345678"
-                href={edit.phone ? `tel:${edit.phone}` : undefined} />
-              <InlineField label="Website" value={edit.website} type="url"
-                onChange={set("website")}
-                placeholder="www.bedrijf.nl"
-                href={edit.website || undefined} />
-            </div>
-
-            {/* Opslaan / Reset */}
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <button onClick={() => handleSave()} disabled={saving || !dirty}
-                className="btn-primary">
-                {saving
-                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-                  : <><Check size={14} /> Opslaan</>
-                }
-              </button>
-              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
-                <X size={14} /> Reset
-              </button>
-              {!dirty && !saving && (
-                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Adres ────────────────────────────────────── */}
-        {activeTab === "adres" && (
-          <div className="p-6 max-w-xl space-y-4">
-            <div className="card p-5 space-y-4">
-              <SectionLabel>Adresgegevens</SectionLabel>
-              <InlineField label="Straat" value={edit.address_street}
-                onChange={set("address_street")}
-                placeholder="Straatnaam 1" />
-              <div className="grid grid-cols-2 gap-4">
-                <InlineField label="Postcode" value={edit.address_zip}
-                  onChange={set("address_zip")}
-                  placeholder="1234 AB" />
-                <InlineField label="Stad" value={edit.address_city}
-                  onChange={set("address_city")}
-                  placeholder="Amsterdam" />
+            {/* Klantoverzicht (altijd zichtbaar) */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Klantoverzicht</h2>
+                <button
+                  onClick={editOpen ? () => setEditOpen(false) : openEdit}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
+                             px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium"
+                >
+                  <Pencil size={12} />
+                  {editOpen ? "Sluiten" : "Bewerken"}
+                </button>
               </div>
-              <InlineField label="Land" value={edit.address_country}
-                onChange={set("address_country")}
-                placeholder="Nederland" />
+
+              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <DataRow label="Naam">
+                  <span className="font-medium">{customer.name}</span>
+                </DataRow>
+                <DataRow label="Status">
+                  <StatusBadge status={customer.status} />
+                </DataRow>
+
+                {customer.email && (
+                  <DataRow label="E-mail">
+                    <a href={`mailto:${customer.email}`}
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors">
+                      <Mail size={13} />{customer.email}
+                    </a>
+                  </DataRow>
+                )}
+
+                {customer.phone && (
+                  <DataRow label="Telefoon">
+                    <a href={`tel:${customer.phone}`}
+                      className="inline-flex items-center gap-1.5 text-slate-700 hover:text-brand-600 transition-colors">
+                      <Phone size={13} />{customer.phone}
+                    </a>
+                  </DataRow>
+                )}
+
+                {customer.website && (
+                  <DataRow label="Website">
+                    <a href={customer.website.startsWith("http") ? customer.website : `https://${customer.website}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors">
+                      <Globe size={13} />{customer.website}
+                    </a>
+                  </DataRow>
+                )}
+
+                {addressParts.length > 0 && (
+                  <DataRow label="Adres">
+                    <div className="flex items-start gap-1.5 text-slate-600">
+                      <MapPin size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                      <span>{addressParts.join(", ")}</span>
+                    </div>
+                  </DataRow>
+                )}
+
+                {customer.contact_name && (
+                  <div className="sm:col-span-2">
+                    <DataRow label="Contactpersoon">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <User size={13} className="text-slate-400 flex-shrink-0" />
+                        <span className="font-medium">{customer.contact_name}</span>
+                        {customer.contact_role && (
+                          <span className="text-slate-400">· {customer.contact_role}</span>
+                        )}
+                        {customer.contact_email && (
+                          <a href={`mailto:${customer.contact_email}`}
+                            className="text-brand-600 hover:text-brand-700 transition-colors"
+                            title={customer.contact_email}>
+                            <Mail size={13} />
+                          </a>
+                        )}
+                        {customer.contact_phone && (
+                          <a href={`tel:${customer.contact_phone}`}
+                            className="text-slate-600 hover:text-brand-600 transition-colors"
+                            title={customer.contact_phone}>
+                            <Phone size={13} />
+                          </a>
+                        )}
+                      </div>
+                    </DataRow>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Opslaan / Reset */}
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <button onClick={() => handleSave()} disabled={saving || !dirty}
-                className="btn-primary">
-                {saving
-                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-                  : <><Check size={14} /> Opslaan</>
-                }
-              </button>
-              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
-                <X size={14} /> Reset
-              </button>
-              {!dirty && !saving && (
-                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
-              )}
-            </div>
-          </div>
-        )}
+            {/* Gegevens bewerken (inklapbaar) */}
+            <div className={clsx("card overflow-hidden transition-all", !editOpen && "hidden")}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Gegevens bewerken</h2>
+                <button
+                  onClick={() => { setEditOpen(false); setError(null); }}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
 
-        {/* ── Contactpersoon ────────────────────────────── */}
-        {activeTab === "contactpersoon" && (
-          <div className="p-6 max-w-xl space-y-4">
-            <div className="card p-5 space-y-4">
-              <SectionLabel>Contactpersoon</SectionLabel>
-              <InlineField label="Naam" value={edit.contact_name}
-                onChange={set("contact_name")}
-                placeholder="Jan Jansen" />
-              <InlineField label="Functie" value={edit.contact_role}
-                onChange={set("contact_role")}
-                placeholder="Directeur" />
-              <InlineField label="E-mail" value={edit.contact_email} type="email"
-                onChange={set("contact_email")}
-                placeholder="jan@bedrijf.nl"
-                href={edit.contact_email ? `mailto:${edit.contact_email}` : undefined} />
-              <InlineField label="Telefoon" value={edit.contact_phone} type="tel"
-                onChange={set("contact_phone")}
-                placeholder="+31 6 87654321"
-                href={edit.contact_phone ? `tel:${edit.contact_phone}` : undefined} />
-            </div>
+              <div className="px-5 py-5 space-y-5">
+                {error && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200
+                                  rounded-xl text-sm text-red-700">
+                    <AlertCircle size={14} className="flex-shrink-0" /> {error}
+                  </div>
+                )}
 
-            {/* Opslaan / Reset */}
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <button onClick={() => handleSave()} disabled={saving || !dirty}
-                className="btn-primary">
-                {saving
-                  ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-                  : <><Check size={14} /> Opslaan</>
-                }
-              </button>
-              <button onClick={handleReset} disabled={!dirty} className="btn-outline">
-                <X size={14} /> Reset
-              </button>
-              {!dirty && !saving && (
-                <span className="text-xs text-slate-400 ml-1">Geen wijzigingen</span>
-              )}
+                {/* Identiteit */}
+                <div>
+                  <label className="label">Naam *</label>
+                  <input
+                    value={edit.name}
+                    onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
+                    className="input"
+                    placeholder="Klantnaam"
+                  />
+                </div>
+
+                {/* Contactgegevens */}
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                    Contactgegevens
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label">E-mail</label>
+                      <input type="email" value={edit.email}
+                        onChange={e => setEdit(p => ({ ...p, email: e.target.value }))}
+                        className="input" placeholder="info@bedrijf.nl" />
+                    </div>
+                    <div>
+                      <label className="label">Telefoon</label>
+                      <input type="tel" value={edit.phone}
+                        onChange={e => setEdit(p => ({ ...p, phone: e.target.value }))}
+                        className="input" placeholder="+31 6 12345678" />
+                    </div>
+                    <div>
+                      <label className="label">Website</label>
+                      <input type="url" value={edit.website}
+                        onChange={e => setEdit(p => ({ ...p, website: e.target.value }))}
+                        className="input" placeholder="www.bedrijf.nl" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Adres */}
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                    Adres
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label">Straat</label>
+                      <input value={edit.address_street}
+                        onChange={e => setEdit(p => ({ ...p, address_street: e.target.value }))}
+                        className="input" placeholder="Straatnaam 1" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Postcode</label>
+                        <input value={edit.address_zip}
+                          onChange={e => setEdit(p => ({ ...p, address_zip: e.target.value }))}
+                          className="input" placeholder="1234 AB" />
+                      </div>
+                      <div>
+                        <label className="label">Stad</label>
+                        <input value={edit.address_city}
+                          onChange={e => setEdit(p => ({ ...p, address_city: e.target.value }))}
+                          className="input" placeholder="Amsterdam" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Land</label>
+                      <input value={edit.address_country}
+                        onChange={e => setEdit(p => ({ ...p, address_country: e.target.value }))}
+                        className="input" placeholder="Nederland" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contactpersoon */}
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                    Contactpersoon
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label">Naam</label>
+                      <input value={edit.contact_name}
+                        onChange={e => setEdit(p => ({ ...p, contact_name: e.target.value }))}
+                        className="input" placeholder="Jan Jansen" />
+                    </div>
+                    <div>
+                      <label className="label">Functie</label>
+                      <input value={edit.contact_role}
+                        onChange={e => setEdit(p => ({ ...p, contact_role: e.target.value }))}
+                        className="input" placeholder="Directeur" />
+                    </div>
+                    <div>
+                      <label className="label">E-mail</label>
+                      <input type="email" value={edit.contact_email}
+                        onChange={e => setEdit(p => ({ ...p, contact_email: e.target.value }))}
+                        className="input" placeholder="jan@bedrijf.nl" />
+                    </div>
+                    <div>
+                      <label className="label">Telefoon</label>
+                      <input type="tel" value={edit.contact_phone}
+                        onChange={e => setEdit(p => ({ ...p, contact_phone: e.target.value }))}
+                        className="input" placeholder="+31 6 87654321" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Opslaan */}
+                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                  <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
+                    {saving
+                      ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                      : <><Check size={14} /> Opslaan</>
+                    }
+                  </button>
+                  <button onClick={() => { setEditOpen(false); setError(null); }} className="btn-outline">
+                    <X size={14} /> Annuleren
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* ── Projecten ─────────────────────────────────── */}
         {activeTab === "projecten" && (
-          <div className="p-6 max-w-2xl space-y-4">
+          <div className="p-5 sm:p-6 max-w-2xl space-y-4">
             <div className="card p-4 space-y-3">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                 <Link2 size={11} /> Project koppelen
@@ -603,12 +650,12 @@ export default function CustomerDetailClient({
 
         {/* ── Dossier ───────────────────────────────────── */}
         {activeTab === "dossier" && (
-          <div className="p-6"><DossierList customerId={customer.id} /></div>
+          <div className="p-5 sm:p-6"><DossierList customerId={customer.id} /></div>
         )}
 
         {/* ── Activiteit ────────────────────────────────── */}
         {activeTab === "activiteit" && (
-          <div className="p-6 max-w-2xl">
+          <div className="p-5 sm:p-6 max-w-2xl">
             <ActivityFeed customerId={customer.id} title="" />
           </div>
         )}
