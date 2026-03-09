@@ -67,7 +67,7 @@ export const GET = apiRoute(
 
 export const POST = apiRoute(
   { requireOrg: false },
-  async ({ supabase, user, body }) => {
+  async ({ supabase, user, orgId, body }) => {
     const result = projectSchema.safeParse(body);
     if (!result.success) {
       const flat = result.error.flatten();
@@ -94,6 +94,7 @@ export const POST = apiRoute(
         ...dbPayload,
         code: projectCode,
         owner_id: user.id,
+        org_id: orgId,
         description: dbPayload.description || null,
         customer_id: dbPayload.customer_id ?? null,
         theme_id: dbPayload.theme_id ?? null,
