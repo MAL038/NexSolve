@@ -7,12 +7,17 @@ const updateSchema = z.object({
   name:        z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional().or(z.literal("")),
   leader_id:   z.string().uuid().optional().nullable(),
+  member_ids:  z.array(z.string().uuid()).optional(),
 });
 
 const membersSchema = z.object({
   action:  z.enum(["add", "remove"]),
   user_id: z.string().uuid(),
 });
+
+const FULL_SELECT = `*, leader:profiles!teams_leader_id_fkey(id, full_name, avatar_url),
+  members:team_members(team_id, user_id, added_at,
+    profile:profiles!team_members_user_id_fkey(id, full_name, email, avatar_url, role))`;
 
 async function guardTeam(supabase: Awaited<ReturnType<typeof createClient>>, teamId: string) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -41,7 +46,7 @@ export async function PATCH(
 
   const body = await req.json();
 
-  // Members beheren (add/remove)
+  // Members beheren via add/remove action
   if ("action" in body) {
     const result = membersSchema.safeParse(body);
     if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
@@ -54,29 +59,34 @@ export async function PATCH(
         .delete().eq("team_id", id).eq("user_id", result.data.user_id);
     }
 
-    const { data } = await supabase
-      .from("teams")
-      .select(`*, leader:profiles!teams_leader_id_fkey(id, full_name, avatar_url),
-        members:team_members(team_id, user_id, added_at,
-          profile:profiles!team_members_user_id_fkey(id, full_name, email, avatar_url, role))`)
-      .eq("id", id).single();
+    const { data } = await supabase.from("teams").select(FULL_SELECT).eq("id", id).single();
     return NextResponse.json(data);
   }
 
-  // Team gegevens updaten
+  // Team gegevens updaten (incl. optionele member_ids sync)
   const result = updateSchema.safeParse(body);
   if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
 
-  const { data, error } = await supabase
+  const { member_ids, ...teamData } = result.data;
+
+  const { error } = await supabase
     .from("teams")
-    .update({ ...result.data, description: result.data.description || null })
-    .eq("id", id)
-    .select(`*, leader:profiles!teams_leader_id_fkey(id, full_name, avatar_url),
-      members:team_members(team_id, user_id, added_at,
-        profile:profiles!team_members_user_id_fkey(id, full_name, email, avatar_url, role))`)
-    .single();
+    .update({ ...teamData, description: teamData.description || null })
+    .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sync leden als member_ids is meegegeven
+  if (member_ids !== undefined) {
+    await supabase.from("team_members").delete().eq("team_id", id);
+    if (member_ids.length > 0) {
+      await supabase.from("team_members").insert(
+        member_ids.map(uid => ({ team_id: id, user_id: uid }))
+      );
+    }
+  }
+
+  const { data } = await supabase.from("teams").select(FULL_SELECT).eq("id", id).single();
   return NextResponse.json(data);
 }
 
