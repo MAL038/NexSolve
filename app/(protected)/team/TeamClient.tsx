@@ -321,6 +321,8 @@ export default function TeamClient({
         setTeams(prev => prev.map(t => t.id === teamModal.team!.id ? json : t));
         setTeamModal(null);
         showToast("Team bijgewerkt");
+      } else {
+        showToast(json.error ?? "Bijwerken mislukt", false);
       }
     }
   }
@@ -331,6 +333,9 @@ export default function TeamClient({
     if (res.ok) {
       setTeams(prev => prev.filter(t => t.id !== id));
       showToast("Team verwijderd");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast(data.error ?? "Verwijderen mislukt", false);
     }
   }
 
@@ -341,7 +346,11 @@ export default function TeamClient({
       body: JSON.stringify({ action, user_id: userId }),
     });
     const json = await res.json();
-    if (res.ok) setTeams(prev => prev.map(t => t.id === teamId ? json : t));
+    if (res.ok) {
+      setTeams(prev => prev.map(t => t.id === teamId ? json : t));
+    } else {
+      showToast(json.error ?? "Lidmaatschap wijzigen mislukt", false);
+    }
   }
 
   // ─── Computed ──────────────────────────────────────────────

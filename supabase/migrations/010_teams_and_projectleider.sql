@@ -109,6 +109,8 @@ alter table public.team_members enable row level security;
 
 drop policy if exists "TeamMembers: authenticated lezen" on public.team_members;
 drop policy if exists "TeamMembers: beheer"              on public.team_members;
+drop policy if exists "TeamMembers: beheer insert"       on public.team_members;
+drop policy if exists "TeamMembers: beheer delete"       on public.team_members;
 
 -- Iedereen die ingelogd is mag ledenlijsten lezen
 create policy "TeamMembers: authenticated lezen"

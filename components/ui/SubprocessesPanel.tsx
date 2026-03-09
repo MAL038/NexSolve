@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Plus, Trash2, Pencil, Check, X, ChevronDown,
   Circle, Loader, CheckCircle2, Ban, GripVertical,
+  AlertCircle, Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 import type { Subprocess, SubprocessStatus } from "@/types";
@@ -15,10 +16,10 @@ const STATUS_CONFIG: Record<SubprocessStatus, {
   classes: string;
   dot: string;
 }> = {
-  "todo":        { label: "Te doen",      icon: Circle,       classes: "bg-slate-100 text-slate-500",  dot: "bg-slate-400"  },
-  "in-progress": { label: "In uitvoering",icon: Loader,       classes: "bg-amber-50 text-amber-600",   dot: "bg-amber-400"  },
-  "done":        { label: "Gereed",       icon: CheckCircle2, classes: "bg-brand-50 text-brand-600",   dot: "bg-brand-500"  },
-  "blocked":     { label: "Geblokkeerd",    icon: Ban,          classes: "bg-red-50 text-red-500",       dot: "bg-red-400"    },
+  "todo":        { label: "Te doen",       icon: Circle,       classes: "bg-slate-100 text-slate-500",  dot: "bg-slate-400"  },
+  "in-progress": { label: "In uitvoering", icon: Loader,       classes: "bg-amber-50 text-amber-600",   dot: "bg-amber-400"  },
+  "done":        { label: "Gereed",        icon: CheckCircle2, classes: "bg-brand-50 text-brand-600",   dot: "bg-brand-500"  },
+  "blocked":     { label: "Geblokkeerd",   icon: Ban,          classes: "bg-red-50 text-red-500",       dot: "bg-red-400"    },
 };
 
 const STATUS_ORDER: SubprocessStatus[] = ["todo", "in-progress", "done", "blocked"];
@@ -97,19 +98,25 @@ export default function SubprocessesPanel({
   initialSubprocesses,
   isOwnerOrMember,
 }: Props) {
-  const [items,      setItems]      = useState<Subprocess[]>(initialSubprocesses);
-  const [showForm,   setShowForm]   = useState(false);
-  const [form,       setForm]       = useState(EMPTY_FORM);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
-  const [editingId,  setEditingId]  = useState<string | null>(null);
-  const [editForm,   setEditForm]   = useState(EMPTY_FORM);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [items,         setItems]         = useState<Subprocess[]>(initialSubprocesses);
+  const [showForm,      setShowForm]      = useState(false);
+  const [form,          setForm]          = useState(EMPTY_FORM);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [mutationError, setMutationError] = useState("");
+  const [editingId,     setEditingId]     = useState<string | null>(null);
+  const [editForm,      setEditForm]      = useState(EMPTY_FORM);
+  const [deletingId,    setDeletingId]    = useState<string | null>(null);
 
   // Progress stats
-  const done       = items.filter(i => i.status === "done").length;
-  const total      = items.length;
-  const pct        = total === 0 ? 0 : Math.round((done / total) * 100);
+  const done  = items.filter(i => i.status === "done").length;
+  const total = items.length;
+  const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  function showMutationError(msg: string) {
+    setMutationError(msg);
+    setTimeout(() => setMutationError(""), 4000);
+  }
 
   // ── Create ────────────────────────────────────────────────
   async function handleCreate() {
@@ -151,38 +158,65 @@ export default function SubprocessesPanel({
     setEditingId(null);
   }
 
+  // ── Patch with optimistic update + rollback on failure ────
   async function patchItem(id: string, payload: Partial<Subprocess>) {
+    // Save previous state for potential rollback
+    const previousItems = items;
+
     // Optimistic update
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i));
+
     const res = await fetch(`/api/projects/${projectId}/subprocesses/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     if (!res.ok) {
-      // Revert if failed — re-fetch would be cleaner but this is fine for now
-      const data = await res.json();
-      console.error("Patch failed:", data.error);
+      // Rollback to previous state
+      setItems(previousItems);
+      const data = await res.json().catch(() => ({}));
+      showMutationError(data.error ?? "Wijziging mislukt — probeer opnieuw");
     }
   }
 
   // ── Delete ────────────────────────────────────────────────
   async function deleteItem(id: string) {
     setDeletingId(id);
-    await fetch(`/api/projects/${projectId}/subprocesses/${id}`, { method: "DELETE" });
-    setItems(prev => prev.filter(i => i.id !== id));
+    const res = await fetch(`/api/projects/${projectId}/subprocesses/${id}`, { method: "DELETE" });
     setDeletingId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showMutationError(data.error ?? "Verwijderen mislukt — probeer opnieuw");
+      return;
+    }
+    setItems(prev => prev.filter(i => i.id !== id));
   }
 
   // ─── Render ───────────────────────────────────────────────
   return (
     <div className="space-y-4">
 
+      {/* Mutation error banner */}
+      {mutationError && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <AlertCircle size={14} className="flex-shrink-0" />
+          <span className="flex-1">{mutationError}</span>
+          <button
+            onClick={() => setMutationError("")}
+            aria-label="Melding sluiten"
+            className="opacity-60 hover:opacity-100"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Progress bar */}
       {total > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>{done} of {total} completed</span>
+            <span>{done} van {total} voltooid</span>
             <span className="font-semibold text-slate-700">{pct}%</span>
           </div>
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -203,7 +237,8 @@ export default function SubprocessesPanel({
 
       <div className="flex flex-col gap-2">
         {items.map(item => {
-          const isEditing = editingId === item.id;
+          const isEditing  = editingId  === item.id;
+          const isDeleting = deletingId === item.id;
 
           if (isEditing) {
             return (
@@ -225,8 +260,8 @@ export default function SubprocessesPanel({
                 <div className="flex items-center gap-2 justify-between">
                   <StatusPill status={editForm.status} onChange={s => setEditForm(f => ({ ...f, status: s }))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setEditingId(null)} className="btn-outline text-xs px-3 py-1.5">Cancel</button>
-                    <button onClick={() => saveEdit(item.id)} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                    <button onClick={() => setEditingId(null)} className="btn-outline text-xs px-3 py-1.5">Annuleren</button>
+                    <button onClick={() => saveEdit(item.id)} className="btn-primary text-xs px-3 py-1.5">Opslaan</button>
                   </div>
                 </div>
               </div>
@@ -240,9 +275,11 @@ export default function SubprocessesPanel({
               key={item.id}
               className={clsx(
                 "group flex items-start gap-3 px-4 py-3.5 rounded-xl border transition-all",
-                item.status === "done"
-                  ? "bg-slate-50 border-slate-100"
-                  : "bg-white border-slate-100 hover:border-slate-200"
+                isDeleting
+                  ? "opacity-50 pointer-events-none bg-slate-50 border-slate-100"
+                  : item.status === "done"
+                    ? "bg-slate-50 border-slate-100"
+                    : "bg-white border-slate-100 hover:border-slate-200"
               )}
             >
               {/* Drag handle (visual only) */}
@@ -252,7 +289,8 @@ export default function SubprocessesPanel({
               <button
                 type="button"
                 onClick={() => toggleDone(item)}
-                disabled={!isOwnerOrMember}
+                disabled={!isOwnerOrMember || isDeleting}
+                aria-label={item.status === "done" ? "Markeer als te doen" : "Markeer als gereed"}
                 className={clsx(
                   "flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all",
                   item.status === "done"
@@ -281,25 +319,27 @@ export default function SubprocessesPanel({
                 <StatusPill
                   status={item.status}
                   onChange={s => changeStatus(item.id, s)}
-                  disabled={!isOwnerOrMember}
+                  disabled={!isOwnerOrMember || isDeleting}
                 />
 
                 {isOwnerOrMember && (
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(item)}
+                      aria-label={`${item.title} bewerken`}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                     >
                       <Pencil size={12} />
                     </button>
                     <button
                       onClick={() => deleteItem(item.id)}
-                      disabled={deletingId === item.id}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      disabled={isDeleting}
+                      aria-label={`${item.title} verwijderen`}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
-                      {deletingId === item.id
-                        ? <Loader size={12} className="animate-spin" />
-                        : <Trash2 size={12} />
+                      {isDeleting
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <Trash2   size={12} />
                       }
                     </button>
                   </div>
@@ -335,10 +375,13 @@ export default function SubprocessesPanel({
             <StatusPill status={form.status} onChange={s => setForm(f => ({ ...f, status: s }))} />
             <div className="flex gap-2">
               <button onClick={() => { setShowForm(false); setError(""); setForm(EMPTY_FORM); }} className="btn-outline text-xs px-3 py-1.5">
-                Cancel
+                Annuleren
               </button>
               <button onClick={handleCreate} disabled={saving} className="btn-primary text-xs px-3 py-1.5">
-                {saving ? "Toevoegen…" : "Deeltaak toevoegen"}
+                {saving
+                  ? <><Loader2 size={12} className="animate-spin inline mr-1" />Toevoegen…</>
+                  : "Deeltaak toevoegen"
+                }
               </button>
             </div>
           </div>
