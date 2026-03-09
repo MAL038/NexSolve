@@ -57,8 +57,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Recor
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // 🔔 Log
-  await logActivity(supabase, {
+  // 🔔 Log — fire-and-forget
+  logActivity(supabase, {
     actorId:    user.id,
     action:     'member.added',
     entityType: 'member',
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Recor
     projectId:  id,
     customerId: project.customer_id,
     metadata:   { project_name: project.name, role: result.data.role },
-  });
+  }).catch(() => {});
 
   // 📧 Uitnodigingse-mail (fire-and-forget)
   const profile = data.profile as any;

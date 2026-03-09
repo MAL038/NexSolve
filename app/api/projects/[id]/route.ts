@@ -71,8 +71,9 @@ export const PATCH = apiRoute(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // fire-and-forget: niet awaiten zodat de response sneller terugkomt
     if (result.data.status && current && result.data.status !== current.status) {
-      await logActivity(supabase, {
+      logActivity(supabase, {
         actorId: user.id,
         action: "project.status_changed",
         entityType: "project",
@@ -81,9 +82,9 @@ export const PATCH = apiRoute(
         projectId: id,
         customerId: data.customer_id,
         metadata: { from: current.status, to: result.data.status },
-      });
+      }).catch(() => {});
     } else {
-      await logActivity(supabase, {
+      logActivity(supabase, {
         actorId: user.id,
         action: "project.updated",
         entityType: "project",
@@ -91,7 +92,7 @@ export const PATCH = apiRoute(
         entityName: data.name,
         projectId: id,
         customerId: data.customer_id,
-      });
+      }).catch(() => {});
     }
 
     return NextResponse.json(data);
@@ -118,14 +119,15 @@ export const DELETE = apiRoute(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    await logActivity(supabase, {
+    // fire-and-forget
+    logActivity(supabase, {
       actorId: user.id,
       action: "project.deleted",
       entityType: "project",
       entityId: id,
       entityName: project?.name,
       customerId: project?.customer_id,
-    });
+    }).catch(() => {});
 
     return new NextResponse(null, { status: 204 });
   }

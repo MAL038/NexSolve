@@ -22,7 +22,8 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<Recor
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await logActivity(supabase, {
+  // fire-and-forget: niet awaiten zodat de response sneller terugkomt
+  logActivity(supabase, {
     actorId:    user.id,
     action:     'member.removed',
     entityType: 'member',
@@ -31,7 +32,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<Recor
     projectId:  id,
     customerId: project.customer_id,
     metadata:   { project_name: project.name },
-  });
+  }).catch(() => {});
 
   return new NextResponse(null, { status: 204 });
 }
