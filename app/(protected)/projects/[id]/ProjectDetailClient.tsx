@@ -7,6 +7,7 @@ import {
   Layers, ChevronRight, Pencil, Check, Loader2,
   AlertCircle, FileText, Activity, Download, X,
   LayoutGrid, UserCircle, Hash, FolderKanban, ClipboardList,
+  Tag, ChevronDown,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Avatar from "@/components/ui/Avatar";
@@ -62,16 +63,16 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: "algemeen",    label: "Algemeen",    icon: LayoutGrid   },
-  { id: "taken",       label: "Taken",       icon: GitBranch    },
-  { id: "team",        label: "Team",        icon: Users        },
-  { id: "intake",      label: "Intake",      icon: ClipboardList},
-  { id: "dossier",     label: "Dossier",     icon: FileText     },
-  { id: "activiteit",  label: "Activiteit",  icon: Activity     },
-  { id: "exporteren",  label: "Exporteren",  icon: Download     },
+  { id: "algemeen",    label: "Algemeen",    icon: LayoutGrid    },
+  { id: "taken",       label: "Taken",       icon: GitBranch     },
+  { id: "team",        label: "Team",        icon: Users         },
+  { id: "intake",      label: "Intake",      icon: ClipboardList },
+  { id: "dossier",     label: "Dossier",     icon: FileText      },
+  { id: "activiteit",  label: "Activiteit",  icon: Activity      },
+  { id: "exporteren",  label: "Exporteren",  icon: Download      },
 ];
 
-// ─── Small helper: labelled data row ─────────────────────────
+// ─── Helper: labelled data row ────────────────────────────────
 
 function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -101,6 +102,7 @@ export default function ProjectDetailClient({
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [toast,     setToast]     = useState<string | null>(null);
+  const [editOpen,  setEditOpen]  = useState(false);  // inklapbaar bewerkformulier
 
   const [edit, setEdit] = useState<EditState>({
     name:        initialProject.name,
@@ -121,6 +123,13 @@ export default function ProjectDetailClient({
   const isOverdue   = !!project.end_date && new Date(project.end_date) < new Date();
   const currentCustomer = customers.find((c: Customer) => c.id === project.customer_id)
     ?? (project.customer as Customer | null);
+
+  // Labels: gebruik server-side opgeloste labels als fallback
+  const displayTheme   = themeObj?.name    ?? themeLabel;
+  const displayProcess = processObj?.name  ?? processLabel;
+  const displayPt      = ptObj?.name       ?? ptLabel;
+
+  const members = (project.project_members ?? []) as ProjectMember[];
 
   // ── Handlers ──────────────────────────────────────────────
   function showToast(msg: string) {
@@ -164,6 +173,7 @@ export default function ProjectDetailClient({
       setProject((prev: Project) => ({
         ...prev, ...data, customer: data.customer ?? prev.customer,
       }));
+      setEditOpen(false);
       showToast("Project opgeslagen");
     } catch {
       setError("Er ging iets mis");
@@ -179,10 +189,9 @@ export default function ProjectDetailClient({
 
   // ── Render ────────────────────────────────────────────────
   return (
-    // Negative margin om de main-padding te neutraliseren → edge-to-edge layout
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
-      {/* Toast — onderin op mobiel, rechtsbovenin op desktop */}
+      {/* Toast */}
       {toast && (
         <div className="fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 sm:w-auto z-50
                         flex items-center gap-3 px-4 py-3 rounded-xl
@@ -192,19 +201,15 @@ export default function ProjectDetailClient({
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════
-          PROJECT SIDEBAR — 260px, border-right, sticky
-      ════════════════════════════════════════════════════ */}
+      {/* ════════ SIDEBAR ════════ */}
       <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
 
-        {/* Terug-link + project naam */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100">
           <Link href="/projects"
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-600 font-medium transition-colors mb-3">
             <ArrowLeft size={13} /> Terug naar projecten
           </Link>
 
-          {/* Project icon + naam + code — gelijk aan klant */}
           <div className="flex items-start gap-2.5 mb-3">
             <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center
                             justify-center flex-shrink-0 mt-0.5">
@@ -243,7 +248,7 @@ export default function ProjectDetailClient({
             </div>
           )}
 
-          {/* Gekoppelde klant — prominent blok */}
+          {/* Gekoppelde klant */}
           {currentCustomer && (
             <div className="mt-4 pt-3 border-t border-slate-100">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Klant</p>
@@ -266,8 +271,7 @@ export default function ProjectDetailClient({
                     </p>
                   )}
                 </div>
-                <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-400
-                                                    flex-shrink-0 transition-colors" />
+                <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-400 flex-shrink-0 transition-colors" />
               </Link>
             </div>
           )}
@@ -304,7 +308,7 @@ export default function ProjectDetailClient({
           })}
         </nav>
 
-        {/* Snelle metadata onderaan de sidebar */}
+        {/* Metadata onderaan */}
         <div className="mt-auto px-5 py-5 border-t border-slate-100 space-y-3 text-xs">
           {project.owner && (
             <div className="flex items-center gap-2 text-slate-500">
@@ -325,12 +329,10 @@ export default function ProjectDetailClient({
         </div>
       </aside>
 
-      {/* ════════════════════════════════════════════════════
-          TAB INHOUD — flex-1, scrollt zelf
-      ════════════════════════════════════════════════════ */}
+      {/* ════════ HOOFDINHOUD ════════ */}
       <div className="flex-1 min-w-0 overflow-y-auto bg-slate-50">
 
-        {/* Mobiele header (sidebar is hidden op mobile) */}
+        {/* Mobiele header */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-100">
           <Link href="/projects" className="text-slate-400 hover:text-brand-600 transition-colors">
             <ArrowLeft size={16} />
@@ -339,7 +341,7 @@ export default function ProjectDetailClient({
           <StatusBadge status={project.status} />
         </div>
 
-        {/* Mobiele tabs (horizontaal scrollen) */}
+        {/* Mobiele tabs */}
         <div className="lg:hidden flex gap-1 px-4 py-2 bg-white border-b border-slate-100 overflow-x-auto">
           {TABS.map(tab => {
             const Icon   = tab.icon;
@@ -356,150 +358,312 @@ export default function ProjectDetailClient({
           })}
         </div>
 
-        {/* ── Tab: Algemeen (edit) ──────────────────────── */}
+        {/* ── Tab: Algemeen ──────────────────────────────── */}
         {activeTab === "algemeen" && (
-          <div className="p-6 max-w-2xl space-y-6">
-            <div>
-              <h2 className="text-base font-semibold text-slate-700 mb-4">Projectgegevens</h2>
+          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
 
-              {!isOwnerOrMember && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200
-                                rounded-xl text-sm text-amber-700 mb-4">
-                  <AlertCircle size={14} className="flex-shrink-0" />
-                  Je hebt geen rechten om dit project te bewerken.
-                </div>
-              )}
-              {error && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200
-                                rounded-xl text-sm text-red-700 mb-4">
-                  <AlertCircle size={14} className="flex-shrink-0" /> {error}
-                </div>
-              )}
-            </div>
-
-            {/* Projectcode — readonly */}
-            {project.code && (
-              <div className="mb-2">
-                <label className="label">Projectcode</label>
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 font-mono">
-                  <Hash size={13} className="text-slate-400" />
-                  {project.code}
-                  <span className="ml-auto text-[10px] text-slate-400 font-sans">Niet wijzigbaar</span>
-                </div>
-              </div>
-            )}
-
-            {/* Naam */}
-            <div>
-              <label className="label">Naam *</label>
-              <input
-                value={edit.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setEdit((p: EditState) => ({ ...p, name: e.target.value }))
-                }
-                disabled={!isOwnerOrMember}
-                className="input"
-                placeholder="Projectnaam"
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="label">Status</label>
-              <div className="flex gap-2 flex-wrap mt-1">
-                {STATUS_OPTIONS.map(s => (
-                  <button key={s.value} type="button"
-                    disabled={!isOwnerOrMember}
-                    onClick={() => setEdit((p: EditState) => ({ ...p, status: s.value }))}
-                    className={clsx(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
-                      edit.status === s.value
-                        ? "ring-2 ring-brand-400 ring-offset-1 border-transparent " + (
-                            s.value === "active"      ? "bg-brand-50 text-brand-700" :
-                            s.value === "in-progress" ? "bg-amber-50 text-amber-700" :
-                            "bg-slate-100 text-slate-600"
-                          )
-                        : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                    )}>
-                    <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", s.dot)} />
-                    {s.label}
+            {/* ── PROJECTOVERZICHT (altijd zichtbaar) ── */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              {/* Header van de kaart */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Projectoverzicht</h2>
+                {isOwnerOrMember && (
+                  <button
+                    onClick={() => setEditOpen(v => !v)}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
+                               px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium"
+                  >
+                    <Pencil size={12} />
+                    {editOpen ? "Sluiten" : "Bewerken"}
                   </button>
-                ))}
+                )}
+              </div>
+
+              {/* Info grid */}
+              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+
+                {/* Naam */}
+                <DataRow label="Naam">
+                  <span className="font-medium">{project.name}</span>
+                </DataRow>
+
+                {/* Status */}
+                <DataRow label="Status">
+                  <StatusBadge status={project.status} />
+                </DataRow>
+
+                {/* Klant */}
+                {currentCustomer && (
+                  <DataRow label="Klant">
+                    <Link
+                      href={`/customers/${(currentCustomer as any).id}`}
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700
+                                 font-medium transition-colors"
+                    >
+                      <Building2 size={13} />
+                      {(currentCustomer as any).name}
+                    </Link>
+                  </DataRow>
+                )}
+
+                {/* Eigenaar */}
+                {project.owner && (
+                  <DataRow label="Eigenaar">
+                    <div className="flex items-center gap-2">
+                      <Avatar
+                        name={(project.owner as any).full_name}
+                        url={(project.owner as any).avatar_url}
+                        size="xs"
+                      />
+                      <span>{(project.owner as any).full_name}</span>
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Startdatum */}
+                {project.start_date && (
+                  <DataRow label="Startdatum">
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                      <Calendar size={13} className="text-slate-400" />
+                      {formatDate(project.start_date)}
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Einddatum */}
+                {project.end_date && (
+                  <DataRow label="Einddatum">
+                    <div className={clsx(
+                      "flex items-center gap-1.5",
+                      isOverdue ? "text-red-600 font-semibold" : "text-slate-600"
+                    )}>
+                      <Calendar size={13} className={isOverdue ? "text-red-400" : "text-slate-400"} />
+                      {formatDate(project.end_date)}
+                      {isOverdue && (
+                        <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md">
+                          verlopen
+                        </span>
+                      )}
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Thema */}
+                {displayTheme && (
+                  <DataRow label="Thema">
+                    <div className="flex items-center gap-1.5">
+                      <Tag size={13} className="text-slate-400" />
+                      {displayTheme}
+                      {displayProcess && (
+                        <span className="text-slate-400">›</span>
+                      )}
+                      {displayProcess && (
+                        <span className="text-slate-600">{displayProcess}</span>
+                      )}
+                      {displayPt && (
+                        <>
+                          <span className="text-slate-400">›</span>
+                          <span className="text-slate-500">{displayPt}</span>
+                        </>
+                      )}
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Teamleden */}
+                {members.length > 0 && (
+                  <DataRow label={`Team (${members.length})`}>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {members.slice(0, 5).map(m => (
+                        <div
+                          key={m.user_id}
+                          title={(m.profile as any)?.full_name ?? "Onbekend"}
+                        >
+                          <Avatar
+                            name={(m.profile as any)?.full_name}
+                            url={(m.profile as any)?.avatar_url}
+                            size="xs"
+                          />
+                        </div>
+                      ))}
+                      {members.length > 5 && (
+                        <span className="text-xs text-slate-400 ml-1">
+                          +{members.length - 5}
+                        </span>
+                      )}
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Taken voortgang */}
+                {totalSubs > 0 && (
+                  <DataRow label="Voortgang taken">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>{doneSubs} van {totalSubs} afgerond</span>
+                        <span className="font-bold text-slate-700">{pct}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={clsx(
+                            "h-full rounded-full transition-all duration-500",
+                            pct === 100 ? "bg-emerald-500" : pct >= 50 ? "bg-brand-500" : "bg-amber-400"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </DataRow>
+                )}
+
+                {/* Beschrijving — full-width */}
+                {project.description && (
+                  <div className="sm:col-span-2">
+                    <DataRow label="Beschrijving">
+                      <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">
+                        {project.description}
+                      </p>
+                    </DataRow>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Beschrijving */}
-            <div>
-              <label className="label">Beschrijving</label>
-              <textarea
-                value={edit.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setEdit((p: EditState) => ({ ...p, description: e.target.value }))
-                }
-                disabled={!isOwnerOrMember}
-                placeholder="Beschrijving (optioneel)"
-                rows={4}
-                className="input resize-none"
-              />
-            </div>
-
-            {/* Klant */}
-            <div>
-              <label className="label">Klant</label>
-              <CustomerSelectWithCreate
-                value={edit.customer_id}
-                onChange={(id: string | null) => setEdit((p: EditState) => ({ ...p, customer_id: id }))}
-                customers={customers}
-                onCustomerCreated={handleCustomerCreated}
-              />
-            </div>
-
-            {/* Datums */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Startdatum</label>
-                <input type="date"
-                  value={edit.start_date}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setEdit((p: EditState) => ({ ...p, start_date: e.target.value }))
-                  }
-                  disabled={!isOwnerOrMember}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">Einddatum</label>
-                <input type="date"
-                  value={edit.end_date}
-                  min={edit.start_date || undefined}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setEdit((p: EditState) => ({ ...p, end_date: e.target.value }))
-                  }
-                  disabled={!isOwnerOrMember}
-                  className="input"
-                />
-              </div>
-            </div>
-
-            {/* Opslaan */}
+            {/* ── BEWERKFORMULIER (inklapbaar) ── */}
             {isOwnerOrMember && (
-              <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                <button onClick={handleSave} disabled={saving} className="btn-primary">
-                  {saving
-                    ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-                    : <><Check size={14} /> Opslaan</>
-                  }
-                </button>
-                <button
-                  onClick={() => setEdit({
-                    name: project.name, description: project.description ?? "",
-                    status: project.status, start_date: project.start_date ?? "",
-                    end_date: project.end_date ?? "", customer_id: project.customer_id,
-                  })}
-                  className="btn-outline"
-                >
-                  <X size={14} /> Reset
-                </button>
+              <div className={clsx(
+                "bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all",
+                !editOpen && "hidden"
+              )}>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-700">Gegevens bewerken</h2>
+                  <button
+                    onClick={() => setEditOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div className="px-5 py-5 space-y-5">
+                  {error && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200
+                                    rounded-xl text-sm text-red-700">
+                      <AlertCircle size={14} className="flex-shrink-0" /> {error}
+                    </div>
+                  )}
+
+                  {/* Naam */}
+                  <div>
+                    <label className="label">Naam *</label>
+                    <input
+                      value={edit.name}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setEdit((p: EditState) => ({ ...p, name: e.target.value }))
+                      }
+                      className="input"
+                      placeholder="Projectnaam"
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="label">Status</label>
+                    <div className="flex gap-2 flex-wrap mt-1">
+                      {STATUS_OPTIONS.map(s => (
+                        <button key={s.value} type="button"
+                          onClick={() => setEdit((p: EditState) => ({ ...p, status: s.value }))}
+                          className={clsx(
+                            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                            edit.status === s.value
+                              ? "ring-2 ring-brand-400 ring-offset-1 border-transparent " + (
+                                  s.value === "active"      ? "bg-brand-50 text-brand-700" :
+                                  s.value === "in-progress" ? "bg-amber-50 text-amber-700" :
+                                  "bg-slate-100 text-slate-600"
+                                )
+                              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                          )}>
+                          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", s.dot)} />
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Beschrijving */}
+                  <div>
+                    <label className="label">Beschrijving</label>
+                    <textarea
+                      value={edit.description}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setEdit((p: EditState) => ({ ...p, description: e.target.value }))
+                      }
+                      placeholder="Beschrijving (optioneel)"
+                      rows={4}
+                      className="input resize-none"
+                    />
+                  </div>
+
+                  {/* Klant */}
+                  <div>
+                    <label className="label">Klant</label>
+                    <CustomerSelectWithCreate
+                      value={edit.customer_id}
+                      onChange={(id: string | null) => setEdit((p: EditState) => ({ ...p, customer_id: id }))}
+                      customers={customers}
+                      onCustomerCreated={handleCustomerCreated}
+                    />
+                  </div>
+
+                  {/* Datums */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Startdatum</label>
+                      <input type="date"
+                        value={edit.start_date}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setEdit((p: EditState) => ({ ...p, start_date: e.target.value }))
+                        }
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Einddatum</label>
+                      <input type="date"
+                        value={edit.end_date}
+                        min={edit.start_date || undefined}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setEdit((p: EditState) => ({ ...p, end_date: e.target.value }))
+                        }
+                        className="input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Opslaan */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                    <button onClick={handleSave} disabled={saving} className="btn-primary">
+                      {saving
+                        ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
+                        : <><Check size={14} /> Opslaan</>
+                      }
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEdit({
+                          name: project.name, description: project.description ?? "",
+                          status: project.status, start_date: project.start_date ?? "",
+                          end_date: project.end_date ?? "", customer_id: project.customer_id,
+                        });
+                        setError(null);
+                        setEditOpen(false);
+                      }}
+                      className="btn-outline"
+                    >
+                      <X size={14} /> Annuleren
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
