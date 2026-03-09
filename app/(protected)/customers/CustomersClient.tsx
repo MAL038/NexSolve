@@ -11,6 +11,9 @@ import clsx from "clsx";
 import CustomerWizard from "@/components/CustomerWizard";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
+// Aantal kaarten per pagina — meervoud van 3 (3-kolomsgrid)
+const PAGE_SIZE = 24;
+
 interface Props {
   initialCustomers: Customer[];
   allProjects:      Project[];
@@ -33,6 +36,8 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
   const [bulkLoading,    setBulkLoading]    = useState(false);
   const [bulkError,      setBulkError]      = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState(false);
+  // ── Paginering ──────────────────────────────────────────
+  const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
   // ── Filtering ───────────────────────────────────────────
   const filtered = useMemo(() =>
@@ -46,6 +51,12 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
     }),
     [customers, search, statusFilter]
   );
+
+  // Gooi visibleCount terug naar PAGE_SIZE als de filter verandert
+  const resetPage = () => setVisibleCount(PAGE_SIZE);
+
+  const visible     = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore     = filtered.length > visibleCount;
 
   const projectCountMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -136,7 +147,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Zoeken op naam, code, stad…"
             className="pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none
                        focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 w-60"
@@ -144,7 +155,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
         </div>
         <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
           {["all", "active", "inactive"].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={clsx(
+            <button key={s} onClick={() => { setStatusFilter(s); resetPage(); }} className={clsx(
               "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               statusFilter === s
                 ? "bg-white text-brand-700 shadow-sm font-semibold"
@@ -223,7 +234,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
       ) : (
         <>
           {/* Selecteer-alles */}
-          <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center justify-between px-1">
             <button onClick={toggleAll}
               className="flex items-center gap-2 text-xs text-slate-500 hover:text-brand-600 transition-colors">
               {allFilteredSelected
@@ -232,11 +243,14 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
               }
               {allFilteredSelected ? "Alles deselecteren" : "Alles selecteren"}
             </button>
+            <span className="text-xs text-slate-400">
+              {Math.min(visibleCount, filtered.length)} van {filtered.length}
+            </span>
           </div>
 
-          {/* Card grid — identiek aan projecten */}
+          {/* Card grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((c: Customer) => {
+            {visible.map((c: Customer) => {
               const isSelected   = selected.has(c.id);
               const projectCount = projectCountMap[c.id] ?? 0;
               return (
@@ -332,10 +346,25 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
               );
             })}
           </div>
+
+          {/* Meer laden knop */}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200
+                           text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                Meer laden
+                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                  {filtered.length - visibleCount} resterend
+                </span>
+              </button>
+            </div>
+          )}
         </>
       )}
 
-      {/* Wizard */}
       {/* Nieuw aanmaken */}
       <CustomerWizard
         open={wizardOpen}

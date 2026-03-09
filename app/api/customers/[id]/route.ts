@@ -60,14 +60,15 @@ export const PATCH = apiRoute(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    await logActivity(supabase, {
+    // fire-and-forget: niet awaiten zodat de response sneller terugkomt
+    logActivity(supabase, {
       actorId: user.id,
       action: "customer.updated",
       entityType: "customer",
       entityId: id,
       entityName: data.name,
       customerId: id,
-    });
+    }).catch(() => {});
 
     return NextResponse.json(data);
   }
@@ -93,14 +94,15 @@ export const DELETE = apiRoute(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    await logActivity(supabase, {
+    // fire-and-forget
+    logActivity(supabase, {
       actorId: user.id,
       action: "customer.deleted",
       entityType: "customer",
       entityId: id,
       entityName: customer?.name,
       customerId: id,
-    });
+    }).catch(() => {});
 
     return new NextResponse(null, { status: 204 });
   }

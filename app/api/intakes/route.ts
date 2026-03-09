@@ -105,7 +105,8 @@ export async function POST(req: NextRequest) {
 
   if (intakeErr) return NextResponse.json({ error: intakeErr.message }, { status: 500 })
 
-  await logActivity(supabase, {
+  // fire-and-forget: niet awaiten zodat de response sneller terugkomt
+  logActivity(supabase, {
     actorId:    user.id,
     action:     'intake.created',
     entityType: 'project',
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
     entityName: project.name,
     projectId:  project.id,
     customerId: project.customer_id,
-  })
+  }).catch(() => {});
 
   return NextResponse.json(intake, { status: 201 })
 }

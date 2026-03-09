@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   if (projectId) query = query.eq('project_id', projectId)
   if (customerId) query = query.eq('customer_id', customerId)
-  
+
   // Cursor-based pagination
   if (cursor) query = query.lt('submitted_at', cursor)
 
@@ -43,8 +43,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     data,
-    nextCursor: data.length === PAGE_SIZE 
-      ? data[data.length - 1].submitted_at 
+    nextCursor: data.length === PAGE_SIZE
+      ? data[data.length - 1].submitted_at
       : null,
   })
 }
@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: viewError.message }, { status: 500 })
   }
 
-  // 🔔 Log
-  await logActivity(supabase, {
+  // 🔔 Log — fire-and-forget: niet awaiten zodat de response sneller terugkomt
+  logActivity(supabase, {
     actorId:    user.id,
     action:     'dossier.created',
     entityType: 'dossier',
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     projectId:  data.project_id  ?? null,
     customerId: data.customer_id ?? null,
     metadata:   { type: data.type },
-  })
+  }).catch(() => {});
 
   return NextResponse.json({ data }, { status: 201 })
 }

@@ -113,7 +113,8 @@ export const POST = apiRoute(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    await logActivity(supabase, {
+    // fire-and-forget: niet awaiten zodat de response sneller terugkomt
+    logActivity(supabase, {
       actorId: user.id,
       action: "project.created",
       entityType: "project",
@@ -121,7 +122,7 @@ export const POST = apiRoute(
       entityName: data.name,
       projectId: data.id,
       customerId: data.customer_id,
-    });
+    }).catch(() => {});
 
     return NextResponse.json(data, { status: 201 });
   }
