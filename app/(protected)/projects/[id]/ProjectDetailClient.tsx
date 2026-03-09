@@ -363,7 +363,7 @@ export default function ProjectDetailClient({
           <div className="p-5 sm:p-6 max-w-2xl space-y-5">
 
             {/* ── PROJECTOVERZICHT (altijd zichtbaar) ── */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="card overflow-hidden">
               {/* Header van de kaart */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                 <h2 className="text-sm font-semibold text-slate-700">Projectoverzicht</h2>
@@ -532,7 +532,7 @@ export default function ProjectDetailClient({
             {/* ── BEWERKFORMULIER (inklapbaar) ── */}
             {isOwnerOrMember && (
               <div className={clsx(
-                "bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all",
+                "card overflow-hidden transition-all",
                 !editOpen && "hidden"
               )}>
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">

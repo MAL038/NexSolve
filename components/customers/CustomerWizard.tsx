@@ -439,8 +439,8 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <MapPin size={16} className="text-blue-600" />
+                <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
+                  <MapPin size={16} className="text-brand-600" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">Basisgegevens</p>
@@ -536,8 +536,8 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <User size={16} className="text-violet-600" />
+                <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
+                  <User size={16} className="text-brand-600" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">Contactpersoon</p>
@@ -728,8 +728,7 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
             <button
               onClick={handleNext}
               disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold
-                hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200 disabled:opacity-60"
+              className="btn-primary"
             >
               {loading ? (
                 <><Loader2 size={15} className="animate-spin" /> Opslaan…</>
@@ -742,8 +741,7 @@ function CustomerWizardDefault({ open, allProjects, onClose, onCreated }: Props)
           ) : (
             <button
               onClick={onClose}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold
-                hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200"
+              className="btn-primary"
             >
               <CheckCircle2 size={15} /> Klaar
             </button>

@@ -225,9 +225,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
         <div className="card p-16 text-center">
           <Building2 size={40} className="mx-auto text-slate-300 mb-3" />
           <p className="text-slate-500 text-sm font-medium">Geen klanten gevonden</p>
-          <button onClick={() => setWizardOpen(true)}
-            className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200
-                       text-slate-600 text-sm hover:bg-slate-50 mx-auto">
+          <button onClick={() => setWizardOpen(true)} className="btn-outline mt-4 mx-auto">
             <Plus size={14} /> Nieuwe klant aanmaken
           </button>
         </div>

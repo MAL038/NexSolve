@@ -254,7 +254,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         <div className="card p-16 text-center">
           <FolderKanban size={40} className="mx-auto text-slate-300 mb-3" />
           <p className="text-slate-500 text-sm font-medium">Geen projecten gevonden</p>
-          <button onClick={() => setShowWizard(true)} className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 mx-auto">
+          <button onClick={() => setShowWizard(true)} className="btn-outline mt-4 mx-auto">
             <Plus size={14} /> Nieuw project aanmaken
           </button>
         </div>
