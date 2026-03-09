@@ -60,8 +60,8 @@ export const GET = apiRoute(
 );
 
 export const POST = apiRoute(
-  { requireOrg: false },
-  async ({ supabase, user, body }) => {
+  { requireOrg: true },
+  async ({ supabase, user, orgId, body }) => {
     const requestBody: CreateBody = { ...(body ?? {}) };
 
     if (requestBody.autoCode === true) {
@@ -79,6 +79,7 @@ export const POST = apiRoute(
       .from("customers")
       .insert({
         owner_id: user.id,
+        org_id: orgId,
         name: fields.name,
         code: fields.code,
         status: fields.status ?? "active",
