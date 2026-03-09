@@ -182,9 +182,10 @@ export default function ProjectDetailClient({
     // Negative margin om de main-padding te neutraliseren → edge-to-edge layout
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
-      {/* Toast */}
+      {/* Toast — onderin op mobiel, rechtsbovenin op desktop */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl
+        <div className="fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 sm:w-auto z-50
+                        flex items-center gap-3 px-4 py-3 rounded-xl
                         border border-brand-200 bg-white text-brand-700 text-sm font-medium shadow-lg">
           <span className="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0" />
           {toast}

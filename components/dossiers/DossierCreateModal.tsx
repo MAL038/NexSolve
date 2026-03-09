@@ -133,7 +133,21 @@ export function DossierCreateModal({ projectId, customerId, onCreated, onCancel 
                 Klik om bestand te selecteren (max 10MB)
               </button>
             )}
-            <input ref={fileInputRef} type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0] ?? null
+                if (f && f.size > 10 * 1024 * 1024) {
+                  setError('Bestand is te groot. Maximum bestandsgrootte is 10 MB.')
+                  e.target.value = ''
+                  return
+                }
+                setError(null)
+                setFile(f)
+              }}
+            />
           </div>
 
           {/* Klant-koppeling — alleen vanuit projectcontext */}
