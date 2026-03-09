@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, name, description, status, created_at, updated_at, start_date, end_date,
       customer:customers(name),
-      owner:profiles!projects_owner_id_fkey(full_name, email),
+      owner:profiles!projects_owner_profiles_fkey(full_name, email),
       theme:themes(name),
       process:processes(name),
       subprocesses(id, title, status),

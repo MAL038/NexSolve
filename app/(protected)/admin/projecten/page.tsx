@@ -12,7 +12,7 @@ export default async function AdminProjectenPage() {
   const [{ data: projecten }, { data: eigenaren }] = await Promise.all([
     supabase
       .from("projects")
-      .select("*, customer:customers(id, name), owner:profiles!projects_owner_id_fkey(full_name, email)")
+      .select("*, customer:customers(id, name), owner:profiles!projects_owner_profiles_fkey(full_name, email)")
       .order("updated_at", { ascending: false }),
     supabase
       .from("profiles")
