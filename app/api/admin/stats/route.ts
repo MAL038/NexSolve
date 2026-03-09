@@ -49,7 +49,7 @@ export async function GET() {
     db.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'archived'),
 
     db.from('projects')
-      .select('id, name, status, updated_at, owner:profiles!projects_owner_id_fkey(full_name)')
+      .select('id, name, status, updated_at, owner:profiles!projects_owner_profiles_fkey(full_name)')
       .lt('updated_at', thirtyDaysAgo.toISOString())
       .neq('status', 'archived')
       .order('updated_at', { ascending: true })
