@@ -394,7 +394,7 @@ export default function ProjectDetailClient({
               customers={customers}
               value={edit.customer_id}
               onChange={(id) => setEdit(p => ({ ...p, customer_id: id }))}
-              onCreated={handleCustomerCreated}
+              onCustomerCreated={handleCustomerCreated}
               disabled={!isOwnerOrMember}
             />
           </div>
