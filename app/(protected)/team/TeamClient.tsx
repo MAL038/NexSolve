@@ -8,8 +8,17 @@ import {
   Building2, AlertCircle,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/lib/hooks/useToast";
 import clsx from "clsx";
 import type { Team, TeamMember, Profile } from "@/types";
+
+// ─── Constanten buiten component (geen re-create per render) ──
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Admin", member: "Teamlid", viewer: "Viewer",
+  superuser: "Superuser", projectleider: "Projectleider",
+};
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -231,13 +240,7 @@ export default function TeamClient({
   const [teamModal,    setTeamModal]    = useState<{ mode: "create" | "edit"; team?: Team } | null>(null);
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
 
-  // Toast
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 4000);
-  }
+  const { toast, showToast, clearToast } = useToast();
 
   // ─── Data laden ────────────────────────────────────────────
 
@@ -336,38 +339,29 @@ export default function TeamClient({
     }
   }
 
-  // ─── Computed ──────────────────────────────────────────────
+  // ─── Computed (memoized) ───────────────────────────────────
 
-  const pendingInvites = invites.filter(i => !i.accepted_at && new Date(i.expires_at) > new Date());
-  const expiredInvites = invites.filter(i => !i.accepted_at && new Date(i.expires_at) <= new Date());
+  const pendingInvites = useMemo(
+    () => invites.filter(i => !i.accepted_at && new Date(i.expires_at) > new Date()),
+    [invites]
+  );
+  const expiredInvites = useMemo(
+    () => invites.filter(i => !i.accepted_at && new Date(i.expires_at) <= new Date()),
+    [invites]
+  );
 
-  const ROLE_LABEL: Record<string, string> = {
-    admin: "Admin", member: "Teamlid", viewer: "Viewer",
-    superuser: "Superuser", projectleider: "Projectleider",
-  };
-
-  const TABS: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
-    { id: "members",       label: "Leden",          icon: Users,     badge: members.length    },
-    { id: "teams",         label: "Teams",           icon: Building2, badge: teams.length      },
-    { id: "uitnodigingen", label: "Uitnodigingen",   icon: Mail,      badge: pendingInvites.length > 0 ? pendingInvites.length : undefined },
-  ];
+  const TABS = useMemo<{ id: Tab; label: string; icon: React.ElementType; badge?: number }[]>(() => [
+    { id: "members",       label: "Leden",        icon: Users,     badge: members.length    },
+    { id: "teams",         label: "Teams",         icon: Building2, badge: teams.length      },
+    { id: "uitnodigingen", label: "Uitnodigingen", icon: Mail,      badge: pendingInvites.length > 0 ? pendingInvites.length : undefined },
+  ], [members.length, teams.length, pendingInvites.length]);
 
   // ─── Render ────────────────────────────────────────────────
 
   return (
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
-      {/* Toast */}
-      {toast && (
-        <div className={clsx(
-          "fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold shadow-lg",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-white border-red-200 text-red-700"
-        )}>
-          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-brand-500" : "bg-red-500")} />
-          {toast.msg}
-          <button onClick={() => setToast(null)}><X size={14} className="text-slate-400" /></button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       {/* ══ SIDEBAR ══════════════════════════════════════════ */}
       <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">

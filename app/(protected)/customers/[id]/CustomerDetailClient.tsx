@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +13,8 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { DossierList } from "@/components/dossiers/DossierList";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { relativeTime } from "@/lib/time";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
@@ -74,9 +76,10 @@ export default function CustomerDetailClient({
   const [saving,      setSaving]      = useState(false);
   const [editOpen,    setEditOpen]    = useState(false);
   const [error,       setError]       = useState<string | null>(null);
-  const [toast,       setToast]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
+
+  const { toast, showToast, clearToast } = useToast();
 
   const [edit, setEdit] = useState<EditState>({
     name:            initial.name,
@@ -95,21 +98,19 @@ export default function CustomerDetailClient({
     contact_phone:   initial.contact_phone ?? "",
   });
 
-  const stats = {
+  const stats = useMemo(() => ({
     total:    linked.length,
     active:   linked.filter((p: Project) => p.status === "active").length,
     archived: linked.filter((p: Project) => p.status === "archived").length,
-  };
+  }), [linked]);
 
-  const linkable = allProjects.filter(p =>
-    p.customer_id !== customer.id &&
-    p.name.toLowerCase().includes(linkSearch.toLowerCase())
+  const linkable = useMemo(() =>
+    allProjects.filter(p =>
+      p.customer_id !== customer.id &&
+      p.name.toLowerCase().includes(linkSearch.toLowerCase())
+    ),
+    [allProjects, customer.id, linkSearch]
   );
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
 
   function openEdit() {
     setEdit({
@@ -184,26 +185,21 @@ export default function CustomerDetailClient({
   }
 
   // Samengesteld adres
-  const addressParts = [
+  const addressParts = useMemo(() => [
     customer.address_street,
     customer.address_zip && customer.address_city
       ? `${customer.address_zip} ${customer.address_city}`
       : (customer.address_zip ?? customer.address_city ?? null),
     customer.address_country,
-  ].filter(Boolean);
+  ].filter(Boolean), [
+    customer.address_street, customer.address_zip,
+    customer.address_city,   customer.address_country,
+  ]);
 
   return (
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl
-                        border border-brand-200 bg-white text-brand-700 text-sm font-semibold shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0" />
-          {toast}
-          {saving && <Loader2 size={12} className="animate-spin text-brand-400" />}
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       {/* ══ SIDEBAR ══════════════════════════════════════════ */}
       <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
@@ -465,9 +461,10 @@ export default function CustomerDetailClient({
                 <div>
                   <label className="label">Naam *</label>
                   <input
+                    disabled={saving}
                     value={edit.name}
                     onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
-                    className="input"
+                    className="input disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="Klantnaam"
                   />
                 </div>
@@ -480,21 +477,21 @@ export default function CustomerDetailClient({
                   <div className="space-y-3">
                     <div>
                       <label className="label">E-mail</label>
-                      <input type="email" value={edit.email}
+                      <input disabled={saving} type="email" value={edit.email}
                         onChange={e => setEdit(p => ({ ...p, email: e.target.value }))}
-                        className="input" placeholder="info@bedrijf.nl" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="info@bedrijf.nl" />
                     </div>
                     <div>
                       <label className="label">Telefoon</label>
-                      <input type="tel" value={edit.phone}
+                      <input disabled={saving} type="tel" value={edit.phone}
                         onChange={e => setEdit(p => ({ ...p, phone: e.target.value }))}
-                        className="input" placeholder="+31 6 12345678" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 12345678" />
                     </div>
                     <div>
                       <label className="label">Website</label>
-                      <input type="url" value={edit.website}
+                      <input disabled={saving} type="url" value={edit.website}
                         onChange={e => setEdit(p => ({ ...p, website: e.target.value }))}
-                        className="input" placeholder="www.bedrijf.nl" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="www.bedrijf.nl" />
                     </div>
                   </div>
                 </div>
@@ -507,29 +504,29 @@ export default function CustomerDetailClient({
                   <div className="space-y-3">
                     <div>
                       <label className="label">Straat</label>
-                      <input value={edit.address_street}
+                      <input disabled={saving} value={edit.address_street}
                         onChange={e => setEdit(p => ({ ...p, address_street: e.target.value }))}
-                        className="input" placeholder="Straatnaam 1" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Straatnaam 1" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="label">Postcode</label>
-                        <input value={edit.address_zip}
+                        <input disabled={saving} value={edit.address_zip}
                           onChange={e => setEdit(p => ({ ...p, address_zip: e.target.value }))}
-                          className="input" placeholder="1234 AB" />
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="1234 AB" />
                       </div>
                       <div>
                         <label className="label">Stad</label>
-                        <input value={edit.address_city}
+                        <input disabled={saving} value={edit.address_city}
                           onChange={e => setEdit(p => ({ ...p, address_city: e.target.value }))}
-                          className="input" placeholder="Amsterdam" />
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Amsterdam" />
                       </div>
                     </div>
                     <div>
                       <label className="label">Land</label>
-                      <input value={edit.address_country}
+                      <input disabled={saving} value={edit.address_country}
                         onChange={e => setEdit(p => ({ ...p, address_country: e.target.value }))}
-                        className="input" placeholder="Nederland" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Nederland" />
                     </div>
                   </div>
                 </div>
@@ -542,27 +539,27 @@ export default function CustomerDetailClient({
                   <div className="space-y-3">
                     <div>
                       <label className="label">Naam</label>
-                      <input value={edit.contact_name}
+                      <input disabled={saving} value={edit.contact_name}
                         onChange={e => setEdit(p => ({ ...p, contact_name: e.target.value }))}
-                        className="input" placeholder="Jan Jansen" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Jan Jansen" />
                     </div>
                     <div>
                       <label className="label">Functie</label>
-                      <input value={edit.contact_role}
+                      <input disabled={saving} value={edit.contact_role}
                         onChange={e => setEdit(p => ({ ...p, contact_role: e.target.value }))}
-                        className="input" placeholder="Directeur" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Directeur" />
                     </div>
                     <div>
                       <label className="label">E-mail</label>
-                      <input type="email" value={edit.contact_email}
+                      <input disabled={saving} type="email" value={edit.contact_email}
                         onChange={e => setEdit(p => ({ ...p, contact_email: e.target.value }))}
-                        className="input" placeholder="jan@bedrijf.nl" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="jan@bedrijf.nl" />
                     </div>
                     <div>
                       <label className="label">Telefoon</label>
-                      <input type="tel" value={edit.contact_phone}
+                      <input disabled={saving} type="tel" value={edit.contact_phone}
                         onChange={e => setEdit(p => ({ ...p, contact_phone: e.target.value }))}
-                        className="input" placeholder="+31 6 87654321" />
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 87654321" />
                     </div>
                   </div>
                 </div>

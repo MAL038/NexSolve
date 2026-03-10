@@ -158,8 +158,8 @@ export interface Project {
   team_id:         string | null;
   created_at:      string;
   updated_at:      string;
-  customer?:       Pick<Customer, "id" | "name"> | null;
-  owner?:          Pick<Profile, "full_name" | "email" | "avatar_url">;
+  customer?:       Pick<Customer, "id" | "name" | "code"> | null;
+  owner?:          Pick<Profile, "id" | "full_name" | "email" | "avatar_url">;
   project_members?: ProjectMember[];
   team?:           Pick<Team, "id" | "name"> | null;
 }
