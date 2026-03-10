@@ -76,7 +76,7 @@ export const PATCH = apiRoute(
 
 export const DELETE = apiRoute(
   { requireOrg: false, parseBody: false },
-  async ({ supabase, user, params }) => {
+  async ({ req, supabase, user, params }) => {
     const { id } = params as Params;
 
     const { data: customer } = await supabase
