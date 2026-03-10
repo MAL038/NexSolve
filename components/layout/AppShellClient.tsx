@@ -96,7 +96,7 @@ export default function AppShellClient({
       </div>
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Topbar
             pt-safe: voegt env(safe-area-inset-top) toe voor de notch op iPhone.
             Met statusBarStyle="black-translucent" overlapt de status bar de app,
@@ -128,7 +128,7 @@ export default function AppShellClient({
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-clip overflow-y-auto px-4 py-4 [overscroll-behavior-y:contain] sm:px-6 sm:py-6">
+        <main className="min-h-0 flex-1 overflow-x-clip overflow-y-auto px-4 py-4 [overscroll-behavior-y:contain] sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-7xl">
             {children}
             {/* Spacer voor de home indicator (env safe-area-inset-bottom) */}
