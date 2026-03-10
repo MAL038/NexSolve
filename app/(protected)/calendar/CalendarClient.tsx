@@ -20,6 +20,15 @@ import {
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import type { Profile } from "@/types";
+import {
+  DAYS_NL,
+  MONTHS_NL,
+  getMonthGrid,
+  isSameDay,
+  parseDate,
+  projectColor,
+  toKey,
+} from "./calendarUtils";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -66,59 +75,16 @@ interface Props {
 
 // ─── Config ───────────────────────────────────────────────────
 
-const MONTHS_NL = ["Januari","Februari","Maart","April","Mei","Juni",
-                   "Juli","Augustus","September","Oktober","November","December"];
-const DAYS_NL   = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
-
 const EVENT_CFG: Record<EventType, { label: string; color: string; bg: string; dot: string; border: string }> = {
   verlof:           { label: "Verlof",           color: "text-amber-700",  bg: "bg-amber-50",  dot: "bg-amber-400",  border: "border-amber-200" },
   niet_beschikbaar: { label: "Niet beschikbaar", color: "text-red-700",    bg: "bg-red-50",    dot: "bg-red-400",    border: "border-red-200"   },
 };
-
-// Vaste kleuren per project (hash-gebaseerd)
-const PROJECT_COLORS = [
-  { bg: "bg-blue-100",   border: "border-blue-300",   text: "text-blue-800",   dot: "bg-blue-400"   },
-  { bg: "bg-violet-100", border: "border-violet-300", text: "text-violet-800", dot: "bg-violet-400" },
-  { bg: "bg-teal-100",   border: "border-teal-300",   text: "text-teal-800",   dot: "bg-teal-400"   },
-  { bg: "bg-orange-100", border: "border-orange-300", text: "text-orange-800", dot: "bg-orange-400" },
-  { bg: "bg-pink-100",   border: "border-pink-300",   text: "text-pink-800",   dot: "bg-pink-400"   },
-  { bg: "bg-cyan-100",   border: "border-cyan-300",   text: "text-cyan-800",   dot: "bg-cyan-400"   },
-  { bg: "bg-lime-100",   border: "border-lime-300",   text: "text-lime-800",   dot: "bg-lime-400"   },
-  { bg: "bg-rose-100",   border: "border-rose-300",   text: "text-rose-800",   dot: "bg-rose-400"   },
-];
-
-function projectColor(projectId: string) {
-  let h = 0;
-  for (let i = 0; i < projectId.length; i++) h = (h * 31 + projectId.charCodeAt(i)) & 0xffffffff;
-  return PROJECT_COLORS[Math.abs(h) % PROJECT_COLORS.length];
-}
 
 const SCOPE_CFG: Record<CalendarScope, { label: string; icon: React.ElementType }> = {
   mine: { label: "Mijn kalender", icon: Calendar  },
   team: { label: "Team",          icon: Users      },
   org:  { label: "Organisatie",   icon: Building2  },
 };
-
-// ─── Datum helpers ────────────────────────────────────────────
-
-function toKey(d: Date)   { return d.toISOString().slice(0, 10); }
-function parseDate(s: string) {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-function addDays(d: Date, n: number) {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth()    === b.getMonth()    &&
-         a.getDate()     === b.getDate();
-}
-function getMonthGrid(year: number, month: number): Date[] {
-  const first  = new Date(year, month, 1);
-  const offset = (first.getDay() + 6) % 7;
-  return Array.from({ length: 42 }, (_, i) => addDays(first, i - offset));
-}
 
 // ─── Capaciteitsbalk ──────────────────────────────────────────
 

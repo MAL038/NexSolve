@@ -102,3 +102,7 @@ Als je wilt, kan ik dit direct vertalen naar een concrete issuelijst (GitHub iss
 - ✅ `GET /api/admin/themas` nu ook superuser-guarded.
 - ✅ API-consolidatie gestart: `/api/admin/themes/*` is nu alias naar canonieke `/api/admin/themas/*` handlers.
 - ✅ Canonieke thema mutaties gebruiken nu RESTful `PATCH/DELETE /api/admin/themas/[id]`.
+- ✅ Werkende lint-pipeline toegevoegd via `eslint` script + `eslint.config.mjs` (JS/MJS/CJS).
+- ✅ CI quality-gate toegevoegd (`.github/workflows/quality.yml`) met typecheck, lint en build.
+- ✅ Dubbele implementatie verder opgeruimd: legacy `app/(protected)/admin/theemas/ThemasClient.tsx` verwijderd.
+- ✅ Start gemaakt met opsplitsing van grote kalender-client: datum/kleur helpers verplaatst naar `calendarUtils.ts`.
