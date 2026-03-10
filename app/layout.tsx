@@ -33,7 +33,8 @@ export const viewport: Viewport = {
   themeColor: "#0A6645",   // NEXSOLVE brand groen
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,          // toegankelijk zoomen toegestaan
+  maximumScale: 1,          // voorkomt dat de app per ongeluk ingezoomd achterblijft op iOS PWA
+  userScalable: false,      // consistente schaal/zichtbaarheid op mobiel
   viewportFit: "cover",    // env(safe-area-inset-*) voor notch & home indicator
   interactiveWidget: "resizes-content", // voorkomt layout-jumps bij mobiel toetsenbord
 };
@@ -41,7 +42,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl" className={poppins.variable}>
-      <body>
+      <body className="overscroll-x-none">
         {children}
         {/* Registreer service worker voor PWA offline-ondersteuning */}
         <ServiceWorkerRegister />

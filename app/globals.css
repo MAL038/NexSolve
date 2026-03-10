@@ -33,13 +33,15 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     width: 100%;
-    overflow-x: hidden;
+    min-height: 100%;
+    overflow-x: clip;
   }
 
   body {
     @apply bg-slate-50 text-slate-800;
     width: 100%;
-    overflow-x: hidden;
+    min-height: 100%;
+    overflow-x: clip;
   }
 
   /*
@@ -51,7 +53,7 @@
     input,
     select,
     textarea {
-      font-size: 16px;
+      font-size: 16px !important;
     }
   }
 
