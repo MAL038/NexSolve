@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
@@ -14,11 +14,13 @@ import Avatar from "@/components/ui/Avatar";
 import MembersPanel from "@/components/ui/MembersPanel";
 import SubprocessesPanel from "@/components/ui/SubprocessesPanel";
 import PdfExportButton from "@/components/ui/PdfExportButton";
+import Toast from "@/components/ui/Toast";
 import { CustomerSelectWithCreate } from "@/components/customers/CustomerSelectWithCreate";
 import { DossierList } from "@/components/dossiers/DossierList";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import IntakeTab from "@/components/projects/IntakeTab";
 import { formatDate, relativeTime } from "@/lib/time";
+import { useToast } from "@/lib/hooks/useToast";
 import clsx from "clsx";
 import type {
   Project, Subprocess, ThemeWithChildren,
@@ -101,8 +103,9 @@ export default function ProjectDetailClient({
   const [activeTab, setActiveTab] = useState<Tab>("algemeen");
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [toast,     setToast]     = useState<string | null>(null);
-  const [editOpen,  setEditOpen]  = useState(false);  // inklapbaar bewerkformulier
+  const [editOpen,  setEditOpen]  = useState(false);
+
+  const { toast, showToast, clearToast } = useToast();
 
   const [edit, setEdit] = useState<EditState>({
     name:        initialProject.name,
@@ -113,30 +116,43 @@ export default function ProjectDetailClient({
     customer_id: initialProject.customer_id,
   });
 
-  // ── Derived ───────────────────────────────────────────────
-  const themeObj    = hierarchy.find(t => t.id === project.theme_id);
-  const processObj  = themeObj?.processes?.find(p => p.id === project.process_id);
-  const ptObj       = processObj?.process_types?.find(pt => pt.id === project.process_type_id);
-  const doneSubs    = subprocesses.filter(s => s.status === "done").length;
-  const totalSubs   = subprocesses.length;
-  const pct         = totalSubs > 0 ? Math.round((doneSubs / totalSubs) * 100) : 0;
-  const isOverdue   = !!project.end_date && new Date(project.end_date) < new Date();
-  const currentCustomer = customers.find((c: Customer) => c.id === project.customer_id)
-    ?? (project.customer as Customer | null);
+  // ── Derived (memoized) ────────────────────────────────────
+  const { themeObj, processObj, ptObj, displayTheme, displayProcess, displayPt } = useMemo(() => {
+    const themeObj   = hierarchy.find(t => t.id === project.theme_id);
+    const processObj = themeObj?.processes?.find(p => p.id === project.process_id);
+    const ptObj      = processObj?.process_types?.find(pt => pt.id === project.process_type_id);
+    return {
+      themeObj,
+      processObj,
+      ptObj,
+      displayTheme:   themeObj?.name   ?? themeLabel,
+      displayProcess: processObj?.name ?? processLabel,
+      displayPt:      ptObj?.name      ?? ptLabel,
+    };
+  }, [hierarchy, project.theme_id, project.process_id, project.process_type_id, themeLabel, processLabel, ptLabel]);
 
-  // Labels: gebruik server-side opgeloste labels als fallback
-  const displayTheme   = themeObj?.name    ?? themeLabel;
-  const displayProcess = processObj?.name  ?? processLabel;
-  const displayPt      = ptObj?.name       ?? ptLabel;
+  const { doneSubs, totalSubs, pct } = useMemo(() => {
+    const doneSubs  = subprocesses.filter(s => s.status === "done").length;
+    const totalSubs = subprocesses.length;
+    return { doneSubs, totalSubs, pct: totalSubs > 0 ? Math.round((doneSubs / totalSubs) * 100) : 0 };
+  }, [subprocesses]);
 
-  const members = (project.project_members ?? []) as ProjectMember[];
+  const isOverdue = useMemo(
+    () => !!project.end_date && new Date(project.end_date) < new Date(),
+    [project.end_date]
+  );
+
+  const currentCustomer = useMemo(
+    () => customers.find(c => c.id === project.customer_id) ?? project.customer ?? null,
+    [customers, project.customer_id, project.customer]
+  );
+
+  const members = useMemo(
+    () => (project.project_members ?? []) as ProjectMember[],
+    [project.project_members]
+  );
 
   // ── Handlers ──────────────────────────────────────────────
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
-
   function handleTabClick(tab: Tab) {
     if (tab === "algemeen") {
       setEdit({
@@ -191,15 +207,7 @@ export default function ProjectDetailClient({
   return (
     <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-4 left-4 right-4 sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 sm:w-auto z-50
-                        flex items-center gap-3 px-4 py-3 rounded-xl
-                        border border-brand-200 bg-white text-brand-700 text-sm font-medium shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0" />
-          {toast}
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       {/* ════════ SIDEBAR ════════ */}
       <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
@@ -253,7 +261,7 @@ export default function ProjectDetailClient({
             <div className="mt-4 pt-3 border-t border-slate-100">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Klant</p>
               <Link
-                href={`/customers/${(currentCustomer as any).id}`}
+                href={`/customers/${currentCustomer.id}`}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200
                            bg-white hover:border-brand-300 hover:bg-brand-50/40 transition-all group"
               >
@@ -263,11 +271,11 @@ export default function ProjectDetailClient({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-700 group-hover:text-brand-700
                                  transition-colors truncate">
-                    {(currentCustomer as any).name}
+                    {currentCustomer.name}
                   </p>
-                  {(currentCustomer as any).code && (
+                  {currentCustomer.code && (
                     <p className="text-[10px] font-mono text-slate-400">
-                      #{(currentCustomer as any).code}
+                      #{currentCustomer.code}
                     </p>
                   )}
                 </div>
@@ -312,8 +320,8 @@ export default function ProjectDetailClient({
         <div className="mt-auto px-5 py-5 border-t border-slate-100 space-y-3 text-xs">
           {project.owner && (
             <div className="flex items-center gap-2 text-slate-500">
-              <Avatar name={(project.owner as any).full_name} url={(project.owner as any).avatar_url} size="xs" />
-              <span className="truncate">{(project.owner as any).full_name}</span>
+              <Avatar name={project.owner.full_name} url={project.owner.avatar_url} size="xs" />
+              <span className="truncate">{project.owner.full_name}</span>
             </div>
           )}
           {project.end_date && (
@@ -364,7 +372,6 @@ export default function ProjectDetailClient({
 
             {/* ── PROJECTOVERZICHT (altijd zichtbaar) ── */}
             <div className="card overflow-hidden">
-              {/* Header van de kaart */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                 <h2 className="text-sm font-semibold text-slate-700">Projectoverzicht</h2>
                 {isOwnerOrMember && (
@@ -379,48 +386,36 @@ export default function ProjectDetailClient({
                 )}
               </div>
 
-              {/* Info grid */}
               <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-
-                {/* Naam */}
                 <DataRow label="Naam">
                   <span className="font-medium">{project.name}</span>
                 </DataRow>
 
-                {/* Status */}
                 <DataRow label="Status">
                   <StatusBadge status={project.status} />
                 </DataRow>
 
-                {/* Klant */}
                 {currentCustomer && (
                   <DataRow label="Klant">
                     <Link
-                      href={`/customers/${(currentCustomer as any).id}`}
-                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700
-                                 font-medium transition-colors"
+                      href={`/customers/${currentCustomer.id}`}
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors"
                     >
                       <Building2 size={13} />
-                      {(currentCustomer as any).name}
+                      {currentCustomer.name}
                     </Link>
                   </DataRow>
                 )}
 
-                {/* Eigenaar */}
                 {project.owner && (
                   <DataRow label="Eigenaar">
                     <div className="flex items-center gap-2">
-                      <Avatar
-                        name={(project.owner as any).full_name}
-                        url={(project.owner as any).avatar_url}
-                        size="xs"
-                      />
-                      <span>{(project.owner as any).full_name}</span>
+                      <Avatar name={project.owner.full_name} url={project.owner.avatar_url} size="xs" />
+                      <span>{project.owner.full_name}</span>
                     </div>
                   </DataRow>
                 )}
 
-                {/* Startdatum */}
                 {project.start_date && (
                   <DataRow label="Startdatum">
                     <div className="flex items-center gap-1.5 text-slate-600">
@@ -430,7 +425,6 @@ export default function ProjectDetailClient({
                   </DataRow>
                 )}
 
-                {/* Einddatum */}
                 {project.end_date && (
                   <DataRow label="Einddatum">
                     <div className={clsx(
@@ -448,54 +442,32 @@ export default function ProjectDetailClient({
                   </DataRow>
                 )}
 
-                {/* Thema */}
                 {displayTheme && (
                   <DataRow label="Thema">
                     <div className="flex items-center gap-1.5">
                       <Tag size={13} className="text-slate-400" />
                       {displayTheme}
-                      {displayProcess && (
-                        <span className="text-slate-400">›</span>
-                      )}
-                      {displayProcess && (
-                        <span className="text-slate-600">{displayProcess}</span>
-                      )}
-                      {displayPt && (
-                        <>
-                          <span className="text-slate-400">›</span>
-                          <span className="text-slate-500">{displayPt}</span>
-                        </>
-                      )}
+                      {displayProcess && <><span className="text-slate-400">›</span><span className="text-slate-600">{displayProcess}</span></>}
+                      {displayPt      && <><span className="text-slate-400">›</span><span className="text-slate-500">{displayPt}</span></>}
                     </div>
                   </DataRow>
                 )}
 
-                {/* Teamleden */}
                 {members.length > 0 && (
                   <DataRow label={`Team (${members.length})`}>
                     <div className="flex items-center gap-1 flex-wrap">
                       {members.slice(0, 5).map(m => (
-                        <div
-                          key={m.user_id}
-                          title={(m.profile as any)?.full_name ?? "Onbekend"}
-                        >
-                          <Avatar
-                            name={(m.profile as any)?.full_name}
-                            url={(m.profile as any)?.avatar_url}
-                            size="xs"
-                          />
+                        <div key={m.user_id} title={m.profile?.full_name ?? "Onbekend"}>
+                          <Avatar name={m.profile?.full_name} url={m.profile?.avatar_url} size="xs" />
                         </div>
                       ))}
                       {members.length > 5 && (
-                        <span className="text-xs text-slate-400 ml-1">
-                          +{members.length - 5}
-                        </span>
+                        <span className="text-xs text-slate-400 ml-1">+{members.length - 5}</span>
                       )}
                     </div>
                   </DataRow>
                 )}
 
-                {/* Taken voortgang */}
                 {totalSubs > 0 && (
                   <DataRow label="Voortgang taken">
                     <div className="space-y-1.5">
@@ -516,7 +488,6 @@ export default function ProjectDetailClient({
                   </DataRow>
                 )}
 
-                {/* Beschrijving — full-width */}
                 {project.description && (
                   <div className="sm:col-span-2">
                     <DataRow label="Beschrijving">
@@ -531,10 +502,7 @@ export default function ProjectDetailClient({
 
             {/* ── BEWERKFORMULIER (inklapbaar) ── */}
             {isOwnerOrMember && (
-              <div className={clsx(
-                "card overflow-hidden transition-all",
-                !editOpen && "hidden"
-              )}>
+              <div className={clsx("card overflow-hidden transition-all", !editOpen && "hidden")}>
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                   <h2 className="text-sm font-semibold text-slate-700">Gegevens bewerken</h2>
                   <button
@@ -557,11 +525,12 @@ export default function ProjectDetailClient({
                   <div>
                     <label className="label">Naam *</label>
                     <input
+                      disabled={saving}
                       value={edit.name}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setEdit((p: EditState) => ({ ...p, name: e.target.value }))
                       }
-                      className="input"
+                      className="input disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="Projectnaam"
                     />
                   </div>
@@ -572,9 +541,10 @@ export default function ProjectDetailClient({
                     <div className="flex gap-2 flex-wrap mt-1">
                       {STATUS_OPTIONS.map(s => (
                         <button key={s.value} type="button"
+                          disabled={saving}
                           onClick={() => setEdit((p: EditState) => ({ ...p, status: s.value }))}
                           className={clsx(
-                            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+                            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-60",
                             edit.status === s.value
                               ? "ring-2 ring-brand-400 ring-offset-1 border-transparent " + (
                                   s.value === "active"      ? "bg-brand-50 text-brand-700" :
@@ -594,13 +564,14 @@ export default function ProjectDetailClient({
                   <div>
                     <label className="label">Beschrijving</label>
                     <textarea
+                      disabled={saving}
                       value={edit.description}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         setEdit((p: EditState) => ({ ...p, description: e.target.value }))
                       }
                       placeholder="Beschrijving (optioneel)"
                       rows={4}
-                      className="input resize-none"
+                      className="input resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -620,22 +591,24 @@ export default function ProjectDetailClient({
                     <div>
                       <label className="label">Startdatum</label>
                       <input type="date"
+                        disabled={saving}
                         value={edit.start_date}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           setEdit((p: EditState) => ({ ...p, start_date: e.target.value }))
                         }
-                        className="input"
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="label">Einddatum</label>
                       <input type="date"
+                        disabled={saving}
                         value={edit.end_date}
                         min={edit.start_date || undefined}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           setEdit((p: EditState) => ({ ...p, end_date: e.target.value }))
                         }
-                        className="input"
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -649,6 +622,7 @@ export default function ProjectDetailClient({
                       }
                     </button>
                     <button
+                      disabled={saving}
                       onClick={() => {
                         setEdit({
                           name: project.name, description: project.description ?? "",
@@ -687,8 +661,8 @@ export default function ProjectDetailClient({
               projectId={project.id}
               ownerId={project.owner_id}
               currentUserId={currentUserId}
-              owner={project.owner as any}
-              initialMembers={(project.project_members ?? []) as ProjectMember[]}
+              owner={project.owner}
+              initialMembers={members}
             />
           </div>
         )}
