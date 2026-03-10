@@ -66,7 +66,7 @@ export default function AppShellClient({
   } as React.CSSProperties : undefined;
 
   return (
-    <div className="flex min-h-dvh bg-slate-50" style={brandVars}>
+    <div className="flex min-h-screen min-h-[100svh] min-h-[100dvh] overflow-x-clip bg-slate-50" style={brandVars}>
       {/* Mobile overlay */}
       {open && (
         <button
@@ -128,7 +128,7 @@ export default function AppShellClient({
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+        <main className="flex-1 overflow-x-clip overflow-y-auto px-4 py-4 [overscroll-behavior-y:contain] sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-7xl">
             {children}
             {/* Spacer voor de home indicator (env safe-area-inset-bottom) */}

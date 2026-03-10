@@ -16,7 +16,9 @@ function slugify(name: string) {
 
 // GET /api/admin/themas
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = await guardSuperuser();
+  if (!supabase) return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+
   const { data, error } = await supabase
     .from("themes")
     .select(`id, name, slug, position, created_at,
