@@ -34,10 +34,27 @@
     /* Voorkom tekst-resize bij landscape-rotatie op iOS */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-slate-50 text-slate-800;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /*
+    iOS zoomt automatisch op form controls met een effectieve font-size <16px.
+    In combinatie met utility classes (zoals text-sm) kan dit alsnog gebeuren.
+    Daarom forceren we op touch-devices minimaal 16px voor invoervelden.
+  */
+  @media (hover: none) and (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {
