@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --ext .js,.mjs,.cjs --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "quality": "npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

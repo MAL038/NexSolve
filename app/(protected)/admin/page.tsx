@@ -36,7 +36,7 @@ export default async function AdminPage() {
     { label: "Gebruikers",    value: userCount    ?? 0, icon: Users,        href: "/admin/gebruikers",   desc: "Rollen, toegang & accounts",    color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
     { label: "Projecten",     value: projectCount ?? 0, icon: FolderKanban, href: "/projects",           desc: "Alle projecten overzien",        color: "text-brand-600",  bg: "bg-brand-50",  border: "border-brand-100"  },
     { label: "Organisaties",  value: orgCount     ?? 0, icon: Building2,    href: "/admin/organisaties", desc: "Tenants & org-instellingen",     color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-100"   },
-    { label: "Themas",        value: themeCount   ?? 0, icon: Layers,       href: "/admin/theemas",      desc: "Structuur & submodules",         color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+    { label: "Themas",        value: themeCount   ?? 0, icon: Layers,       href: "/admin/themas",      desc: "Structuur & submodules",         color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
     { label: "Rollen",        value: roleCount    ?? 0, icon: ShieldCheck,  href: "/admin/rollen",       desc: "Aangepaste projectrollen",       color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
   ];
 
@@ -77,7 +77,7 @@ export default async function AdminPage() {
           {[
             { href: "/admin/gebruikers",   icon: Users,       label: "Gebruikersbeheer",      sub: "Rollen wijzigen, accounts blokkeren of verwijderen",  color: "text-blue-500",   bg: "bg-blue-50"   },
             { href: "/admin/organisaties", icon: Building2,   label: "Organisatiebeheer",     sub: "Tenants bekijken, instellingen per organisatie",      color: "text-teal-500",   bg: "bg-teal-50"   },
-            { href: "/admin/theemas",      icon: Layers,      label: "Themas & submodules",   sub: "Categorieën en subprocessen toevoegen of aanpassen",  color: "text-violet-500", bg: "bg-violet-50" },
+            { href: "/admin/themas",      icon: Layers,      label: "Themas & submodules",   sub: "Categorieën en subprocessen toevoegen of aanpassen",  color: "text-violet-500", bg: "bg-violet-50" },
             { href: "/admin/rollen",       icon: ShieldCheck, label: "Projectrollen beheren", sub: "Aangepaste rollen voor projectteams",                 color: "text-amber-500",  bg: "bg-amber-50"  },
             { href: "/admin/instellingen", icon: Settings,    label: "Platforminstellingen",  sub: "Bedrijfsnaam, logo en projectstatussen",              color: "text-brand-500",  bg: "bg-brand-50"  },
           ].map(item => (

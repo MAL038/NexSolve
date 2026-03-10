@@ -16,6 +16,7 @@ export function DossierList({ projectId, customerId }: Props) {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [selectedDossier, setSelectedDossier] = useState<DossierWithDetails | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchDossiers = useCallback(async (cursor?: string) => {
     const params = new URLSearchParams()
@@ -23,19 +24,34 @@ export function DossierList({ projectId, customerId }: Props) {
     if (customerId) params.set('customer_id', customerId)
     if (cursor) params.set('cursor', cursor)
 
-    const res = await fetch(`/api/dossiers?${params}`)
-    const json = await res.json()
+    try {
+      setError(null)
+      const res = await fetch(`/api/dossiers?${params.toString()}`, { cache: 'no-store' })
+      const json = await res.json().catch(() => ({}))
 
-    if (cursor) {
-      setDossiers(prev => [...prev, ...json.data])
-    } else {
-      setDossiers(json.data ?? [])
+      if (!res.ok) {
+        throw new Error(json?.error ?? 'Dossiers konden niet geladen worden')
+      }
+
+      const rows = Array.isArray(json.data) ? json.data : []
+      if (cursor) {
+        setDossiers(prev => [...prev, ...rows])
+      } else {
+        setDossiers(rows)
+      }
+      setNextCursor(json.nextCursor ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Onbekende fout bij laden van dossiers')
+      if (!cursor) {
+        setDossiers([])
+      }
+    } finally {
+      setIsLoading(false)
     }
-    setNextCursor(json.nextCursor)
-    setIsLoading(false)
   }, [projectId, customerId])
 
   useEffect(() => {
+    setIsLoading(true)
     fetchDossiers()
   }, [fetchDossiers])
 
@@ -71,6 +87,12 @@ export function DossierList({ projectId, customerId }: Props) {
           Nieuw dossier
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Lege staat */}
       {dossiers.length === 0 && (

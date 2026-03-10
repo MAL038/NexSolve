@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,17 +25,36 @@
   }
 
   html {
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-poppins), sans-serif;
     -webkit-font-smoothing: antialiased;
     /* Soepel momentum-scrollen op iOS */
     -webkit-overflow-scrolling: touch;
     /* Voorkom tekst-resize bij landscape-rotatie op iOS */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    width: 100%;
+    min-height: 100%;
+    overflow-x: clip;
   }
 
   body {
     @apply bg-slate-50 text-slate-800;
+    width: 100%;
+    min-height: 100%;
+    overflow-x: clip;
+  }
+
+  /*
+    iOS zoomt automatisch op form controls met een effectieve font-size <16px.
+    In combinatie met utility classes (zoals text-sm) kan dit alsnog gebeuren.
+    Daarom forceren we op touch-devices minimaal 16px voor invoervelden.
+  */
+  @media (hover: none) and (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {
