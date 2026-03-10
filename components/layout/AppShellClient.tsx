@@ -6,9 +6,13 @@ import { Menu, X } from "lucide-react";
 export default function AppShellClient({
   sidebar,
   children,
+  primaryColor,
+  accentColor,
 }: {
   sidebar: React.ReactNode;
   children: React.ReactNode;
+  primaryColor?: string | null;
+  accentColor?: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -33,7 +37,13 @@ export default function AppShellClient({
     // ── FIX: h-dvh + overflow-hidden i.p.v. min-h-dvh ──────────
     // De shell is exact het viewport. Scrollen gebeurt BINNEN de
     // main of binnen de DetailPageShell — nooit op de body zelf.
-    <div className="flex h-dvh overflow-hidden bg-slate-50">
+    <div
+      className="flex h-dvh overflow-hidden bg-slate-50"
+      style={{
+        ...(primaryColor ? { "--color-brand": primaryColor } as React.CSSProperties : {}),
+        ...(accentColor  ? { "--color-accent": accentColor  } as React.CSSProperties : {}),
+      }}
+    >
 
       {/* Mobile overlay */}
       {open && (
