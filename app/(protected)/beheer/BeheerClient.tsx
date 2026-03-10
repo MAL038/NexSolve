@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   Building2, Save, Check, X, Globe, Palette,
   ToggleLeft, ToggleRight, Crown, FolderKanban,
-  Users, ClipboardList, CalendarDays, Clock,
+  Users, ClipboardList, CalendarDays,
   BarChart3, UserPlus, Mail, Trash2, Activity,
   ShieldCheck, TrendingUp,
 } from "lucide-react";
@@ -13,6 +13,8 @@ import clsx from "clsx";
 import { formatDate } from "@/lib/time";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirm } from "@/lib/hooks/useConfirm";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 
 type OrgPlan   = "trial" | "starter" | "pro" | "enterprise";
 type OrgModule = "projects" | "customers" | "intake" | "planning" | "hrm" | "calendar";
@@ -85,12 +87,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     activity.length === 50 ? activity[activity.length - 1].created_at : null
   );
 
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
+  const { toast, showToast, clearToast } = useToast();
 
   // ── Instellingen ────────────────────────────────────────────
   async function handleSaveOrg() {
@@ -174,16 +171,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Toast */}
-      {toast && (
-        <div className={clsx(
-          "fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center gap-2",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-red-50 border-red-200 text-red-700"
-        )}>
-          {toast.ok ? <Check size={14} /> : <X size={14} />}
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-5">

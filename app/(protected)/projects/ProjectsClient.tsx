@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,6 +14,10 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import ProjectWizard from "@/components/projects/ProjectWizard";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirm } from "@/lib/hooks/useConfirm";
+import FavouriteButton from "@/components/ui/FavouriteButton";
+import TrashPanel from "@/components/trash/TrashPanel";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import EmptyState, { EmptySearch } from "@/components/ui/EmptyState";
 import type { Project, ThemeWithChildren, ProjectStatus } from "@/types";
 
 // Aantal kaarten per pagina — meervoud van 3 (3-kolomsgrid)
@@ -60,6 +64,19 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [themeDropdown,  setThemeDropdown]  = useState(false);
   const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
+  const [activeView,     setActiveView]     = useState<"list" | "trash">("list");
+  const [favouriteIds,   setFavouriteIds]   = useState<Set<string>>(new Set());
+  const [loadingFavs,    setLoadingFavs]    = useState(true);
+
+  useEffect(() => {
+    fetch("/api/favourites")
+      .then(r => r.json())
+      .then((favs: Array<{ entity_id: string }>) => {
+        setFavouriteIds(new Set(favs.map(f => f.entity_id)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFavs(false));
+  }, []);
 
   const filtered = useMemo(() => {
     return projects.filter((p: Project) => {
@@ -102,7 +119,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
     const ids = activeSelected.map((p: Project) => p.id);
     if (action === "delete" && !(await requestConfirm({
       title:        `${ids.length} project${ids.length !== 1 ? "en" : ""} verwijderen?`,
-      description:  "Dit kan niet ongedaan worden gemaakt.",
+      description:  "Items worden naar de prullenbak verplaatst.",
       confirmLabel: "Verwijderen",
       variant:      "danger",
     }))) return;
@@ -130,7 +147,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   async function handleDelete(id: string) {
     if (!(await requestConfirm({
       title:        "Project verwijderen?",
-      description:  "Dit kan niet ongedaan worden gemaakt.",
+      description:  "Het project wordt naar de prullenbak verplaatst.",
       confirmLabel: "Verwijderen",
       variant:      "danger",
     }))) return;
@@ -153,205 +170,238 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
             {filtered.length} project{filtered.length !== 1 ? "en" : ""}{themeFilter && ` · ${hierarchy.find(t => t.slug === themeFilter)?.name ?? themeFilter}`}
           </p>
         </div>
-        <button onClick={() => setShowWizard(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200">
-          <Plus size={15} /> Nieuw project
-        </button>
-      </div>
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }} placeholder="Zoeken…"
-            className="pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 w-52" />
-        </div>
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
-          {["all","active","in-progress","archived"].map(s => (
-            <button key={s} onClick={() => { setStatusFilter(s); setVisibleCount(PAGE_SIZE); }} className={clsx(
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-              statusFilter === s ? "bg-white text-brand-700 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700"
-            )}>
-              {s === "all" ? "Alle" : s === "active" ? "Actief" : s === "in-progress" ? "In uitvoering" : "Gearchiveerd"}
-            </button>
-          ))}
-        </div>
-
-        {/* Thema filter */}
-        <div className="relative">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setThemeDropdown((v: boolean) => !v)}
+            onClick={() => setActiveView(v => v === "trash" ? "list" : "trash")}
             className={clsx(
-              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
-              themeFilter
-                ? "bg-brand-50 text-brand-700 border-brand-200"
-                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-            )}>
-            <Layers size={12} />
-            {themeFilter ? hierarchy.find(t => t.slug === themeFilter)?.name ?? themeFilter : "Thema"}
-            <ChevronDown size={11} className={clsx("transition-transform", themeDropdown && "rotate-180")} />
+              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all",
+              activeView === "trash"
+                ? "bg-red-50 text-red-600 border-red-200"
+                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+            )}
+          >
+            <Trash2 size={14} /> Prullenbak
           </button>
-          {themeDropdown && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setThemeDropdown(false)} />
-              <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden min-w-[180px]">
-                <button onClick={() => { setThemeFilter(""); setProcessFilter(""); setThemeDropdown(false); }}
-                  className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
-                    !themeFilter ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-600 hover:bg-slate-50")}>
-                  Alle thema&apos;s
-                </button>
-                {hierarchy.map(t => (
-                  <div key={t.id}>
-                    <button
-                      onClick={() => { setThemeFilter(t.slug ?? ""); setProcessFilter(""); setThemeDropdown(false); }}
-                      className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
-                        themeFilter === t.slug ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-700 hover:bg-slate-50")}>
-                      {t.name}
-                    </button>
-                    {themeFilter === t.slug && t.processes?.map(pr => (
-                      <button key={pr.id}
-                        onClick={() => { setProcessFilter(pr.slug ?? ""); setThemeDropdown(false); }}
-                        className={clsx("w-full flex items-center gap-2 pl-8 pr-4 py-2 text-xs text-left transition-colors",
-                          processFilter === pr.slug ? "bg-brand-50 text-brand-600 font-semibold" : "text-slate-500 hover:bg-slate-50")}>
-                        <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
-                        {pr.name}
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          <button onClick={() => setShowWizard(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200">
+            <Plus size={15} /> Nieuw project
+          </button>
         </div>
-        {themeFilter && (
-          <button onClick={() => { setThemeFilter(""); setProcessFilter(""); }}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={11} /> Filter wissen
-          </button>
-        )}
       </div>
 
-      {someSelected && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-brand-600 rounded-2xl text-white shadow-lg shadow-brand-200 flex-wrap">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-brand-200" />
-            <span className="text-sm font-semibold">{activeSelected.length} geselecteerd</span>
-          </div>
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
+      {activeView === "trash" ? (
+        <TrashPanel entityType="project" />
+      ) : (
+        <>
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
-              <button onClick={() => setStatusDropdown((v: boolean) => !v)} disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-sm font-medium transition-colors">
-                Status wijzigen <ChevronDown size={13} className={clsx("transition-transform", statusDropdown && "rotate-180")} />
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }} placeholder="Zoeken…"
+                className="pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 w-52" />
+            </div>
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+              {["all","active","in-progress","archived"].map(s => (
+                <button key={s} onClick={() => { setStatusFilter(s); setVisibleCount(PAGE_SIZE); }} className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  statusFilter === s ? "bg-white text-brand-700 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700"
+                )}>
+                  {s === "all" ? "Alle" : s === "active" ? "Actief" : s === "in-progress" ? "In uitvoering" : "Gearchiveerd"}
+                </button>
+              ))}
+            </div>
+
+            {/* Thema filter */}
+            <div className="relative">
+              <button
+                onClick={() => setThemeDropdown((v: boolean) => !v)}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
+                  themeFilter
+                    ? "bg-brand-50 text-brand-700 border-brand-200"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                )}>
+                <Layers size={12} />
+                {themeFilter ? hierarchy.find(t => t.slug === themeFilter)?.name ?? themeFilter : "Thema"}
+                <ChevronDown size={11} className={clsx("transition-transform", themeDropdown && "rotate-180")} />
               </button>
-              {statusDropdown && (
+              {themeDropdown && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setStatusDropdown(false)} />
-                  <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden min-w-[160px]">
-                    {STATUS_OPTIONS.map(opt => (
-                      <button key={opt.value} onClick={() => bulkAction("status", opt.value)}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
-                        <span className={clsx("w-2 h-2 rounded-full",
-                          opt.value === "active" ? "bg-brand-500" : opt.value === "in-progress" ? "bg-amber-400" : "bg-slate-400")} />
-                        {opt.label}
-                      </button>
+                  <div className="fixed inset-0 z-10" onClick={() => setThemeDropdown(false)} />
+                  <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden min-w-[180px]">
+                    <button onClick={() => { setThemeFilter(""); setProcessFilter(""); setThemeDropdown(false); }}
+                      className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
+                        !themeFilter ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-600 hover:bg-slate-50")}>
+                      Alle thema&apos;s
+                    </button>
+                    {hierarchy.map(t => (
+                      <div key={t.id}>
+                        <button
+                          onClick={() => { setThemeFilter(t.slug ?? ""); setProcessFilter(""); setThemeDropdown(false); }}
+                          className={clsx("w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors",
+                            themeFilter === t.slug ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate-700 hover:bg-slate-50")}>
+                          {t.name}
+                        </button>
+                        {themeFilter === t.slug && t.processes?.map(pr => (
+                          <button key={pr.id}
+                            onClick={() => { setProcessFilter(pr.slug ?? ""); setThemeDropdown(false); }}
+                            className={clsx("w-full flex items-center gap-2 pl-8 pr-4 py-2 text-xs text-left transition-colors",
+                              processFilter === pr.slug ? "bg-brand-50 text-brand-600 font-semibold" : "text-slate-500 hover:bg-slate-50")}>
+                            <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
+                            {pr.name}
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </>
               )}
             </div>
-            <button onClick={() => bulkAction("delete")} disabled={bulkLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-sm font-medium transition-colors">
-              {bulkLoading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-              Verwijderen
-            </button>
-            <button onClick={clearSelection} className="p-1.5 rounded-xl bg-white/20 hover:bg-white/30 transition-colors" title="Selectie wissen">
-              <X size={14} />
-            </button>
-          </div>
-          {bulkError && <p className="w-full text-xs text-red-200 mt-1">{bulkError}</p>}
-        </div>
-      )}
-
-      {filtered.length === 0 ? (
-        <div className="card p-16 text-center">
-          <FolderKanban size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500 text-sm font-medium">Geen projecten gevonden</p>
-          <button onClick={() => setShowWizard(true)} className="btn-outline mt-4 mx-auto">
-            <Plus size={14} /> Nieuw project aanmaken
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between px-1">
-            <button onClick={toggleAll} className="flex items-center gap-2 text-xs text-slate-500 hover:text-brand-600 transition-colors">
-              {allFilteredSelected ? <CheckSquare size={15} className="text-brand-600" /> : <Square size={15} />}
-              {allFilteredSelected ? "Alles deselecteren" : "Alles selecteren"}
-            </button>
-            <span className="text-xs text-slate-400">
-              {Math.min(visibleCount, filtered.length)} van {filtered.length}
-            </span>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visible.map((p: Project) => {
-              const { theme, process } = getThemeInfo(p);
-              const themeClass = theme ? (THEME_COLORS[theme.slug] ?? THEME_COLORS.algemeen) : null;
-              const isSelected = selected.has(p.id);
-              return (
-                <div key={p.id}
-                  className={clsx("card-hover p-5 flex flex-col gap-3 group cursor-pointer relative transition-all",
-                    isSelected && "ring-2 ring-brand-500 bg-brand-50/30")}
-                  onClick={() => router.push(`/projects/${p.id}`)}>
-
-                  <div className="absolute top-3 left-3 z-10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleOne(p.id); }}>
-                    <div className={clsx("w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
-                      isSelected ? "bg-brand-600 border-brand-600" : "border-slate-300 bg-white opacity-0 group-hover:opacity-100")}>
-                      {isSelected && <svg viewBox="0 0 10 8" className="w-3 h-3"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-2 pl-4">
-                    <StatusBadge status={p.status} />
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditProject(p); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Bewerken"><Pencil size={13} /></button>
-                      <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(p.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
-                    </div>
-                  </div>
-
-                  {theme && (
-                    <div className="flex items-center gap-1.5">
-                      <span className={clsx("text-xs font-medium px-2.5 py-1 rounded-lg", themeClass)}>{theme.name}</span>
-                      {process && <span className="text-xs text-slate-400 truncate">{process.name}</span>}
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className="font-semibold text-slate-800 group-hover:text-brand-700 transition-colors leading-snug">{p.name}</h3>
-                    {p.description && <p className="text-sm text-slate-400 mt-1 line-clamp-2">{p.description}</p>}
-                  </div>
-
-                  <div className="flex items-center gap-3 mt-auto pt-2 border-t border-slate-50 flex-wrap">
-                    {p.customer && <span className="flex items-center gap-1 text-xs text-slate-400"><Building2 size={11} /> {p.customer.name}</span>}
-                    {(p as any).team && <span className="flex items-center gap-1 text-xs text-slate-400"><Users size={11} /> {(p as any).team.name}</span>}
-                    {(p as any).start_date && <span className="flex items-center gap-1 text-xs text-slate-400 ml-auto"><Calendar size={11} />{(p as any).start_date}{(p as any).end_date ? ` → ${(p as any).end_date}` : ""}</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Meer laden */}
-          {hasMore && (
-            <div className="flex justify-center pt-2">
-              <button
-                onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200
-                           text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-              >
-                Meer laden
-                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  {filtered.length - visibleCount} resterend
-                </span>
-                <ChevronRight size={13} className="text-slate-400" />
+            {themeFilter && (
+              <button onClick={() => { setThemeFilter(""); setProcessFilter(""); }}
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={11} /> Filter wissen
               </button>
+            )}
+          </div>
+
+          {someSelected && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-brand-600 rounded-2xl text-white shadow-lg shadow-brand-200 flex-wrap">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-brand-200" />
+                <span className="text-sm font-semibold">{activeSelected.length} geselecteerd</span>
+              </div>
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <div className="relative">
+                  <button onClick={() => setStatusDropdown((v: boolean) => !v)} disabled={bulkLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-sm font-medium transition-colors">
+                    Status wijzigen <ChevronDown size={13} className={clsx("transition-transform", statusDropdown && "rotate-180")} />
+                  </button>
+                  {statusDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setStatusDropdown(false)} />
+                      <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden min-w-[160px]">
+                        {STATUS_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => bulkAction("status", opt.value)}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                            <span className={clsx("w-2 h-2 rounded-full",
+                              opt.value === "active" ? "bg-brand-500" : opt.value === "in-progress" ? "bg-amber-400" : "bg-slate-400")} />
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button onClick={() => bulkAction("delete")} disabled={bulkLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-sm font-medium transition-colors">
+                  {bulkLoading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  Verwijderen
+                </button>
+                <button onClick={clearSelection} className="p-1.5 rounded-xl bg-white/20 hover:bg-white/30 transition-colors" title="Selectie wissen">
+                  <X size={14} />
+                </button>
+              </div>
+              {bulkError && <p className="w-full text-xs text-red-200 mt-1">{bulkError}</p>}
             </div>
+          )}
+
+          {loadingFavs ? (
+            <CardGridSkeleton count={6} />
+          ) : filtered.length === 0 ? (
+            search
+              ? <EmptySearch query={search} />
+              : (
+                <EmptyState
+                  icon={FolderKanban}
+                  title="Geen projecten"
+                  description="Maak je eerste project aan om te beginnen."
+                  action={
+                    <button onClick={() => setShowWizard(true)} className="btn-primary">
+                      <Plus size={14} /> Nieuw project
+                    </button>
+                  }
+                />
+              )
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-1">
+                <button onClick={toggleAll} className="flex items-center gap-2 text-xs text-slate-500 hover:text-brand-600 transition-colors">
+                  {allFilteredSelected ? <CheckSquare size={15} className="text-brand-600" /> : <Square size={15} />}
+                  {allFilteredSelected ? "Alles deselecteren" : "Alles selecteren"}
+                </button>
+                <span className="text-xs text-slate-400">
+                  {Math.min(visibleCount, filtered.length)} van {filtered.length}
+                </span>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {visible.map((p: Project) => {
+                  const { theme, process } = getThemeInfo(p);
+                  const themeClass = theme ? (THEME_COLORS[theme.slug] ?? THEME_COLORS.algemeen) : null;
+                  const isSelected = selected.has(p.id);
+                  return (
+                    <div key={p.id}
+                      className={clsx("card-hover p-5 flex flex-col gap-3 group cursor-pointer relative transition-all",
+                        isSelected && "ring-2 ring-brand-500 bg-brand-50/30")}
+                      onClick={() => router.push(`/projects/${p.id}`)}>
+
+                      <div className="absolute top-3 left-3 z-10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleOne(p.id); }}>
+                        <div className={clsx("w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                          isSelected ? "bg-brand-600 border-brand-600" : "border-slate-300 bg-white opacity-0 group-hover:opacity-100")}>
+                          {isSelected && <svg viewBox="0 0 10 8" className="w-3 h-3"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-2 pl-4">
+                        <StatusBadge status={p.status} />
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <FavouriteButton
+                            entityType="project"
+                            entityId={p.id}
+                            initialFav={favouriteIds.has(p.id)}
+                          />
+                          <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditProject(p); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Bewerken"><Pencil size={13} /></button>
+                          <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(p.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
+                        </div>
+                      </div>
+
+                      {theme && (
+                        <div className="flex items-center gap-1.5">
+                          <span className={clsx("text-xs font-medium px-2.5 py-1 rounded-lg", themeClass)}>{theme.name}</span>
+                          {process && <span className="text-xs text-slate-400 truncate">{process.name}</span>}
+                        </div>
+                      )}
+
+                      <div>
+                        <h3 className="font-semibold text-slate-800 group-hover:text-brand-700 transition-colors leading-snug">{p.name}</h3>
+                        {p.description && <p className="text-sm text-slate-400 mt-1 line-clamp-2">{p.description}</p>}
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-auto pt-2 border-t border-slate-50 flex-wrap">
+                        {p.customer && <span className="flex items-center gap-1 text-xs text-slate-400"><Building2 size={11} /> {p.customer.name}</span>}
+                        {(p as any).team && <span className="flex items-center gap-1 text-xs text-slate-400"><Users size={11} /> {(p as any).team.name}</span>}
+                        {(p as any).start_date && <span className="flex items-center gap-1 text-xs text-slate-400 ml-auto"><Calendar size={11} />{(p as any).start_date}{(p as any).end_date ? ` → ${(p as any).end_date}` : ""}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Meer laden */}
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200
+                               text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                  >
+                    Meer laden
+                    <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                      {filtered.length - visibleCount} resterend
+                    </span>
+                    <ChevronRight size={13} className="text-slate-400" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

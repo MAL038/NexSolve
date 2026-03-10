@@ -38,6 +38,8 @@ export const GET = apiRoute(
     const themeSlug = searchParams.get("theme");
     const processSlug = searchParams.get("process");
 
+    const trashed = searchParams.get("trashed") === "1";
+
     let query = supabase
       .from("projects")
       .select(`
@@ -49,6 +51,12 @@ export const GET = apiRoute(
         team:teams!projects_team_id_fkey(id, name)
       `)
       .order("created_at", { ascending: false });
+
+    if (trashed) {
+      query = query.not("deleted_at", "is", null);
+    } else {
+      query = query.is("deleted_at", null);
+    }
 
     if (themeSlug) {
       const { data: theme } = await supabase.from("themes").select("id").eq("slug", themeSlug).single();

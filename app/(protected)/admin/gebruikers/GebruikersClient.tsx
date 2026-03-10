@@ -12,6 +12,8 @@ import {
   Users, Search, Ban, Trash2, RefreshCw,
   X, ChevronDown, Send, UserPlus, Building2, Loader2, Check,
 } from "lucide-react";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
 import { formatDate } from "@/lib/time";
 import type { Profile, Organisation, UserRole } from "@/types";
@@ -42,7 +44,7 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
   const [search,       setSearch]       = useState("");
   const [loading,      setLoading]      = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: "delete" | "block"; user: Profile } | null>(null);
-  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
+  const { toast, showToast, clearToast } = useToast();
 
   // Invite form state
   const [showInvite,   setShowInvite]   = useState(false);
@@ -53,11 +55,6 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
   const [invError,     setInvError]     = useState("");
 
   // ── Helpers ───────────────────────────────────────────────
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3500);
-  }
 
   const filtered = users.filter(u =>
     u.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -141,17 +138,7 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
 
-      {/* Toast */}
-      {toast && (
-        <div className={clsx(
-          "fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-white border-red-200 text-red-700"
-        )}>
-          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-brand-500" : "bg-red-500")} />
-          {toast.msg}
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       {/* Confirm modal */}
       {confirmModal && (

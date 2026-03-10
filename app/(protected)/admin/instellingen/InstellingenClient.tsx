@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Save, X, Plus, Trash2, Check } from "lucide-react";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
 import type { PlatformSettings } from "@/types";
 
@@ -20,14 +22,10 @@ export default function InstellingenClient({ initialSettings }: Props) {
   const [logoUrl,      setLogoUrl]      = useState(initialSettings?.logo_url      ?? "");
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(false);
-  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
+  const { toast, showToast, clearToast } = useToast();
   const [statuses,     setStatuses]     = useState(DEFAULT_STATUSES);
   const [newStatus,    setNewStatus]    = useState({ label: "", color: "#3B82F6" });
   const [addingStatus, setAddingStatus] = useState(false);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok }); setTimeout(() => setToast(null), 3000);
-  }
 
   async function handleSave() {
     setSaving(true);
@@ -51,16 +49,7 @@ export default function InstellingenClient({ initialSettings }: Props) {
 
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-8">
-      {toast && (
-        <div className={clsx(
-          "fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-white border-red-200 text-red-700"
-        )}>
-          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-brand-500" : "bg-red-500")} />
-          {toast.msg}
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Platforminstellingen</h1>

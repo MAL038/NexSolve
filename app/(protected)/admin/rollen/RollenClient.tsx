@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ShieldCheck, Plus, Pencil, Trash2, X, Check, ToggleLeft, ToggleRight } from "lucide-react";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
 import type { CustomRole } from "@/types";
 
@@ -12,16 +14,11 @@ interface Props { initialRoles: CustomRole[] }
 export default function RollenClient({ initialRoles }: Props) {
   const [roles,   setRoles]   = useState<CustomRole[]>(initialRoles);
   const [saving,  setSaving]  = useState<string | null>(null);
-  const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null);
+  const { toast, showToast, clearToast } = useToast();
   const [editing, setEditing] = useState<{ id: string; name: string; color: string } | null>(null);
   const [adding,  setAdding]  = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor,setNewColor]= useState(PRESET_COLORS[0]);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
 
   async function saveNew() {
     if (!newName.trim()) return;
@@ -80,16 +77,7 @@ export default function RollenClient({ initialRoles }: Props) {
 
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-6">
-      {toast && (
-        <div className={clsx(
-          "fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-white border-red-200 text-red-700"
-        )}>
-          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-brand-500" : "bg-red-500")} />
-          {toast.msg}
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
 
       <div className="flex items-center justify-between">
         <div>

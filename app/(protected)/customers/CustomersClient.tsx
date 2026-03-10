@@ -11,6 +11,9 @@ import clsx from "clsx";
 import CustomerWizard from "@/components/CustomerWizard";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirm } from "@/lib/hooks/useConfirm";
+import TrashPanel from "@/components/trash/TrashPanel";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import EmptyState, { EmptySearch } from "@/components/ui/EmptyState";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
 // Aantal kaarten per pagina — meervoud van 3 (3-kolomsgrid)
@@ -39,6 +42,7 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
   const [bulkLoading,    setBulkLoading]    = useState(false);
   const [bulkError,      setBulkError]      = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState(false);
+  const [activeView,     setActiveView]     = useState<"list" | "trash">("list");
   // ── Paginering ──────────────────────────────────────────
   const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
@@ -144,12 +148,25 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
           <h1 className="text-2xl font-bold text-slate-800">Klanten</h1>
           <p className="text-sm text-slate-400 mt-0.5">{customers.length} klant{customers.length !== 1 ? "en" : ""}</p>
         </div>
-        <button
-          onClick={() => setWizardOpen(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={15} /> Nieuwe klant
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveView(v => v === "trash" ? "list" : "trash")}
+            className={clsx(
+              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all",
+              activeView === "trash"
+                ? "bg-red-50 text-red-600 border-red-200"
+                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+            )}
+          >
+            <Trash2 size={14} /> Prullenbak
+          </button>
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={15} /> Nieuwe klant
+          </button>
+        </div>
       </div>
 
       {/* Zoek + filter */}
@@ -231,15 +248,23 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
         </div>
       )}
 
-      {/* Leeg staat */}
-      {filtered.length === 0 ? (
-        <div className="card p-16 text-center">
-          <Building2 size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500 text-sm font-medium">Geen klanten gevonden</p>
-          <button onClick={() => setWizardOpen(true)} className="btn-outline mt-4 mx-auto">
-            <Plus size={14} /> Nieuwe klant aanmaken
-          </button>
-        </div>
+      {activeView === "trash" ? (
+        <TrashPanel entityType="customer" />
+      ) : filtered.length === 0 ? (
+        search
+          ? <EmptySearch query={search} />
+          : (
+            <EmptyState
+              icon={Building2}
+              title="Geen klanten"
+              description="Voeg je eerste klant toe om te beginnen."
+              action={
+                <button onClick={() => setWizardOpen(true)} className="btn-primary">
+                  <Plus size={14} /> Nieuwe klant
+                </button>
+              }
+            />
+          )
       ) : (
         <>
           {/* Selecteer-alles */}
