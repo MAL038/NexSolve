@@ -31,7 +31,7 @@ export default function AdminSidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
+    <aside className="flex flex-col w-64 h-full bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
 
       <div className="px-2 mb-6">
         <Logo variant="main" />
