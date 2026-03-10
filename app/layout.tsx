@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: { default: "NEXSOLVE", template: "%s | NEXSOLVE" },
@@ -8,7 +9,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // black-translucent: status bar overlapt de app (voelt meer native aan)
+    // — we compenseren dit met env(safe-area-inset-top) op de topbar
+    statusBarStyle: "black-translucent",
     title: "NEXSOLVE",
   },
   formatDetection: {
@@ -18,16 +21,21 @@ export const metadata: Metadata = {
 
 // Viewport apart exporteren (vereist door Next.js 14+)
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#0A6645",   // NEXSOLVE brand groen
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,          // toegankelijk zoomen toegestaan
+  viewportFit: "cover",    // env(safe-area-inset-*) voor notch & home indicator
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Registreer service worker voor PWA offline-ondersteuning */}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

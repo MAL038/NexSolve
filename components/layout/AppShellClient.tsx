@@ -97,33 +97,43 @@ export default function AppShellClient({
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-100 bg-white px-4 lg:px-6">
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-
-          <div className="min-w-0 flex-1" />
-
-          {open && (
+        {/* Topbar
+            pt-safe: voegt env(safe-area-inset-top) toe voor de notch op iPhone.
+            Met statusBarStyle="black-translucent" overlapt de status bar de app,
+            dus de topbar schuift omlaag met de hoogte van de safe area.          */}
+        <header className="sticky top-0 z-30 flex flex-col border-b border-slate-100 bg-white">
+          <div className="pt-safe" />
+          <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
-              onClick={() => setOpen(false)}
-              aria-label="Sluit menu"
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
             >
-              <X size={20} />
+              <Menu size={20} />
             </button>
-          )}
+
+            <div className="min-w-0 flex-1" />
+
+            {open && (
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
+                onClick={() => setOpen(false)}
+                aria-label="Sluit menu"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl">
+            {children}
+            {/* Spacer voor de home indicator (env safe-area-inset-bottom) */}
+            <div className="pb-safe" />
+          </div>
         </main>
       </div>
     </div>

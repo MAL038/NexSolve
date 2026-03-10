@@ -9,26 +9,29 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "NEXSOLVE",
     short_name: "Nexsolve",
     description: "Project management platform by NEXSOLVE",
-    start_url: "/",
+    start_url: "/dashboard",
+    scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#2563eb",
-    orientation: "portrait-primary",
+    theme_color: "#0A6645",   // NEXSOLVE brand groen (was #2563eb)
+    // Geen orientation-lock → werkt zowel portret (iPhone) als landscape (iPad)
     categories: ["business", "productivity"],
     icons: [
       {
-        src: "/icon-192.png",
-        sizes: "192x192",
+        // SVG schaalt naar elke grootte — gebruikt door Android Chrome
+        src: "/icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
+        // PNG voor maskable (adaptieve iconen op Android)
+        // /apple-icon.png wordt automatisch gegenereerd door app/apple-icon.tsx
+        src: "/apple-icon.png",
+        sizes: "180x180",
         type: "image/png",
         purpose: "maskable",
       },
-      {
-        src: "/icon-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
     ],
-    screenshots: [],
   };
 }
