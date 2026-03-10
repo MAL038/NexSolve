@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { formatDate } from "@/lib/time";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 
 type OrgPlan   = "trial" | "starter" | "pro" | "enterprise";
 type OrgModule = "projects" | "customers" | "intake" | "planning" | "hrm" | "calendar";
@@ -56,6 +58,7 @@ const PLAN_LABEL: Record<OrgPlan, string> = {
 type Tab = "overzicht" | "leden" | "instellingen" | "activiteit";
 
 export default function BeheerClient({ org, orgId, modules, members, activity, projectCount }: Props) {
+  const { requestConfirm, confirmProps } = useConfirm();
   const [activeTab, setActiveTab] = useState<Tab>("overzicht");
 
   // Instellingen state
@@ -134,7 +137,11 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
   }
 
   async function handleRemoveMember(userId: string, name: string) {
-    if (!confirm(`${name} verwijderen uit de organisatie?`)) return;
+    if (!(await requestConfirm({
+      title:        `${name} verwijderen uit de organisatie?`,
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setRemovingId(userId);
     const res = await fetch("/api/organisation/invite", {
       method: "DELETE",
@@ -464,6 +471,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
           </div>
         )}
       </div>
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import {
 import Avatar from "@/components/ui/Avatar";
 import Toast from "@/components/ui/Toast";
 import { useToast } from "@/lib/hooks/useToast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import clsx from "clsx";
 import type { Team, TeamMember, Profile } from "@/types";
 
@@ -225,6 +227,7 @@ export default function TeamClient({
   currentUserRole,
   canManageTeams,
 }: Props) {
+  const { requestConfirm, confirmProps } = useConfirm();
   const [members,      setMembers]      = useState<PlatformMember[]>(initialMembers);
   const [teams,        setTeams]        = useState<Team[]>([]);
   const [invites,      setInvites]      = useState<Invite[]>([]);
@@ -274,7 +277,11 @@ export default function TeamClient({
   }
 
   async function revokeInvite(id: string) {
-    if (!confirm("Uitnodiging intrekken?")) return;
+    if (!(await requestConfirm({
+      title:        "Uitnodiging intrekken?",
+      confirmLabel: "Intrekken",
+      variant:      "danger",
+    }))) return;
     await fetch(`/api/team/invite/${id}`, { method: "DELETE" });
     setInvites(prev => prev.filter(i => i.id !== id));
   }
@@ -314,7 +321,12 @@ export default function TeamClient({
   }
 
   async function handleDeleteTeam(id: string) {
-    if (!confirm("Team verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    if (!(await requestConfirm({
+      title:        "Team verwijderen?",
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     const res = await fetch(`/api/teams/${id}`, { method: "DELETE" });
     if (res.ok) {
       setTeams(prev => prev.filter(t => t.id !== id));
@@ -739,6 +751,8 @@ export default function TeamClient({
           onSave={handleSaveTeam}
         />
       )}
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

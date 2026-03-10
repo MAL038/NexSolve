@@ -6,6 +6,8 @@ import {
   ChevronRight, Loader2, GripVertical,
 } from "lucide-react";
 import clsx from "clsx";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 
 interface Proces { id: string; name: string; slug: string; position: number; theme_id: string; }
 interface Thema  { id: string; name: string; slug: string; position: number; processes: Proces[]; }
@@ -20,6 +22,7 @@ const THEMA_KLEUREN = [
 ];
 
 export default function ThemasClient() {
+  const { requestConfirm, confirmProps } = useConfirm();
   const [themas,       setThemas]       = useState<Thema[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [fout,         setFout]         = useState("");
@@ -83,7 +86,12 @@ export default function ThemasClient() {
   }
 
   async function verwijderThema(id: string, naam: string) {
-    if (!confirm(`Thema "${naam}" verwijderen? Alle submodules worden ook verwijderd.`)) return;
+    if (!(await requestConfirm({
+      title:        `Thema "${naam}" verwijderen?`,
+      description:  "Alle submodules worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setFout("");
     const res = await fetch(`/api/admin/themas?id=${id}`, { method: "DELETE" });
     if (!res.ok) { const d = await res.json(); setFout(d.error); return; }
@@ -131,7 +139,11 @@ export default function ThemasClient() {
   }
 
   async function verwijderProces(themaId: string, procesId: string, naam: string) {
-    if (!confirm(`Submodule "${naam}" verwijderen?`)) return;
+    if (!(await requestConfirm({
+      title:        `Submodule "${naam}" verwijderen?`,
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setFout("");
     const res = await fetch(`/api/admin/themas/${themaId}/processen?id=${procesId}`, { method: "DELETE" });
     if (!res.ok) { const d = await res.json(); setFout(d.error); return; }
@@ -325,6 +337,8 @@ export default function ThemasClient() {
           <p className="text-slate-400 text-sm">Nog geen thema's. Maak er een aan!</p>
         </div>
       )}
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

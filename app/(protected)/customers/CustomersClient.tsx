@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import CustomerWizard from "@/components/CustomerWizard";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
 // Aantal kaarten per pagina — meervoud van 3 (3-kolomsgrid)
@@ -26,6 +28,7 @@ const STATUS_OPTIONS: { value: CustomerStatus; label: string }[] = [
 
 export default function CustomersClient({ initialCustomers, allProjects }: Props) {
   const router = useRouter();
+  const { requestConfirm, confirmProps } = useConfirm();
 
   const [customers,      setCustomers]      = useState<Customer[]>(initialCustomers);
   const [search,         setSearch]         = useState("");
@@ -82,9 +85,12 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
   // ── Bulk acties ─────────────────────────────────────────
   async function bulkAction(action: "delete" | "status", status?: CustomerStatus) {
     const ids = activeSelected.map((c: Customer) => c.id);
-    if (action === "delete" && !confirm(
-      `${ids.length} klant${ids.length !== 1 ? "en" : ""} verwijderen? Dit kan niet ongedaan worden gemaakt.`
-    )) return;
+    if (action === "delete" && !(await requestConfirm({
+      title:        `${ids.length} klant${ids.length !== 1 ? "en" : ""} verwijderen?`,
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setBulkLoading(true); setBulkError(null); setStatusDropdown(false);
     try {
       const res = await fetch("/api/customers/bulk", {
@@ -115,7 +121,12 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
 
   async function handleDelete(e: React.MouseEvent<HTMLButtonElement>, id: string) {
     e.stopPropagation();
-    if (!confirm("Klant verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    if (!(await requestConfirm({
+      title:        "Klant verwijderen?",
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
     if (res.ok) {
       setCustomers((prev: Customer[]) => prev.filter((c: Customer) => c.id !== id));
@@ -381,6 +392,8 @@ export default function CustomersClient({ initialCustomers, allProjects }: Props
           editCustomer={editCustomer}
         />
       )}
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }
