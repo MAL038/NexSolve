@@ -47,13 +47,23 @@ function nullify(v?: string | null) {
 
 export const GET = apiRoute(
   { requireOrg: false, parseBody: false },
-  async ({ supabase, user }) => {
-    const { data, error } = await supabase
+  async ({ req, supabase, user }) => {
+    const { searchParams } = new URL(req.url);
+    const trashed = searchParams.get("trashed") === "1";
+
+    let query = supabase
       .from("customers")
       .select("*")
       .eq("owner_id", user.id)
       .order("code", { ascending: true, nullsFirst: false });
 
+    if (trashed) {
+      query = query.not("deleted_at", "is", null);
+    } else {
+      query = query.is("deleted_at", null);
+    }
+
+    const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
   }

@@ -15,6 +15,7 @@ const updateSchema = z.object({
   theme_id: z.string().uuid().nullable().optional(),
   process_id: z.string().uuid().nullable().optional(),
   process_type_id: z.string().uuid().nullable().optional(),
+  deleted_at: z.null().optional(),
 });
 
 type Params = { id: string };
@@ -110,10 +111,12 @@ export const DELETE = apiRoute(
       .eq("id", id)
       .single();
 
-    const { error } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", id);
+    const { searchParams } = new URL(req.url);
+    const permanent = searchParams.get("permanent") === "1";
+
+    const { error } = permanent
+      ? await supabase.from("projects").delete().eq("id", id)
+      : await supabase.from("projects").update({ deleted_at: new Date().toISOString() }).eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

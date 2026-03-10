@@ -85,10 +85,12 @@ export const DELETE = apiRoute(
       .eq("id", id)
       .single();
 
-    const { error } = await supabase
-      .from("customers")
-      .delete()
-      .eq("id", id);
+    const { searchParams } = new URL(req.url);
+    const permanent = searchParams.get("permanent") === "1";
+
+    const { error } = permanent
+      ? await supabase.from("customers").delete().eq("id", id)
+      : await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
