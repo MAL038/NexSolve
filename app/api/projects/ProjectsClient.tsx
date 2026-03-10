@@ -15,6 +15,8 @@ import {
 import clsx from "clsx";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ProjectWizard from "@/components/projects/ProjectWizard";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import type { Project, ThemeWithChildren } from "@/types";
 
 interface Props {
@@ -35,6 +37,7 @@ const THEME_COLORS: Record<string, string> = {
 export default function ProjectsClient({ initialProjects, hierarchy, currentUserId }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { requestConfirm, confirmProps } = useConfirm();
   const themeSlug    = searchParams.get("theme")   ?? "";
   const processSlug  = searchParams.get("process") ?? "";
 
@@ -64,7 +67,12 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Project verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    if (!(await requestConfirm({
+      title:        "Project verwijderen?",
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (res.ok) setProjects(prev => prev.filter(p => p.id !== id));
   }
@@ -225,6 +233,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
           hierarchy={hierarchy}
         />
       )}
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

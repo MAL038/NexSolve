@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import StatusBadge from "@/components/ui/StatusBadge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import { relativeTime } from "@/lib/time";
 import type { Project, Customer, Profile } from "@/types";
 
@@ -23,6 +25,7 @@ interface Props {
 
 export default function AdminProjectenClient({ projecten, eigenaren }: Props) {
   const router = useRouter();
+  const { requestConfirm, confirmProps } = useConfirm();
   const [zoek,         setZoek]         = useState("");
   const [eigenaarFilter, setEigenaarFilter] = useState("all");
   const [verwijderen,  setVerwijderen]  = useState<string | null>(null);
@@ -36,7 +39,12 @@ export default function AdminProjectenClient({ projecten, eigenaren }: Props) {
   });
 
   async function verwijderProject(id: string, naam: string) {
-    if (!confirm(`Project "${naam}" definitief verwijderen?`)) return;
+    if (!(await requestConfirm({
+      title:        `Project "${naam}" verwijderen?`,
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Definitief verwijderen",
+      variant:      "danger",
+    }))) return;
     setVerwijderen(id); setFout("");
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (!res.ok) { const d = await res.json(); setFout(d.error ?? "Verwijderen mislukt"); }
@@ -145,6 +153,7 @@ export default function AdminProjectenClient({ projecten, eigenaren }: Props) {
           </table>
         )}
       </div>
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

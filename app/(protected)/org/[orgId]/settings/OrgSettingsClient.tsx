@@ -15,6 +15,8 @@ import {
   Upload, ImageOff, Palette,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import clsx from "clsx";
 import type { Organisation, OrgMember, OrgRole, TeamInvite } from "@/types";
 
@@ -43,6 +45,7 @@ export default function OrgSettingsClient({
   currentUserId,
   currentOrgRole,
 }: Props) {
+  const { requestConfirm, confirmProps } = useConfirm();
   const [members,  setMembers]  = useState<OrgMember[]>(initialMembers);
   const [invites,  setInvites]  = useState<TeamInvite[]>([]);
   const [invLoading, setInvLoading] = useState(true);
@@ -131,7 +134,11 @@ export default function OrgSettingsClient({
   // ── Lid verwijderen ───────────────────────────────────────
 
   async function removeMember(member: OrgMember) {
-    if (!confirm(`${member.profile?.full_name} uit de organisatie verwijderen?`)) return;
+    if (!(await requestConfirm({
+      title:        `${member.profile?.full_name} uit de organisatie verwijderen?`,
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setLoading(member.user_id);
     const res = await fetch(`/api/org/${org.id}/members/${member.user_id}`, { method: "DELETE" });
     setLoading(null);
@@ -194,7 +201,11 @@ export default function OrgSettingsClient({
   }
 
   async function handleLogoDelete() {
-    if (!confirm("Logo verwijderen?")) return;
+    if (!(await requestConfirm({
+      title:        "Logo verwijderen?",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setLogoLoading(true);
     const res = await fetch(`/api/org/${org.id}/logo`, { method: "DELETE" });
     setLogoLoading(false);
@@ -583,6 +594,7 @@ export default function OrgSettingsClient({
           </div>
         </div>
       )}
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

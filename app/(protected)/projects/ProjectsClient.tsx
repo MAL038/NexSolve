@@ -7,12 +7,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus, Pencil, Trash2, FolderKanban, Search, Layers,
   Building2, Calendar, Users, CheckSquare, Square,
-  ChevronDown, X, Loader2, CheckCircle2,
+  ChevronDown, X, Loader2, CheckCircle2, ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ProjectWizard from "@/components/projects/ProjectWizard";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 import type { Project, ThemeWithChildren, ProjectStatus } from "@/types";
+
+// Aantal kaarten per pagina — meervoud van 3 (3-kolomsgrid)
+const PAGE_SIZE = 24;
 
 interface Props {
   initialProjects: Project[];
@@ -38,6 +43,7 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
 export default function ProjectsClient({ initialProjects, hierarchy, currentUserId }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { requestConfirm, confirmProps } = useConfirm();
   const themeSlug    = searchParams.get("theme")   ?? "";
   const processSlug  = searchParams.get("process") ?? "";
 
@@ -53,6 +59,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   const [bulkError,      setBulkError]      = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [themeDropdown,  setThemeDropdown]  = useState(false);
+  const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
   const filtered = useMemo(() => {
     return projects.filter((p: Project) => {
@@ -76,6 +83,9 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
     });
   }, [projects, search, statusFilter, themeFilter, processFilter, hierarchy]);
 
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = filtered.length > visibleCount;
+
   const allFilteredSelected = filtered.length > 0 && filtered.every((p: Project) => selected.has(p.id));
   const activeSelected = filtered.filter((p: Project) => selected.has(p.id));
   const someSelected = activeSelected.length > 0;
@@ -90,7 +100,12 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
 
   async function bulkAction(action: "delete" | "status", status?: ProjectStatus) {
     const ids = activeSelected.map((p: Project) => p.id);
-    if (action === "delete" && !confirm(`${ids.length} project${ids.length !== 1 ? "en" : ""} verwijderen?`)) return;
+    if (action === "delete" && !(await requestConfirm({
+      title:        `${ids.length} project${ids.length !== 1 ? "en" : ""} verwijderen?`,
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     setBulkLoading(true); setBulkError(null); setStatusDropdown(false);
     try {
       const res = await fetch("/api/projects/bulk", {
@@ -113,7 +128,12 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Project verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    if (!(await requestConfirm({
+      title:        "Project verwijderen?",
+      description:  "Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (res.ok) {
       setProjects((prev: Project[]) => prev.filter((p: Project) => p.id !== id));
@@ -141,12 +161,12 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Zoeken…"
+          <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }} placeholder="Zoeken…"
             className="pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 w-52" />
         </div>
         <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
           {["all","active","in-progress","archived"].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={clsx(
+            <button key={s} onClick={() => { setStatusFilter(s); setVisibleCount(PAGE_SIZE); }} className={clsx(
               "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               statusFilter === s ? "bg-white text-brand-700 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700"
             )}>
@@ -260,14 +280,17 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center justify-between px-1">
             <button onClick={toggleAll} className="flex items-center gap-2 text-xs text-slate-500 hover:text-brand-600 transition-colors">
               {allFilteredSelected ? <CheckSquare size={15} className="text-brand-600" /> : <Square size={15} />}
               {allFilteredSelected ? "Alles deselecteren" : "Alles selecteren"}
             </button>
+            <span className="text-xs text-slate-400">
+              {Math.min(visibleCount, filtered.length)} van {filtered.length}
+            </span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((p: Project) => {
+            {visible.map((p: Project) => {
               const { theme, process } = getThemeInfo(p);
               const themeClass = theme ? (THEME_COLORS[theme.slug] ?? THEME_COLORS.algemeen) : null;
               const isSelected = selected.has(p.id);
@@ -313,11 +336,30 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
               );
             })}
           </div>
+
+          {/* Meer laden */}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200
+                           text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                Meer laden
+                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                  {filtered.length - visibleCount} resterend
+                </span>
+                <ChevronRight size={13} className="text-slate-400" />
+              </button>
+            </div>
+          )}
         </>
       )}
 
       {showWizard && <ProjectWizard onClose={() => setShowWizard(false)} onCreated={handleCreated} hierarchy={hierarchy} />}
       {editProject && <ProjectWizard onClose={() => setEditProject(null)} onCreated={handleUpdated} hierarchy={hierarchy} editProject={editProject} />}
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

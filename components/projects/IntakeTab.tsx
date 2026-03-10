@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import IntakeModal from "./IntakeModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/lib/hooks/useConfirm";
 
 interface Question {
   id: string;
@@ -335,6 +337,7 @@ function IntakeCard({
   onUpdate: (updated: Intake) => void;
   onDelete: (id: string) => void;
 }) {
+  const { requestConfirm, confirmProps } = useConfirm();
   const [expanded,   setExpanded]   = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError,   setPdfError]   = useState("");
@@ -371,7 +374,12 @@ function IntakeCard({
   }
 
   async function handleDelete() {
-    if (!confirm("Weet je zeker dat je deze intake wilt verwijderen?")) return;
+    if (!(await requestConfirm({
+      title:        "Intake verwijderen?",
+      description:  "Weet je zeker dat je deze intake wilt verwijderen?",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
     await fetch(`/api/intakes/${intake.id}`, { method: "DELETE" });
     onDelete(intake.id);
   }
@@ -497,6 +505,7 @@ function IntakeCard({
           </div>
         )}
       </div>
+      <ConfirmDialog {...confirmProps} />
     </>
   );
 }

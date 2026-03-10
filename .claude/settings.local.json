@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(xargs grep -l \"Could not find a relationship\")",
+      "Bash(grep -n \"profiles\\\\|owner_id_fkey\\\\|owner:\" app/api/projects/[id]/route.ts)",
+      "Bash(dir \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland\\\\lib\" /b)",
+      "Bash(xargs grep -l \"project\" -i)",
+      "Bash(ls -la \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland\\\\app\\\\\\(protected\\)\")",
+      "Bash(ls -la \"/c/Users/MarcHengstmengel/Nexsolve/.claude/worktrees/xenodochial-sutherland/app/\\(protected\\)/projects/\")",
+      "Bash(ls -la \"/c/Users/MarcHengstmengel/Nexsolve/.claude/worktrees/xenodochial-sutherland/app/\\(protected\\)/projects/\\\\[id\\\\]/\")",
+      "Bash(find \"/c/Users/MarcHengstmengel/Nexsolve/.claude/worktrees/xenodochial-sutherland/app/\\(protected\\)/projects\" -type f -name \"*.tsx\")",
+      "Bash(grep -r \"grid\\\\|flex\\\\|responsive\\\\|sm:\\\\|md:\\\\|lg:\\\\|xl:\" /c/Users/MarcHengstmengel/Nexsolve/.claude/worktrees/xenodochial-sutherland/components/ui/*.tsx)",
+      "Bash(wc -l \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/admin/AdminDashboardClient.tsx\" \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/admin/activiteit/AdminActivityClient.tsx\" \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/admin/organisaties/OrganisatiesClient.tsx\" \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/admin/projecten/AdminProjectenClient.tsx\" \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/customers/CustomersClient.tsx\")",
+      "Bash(grep -l \"await.*Promise\\\\.all\\\\|Promise\\\\.allSettled\" \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/api\"/**/*.ts)",
+      "Bash(wc -l \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/api\"/**/*.ts)",
+      "Bash(xargs grep -l \"img \\\\|<img\")",
+      "Bash(find \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland\" -type f -path \"*app/\\(protected\\)/projects/[id]*\")",
+      "Bash(find \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland\\\\app\\\\\\(protected\\)\\\\projects\\\\[id]\" -type f)",
+      "Bash(python3 -c \"import sys,json; lines=sys.stdin.read\\(\\).strip\\(\\).split\\(''\\\\n''\\); [print\\(json.loads\\(l\\).get\\(''content'',''''\\)[:500] if isinstance\\(json.loads\\(l\\).get\\(''content'',''''\\),str\\) else ''''\\) for l in lines[-20:] if l]\")",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(xargs grep -l \"team\")",
+      "Bash(xargs grep -l \"projectleider\\\\|role.*change\\\\|changeRole\\\\|updateRole\")",
+      "Bash(ls \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland\\\\app\\\\\\(protected\\)\\\\admin\"\")",
+      "Bash(grep -rn \"create table.*projects\\\\|projects.*create table\" supabase/migrations/*.sql)",
+      "Bash(xargs grep -l \"customers.*insert\\\\|insert.*customers\\\\|CustomerWizard\\\\|klant aanmaken\")",
+      "Bash(grep -n \"org_id\" supabase/migrations/*.sql)",
+      "Bash(grep -n \"org_id\\\\|create table public.customers\\\\|alter table.*customers\" supabase/migrations/*.sql)",
+      "Bash(grep -rn \"org_id.*customers\\\\|customers.*org_id\\\\|alter table.*customers\\\\|customers.*add column\" supabase/migrations/*.sql)",
+      "Bash(grep -rn \"customers\" supabase/migrations/*.sql)",
+      "Bash(ls -la \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/team/\")",
+      "Bash(wc -l \"C:\\\\Users\\\\MarcHengstmengel\\\\Nexsolve\\\\.claude\\\\worktrees\\\\xenodochial-sutherland/app/\\(protected\\)/projects/[id]/ProjectDetailClient.tsx\")",
+      "Bash(grep -n \"Promise.all\" /c/Users/MarcHengstmengel/Nexsolve/.claude/worktrees/xenodochial-sutherland/app/\\\\\\(protected\\\\\\)/*/page.tsx)"
+    ]
+  }
+}
