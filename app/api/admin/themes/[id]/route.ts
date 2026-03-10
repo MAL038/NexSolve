@@ -1,42 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireSuperuser } from "@/lib/api";
+import { NextRequest } from "next/server";
+import { PATCH as patchThema, DELETE as deleteThema } from "@/app/api/admin/themas/[themaId]/route";
+
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<Record<string, string>> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-const su = await requireSuperuser();
-if (!su.ok) return su.res;
-
-const { supabase } = su.ctx;
-const sb = supabase;
-
   const { id } = await params;
-  const body = await req.json();
-  const updates: Record<string, any> = {};
-
-  if (body.name) {
-    updates.name = body.name.trim();
-    updates.slug = body.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  }
-  if (body.position !== undefined) updates.position = body.position;
-
-  const { data, error } = await sb.from("themes").update(updates).eq("id", id).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return patchThema(req, { params: Promise.resolve({ themaId: id }) });
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<Record<string, string>> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-const su = await requireSuperuser();
-if (!su.ok) return su.res;
-
-const { supabase } = su.ctx;
-const sb = supabase;
-
   const { id } = await params;
-  const { error } = await sb.from("themes").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+  return deleteThema(req, { params: Promise.resolve({ themaId: id }) });
 }
