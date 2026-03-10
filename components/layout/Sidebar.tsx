@@ -168,8 +168,9 @@ export default function Sidebar({
   const showExport    = isModuleEnabled(enabledModules, "export");
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
-      <div className="px-2 mb-4">
+    // min-h-dvh: dynamic viewport height voor iOS, pt/pb-safe voor notch & home indicator
+    <aside className="flex flex-col w-64 min-h-dvh bg-white border-r border-slate-100 pt-safe pb-safe px-4 flex-shrink-0">
+      <div className="px-2 mt-6 mb-4">
         <Logo variant="main" />
       </div>
 

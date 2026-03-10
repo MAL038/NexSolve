@@ -5,7 +5,11 @@
 @tailwind utilities;
 
 @layer base {
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+    /* Verwijder blauwe tap-flash op iOS/Android */
+    -webkit-tap-highlight-color: transparent;
+  }
 
   :root {
     /* RGB-tupels (r g b) — zodat Tailwind opacity-modifiers werken: rgb(var(--brand-N-rgb) / 0.4) */
@@ -25,6 +29,11 @@
   html {
     font-family: 'Poppins', sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Soepel momentum-scrollen op iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Voorkom tekst-resize bij landscape-rotatie op iOS */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -62,14 +71,21 @@
   }
 
   /* Betere veld-contrast: border-slate-300 i.p.v. 200, focus duidelijker */
+  /* font-size ≥ 16px: voorkomt dat iOS automatisch inzoomt bij focus op een input */
   .input {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-800
            placeholder:text-slate-400
            focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500
            transition-all duration-150;
+    font-size: 16px; /* iOS zoom-preventie: min 16px vereist */
   }
   .select {
     @apply input appearance-none cursor-pointer;
+  }
+
+  /* Alle textarea's: ook min 16px om iOS-zoom te voorkomen */
+  textarea {
+    font-size: 16px;
   }
   /* Label donkerder voor betere leesbaarheid — slate-600 i.p.v. 500 */
   .label {
@@ -88,12 +104,35 @@
   }
 
   /* Inline-edit veld: ziet eruit als tekst maar is bewerkbaar */
+  /* font-size 16px: ook hier iOS-zoom-preventie bij focus */
   .inline-edit {
     @apply w-full bg-transparent border-b-2 border-transparent hover:border-slate-200
-           focus:border-brand-500 focus:outline-none px-0 py-0.5 text-sm text-slate-800
+           focus:border-brand-500 focus:outline-none px-0 py-0.5 text-slate-800
            transition-colors duration-150;
+    font-size: 16px;
   }
   .inline-edit-title {
     @apply inline-edit text-xl font-bold;
+  }
+}
+
+@layer utilities {
+  /* ─── iOS / PWA safe-area hulpklassen ────────────────────────────────────
+     Gebruik env(safe-area-inset-*) voor notch (boven) en home indicator (onder).
+     Vereist viewport-fit=cover in de <meta name="viewport"> tag.              */
+  .pt-safe  { padding-top:    env(safe-area-inset-top,    0px); }
+  .pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pl-safe  { padding-left:   env(safe-area-inset-left,   0px); }
+  .pr-safe  { padding-right:  env(safe-area-inset-right,  0px); }
+
+  /* Hoogte die rekening houdt met dynamische viewport (iOS adresbalk) + safe areas */
+  .min-h-dvh-safe {
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Touch-target minstens 44×44 pt (Apple HIG) */
+  .touch-target {
+    min-width:  44px;
+    min-height: 44px;
   }
 }
