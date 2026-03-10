@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
+
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-poppins",
+});
 
 export const metadata: Metadata = {
   title: { default: "NEXSOLVE", template: "%s | NEXSOLVE" },
@@ -24,14 +33,16 @@ export const viewport: Viewport = {
   themeColor: "#0A6645",   // NEXSOLVE brand groen
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,          // toegankelijk zoomen toegestaan
+  maximumScale: 1,          // voorkomt dat de app per ongeluk ingezoomd achterblijft op iOS PWA
+  userScalable: false,      // consistente schaal/zichtbaarheid op mobiel
   viewportFit: "cover",    // env(safe-area-inset-*) voor notch & home indicator
+  interactiveWidget: "resizes-content", // voorkomt layout-jumps bij mobiel toetsenbord
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nl">
-      <body>
+    <html lang="nl" className={poppins.variable}>
+      <body className="overscroll-x-none">
         {children}
         {/* Registreer service worker voor PWA offline-ondersteuning */}
         <ServiceWorkerRegister />

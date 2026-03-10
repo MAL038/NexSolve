@@ -14,7 +14,7 @@ const NAV = [
   { href: "/admin",                icon: LayoutDashboard, label: "Overzicht",           exact: true  },
   { href: "/admin/gebruikers",     icon: Users,           label: "Gebruikers",          exact: false },
   { href: "/admin/organisaties",   icon: Building2,       label: "Organisaties",        exact: false },
-  { href: "/admin/theemas",        icon: Layers,          label: "Themas & submodules", exact: false },
+  { href: "/admin/themas",        icon: Layers,          label: "Themas & submodules", exact: false },
   { href: "/admin/rollen",         icon: ShieldCheck,     label: "Projectrollen",       exact: false },
   { href: "/admin/instellingen",   icon: Settings,        label: "Instellingen",        exact: false },
 ];

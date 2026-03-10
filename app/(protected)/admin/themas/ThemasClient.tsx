@@ -60,10 +60,10 @@ export default function ThemasClient() {
   async function slaThemaOp() {
     if (!bewerkNaam.trim()) return;
     setOpslaan(true); setFout("");
-    const res = await fetch("/api/admin/themas", {
+    const res = await fetch(`/api/admin/themas/${bewerkThema}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: bewerkThema, name: bewerkNaam }),
+      body: JSON.stringify({ name: bewerkNaam }),
     });
     const d = await res.json();
     if (!res.ok) { setFout(d.error); }
@@ -93,7 +93,7 @@ export default function ThemasClient() {
       variant:      "danger",
     }))) return;
     setFout("");
-    const res = await fetch(`/api/admin/themas?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/themas/${id}`, { method: "DELETE" });
     if (!res.ok) { const d = await res.json(); setFout(d.error); return; }
     setThemas(prev => prev.filter(t => t.id !== id));
   }
