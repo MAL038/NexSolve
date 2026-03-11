@@ -288,33 +288,6 @@ export default function ProjectDetailClient({
             </div>
           )}
 
-          {/* Gekoppelde klant */}
-          {currentCustomer && (
-            <div className="mt-4 pt-3 border-t border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Klant</p>
-              <Link
-                href={`/customers/${currentCustomer.id}`}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200
-                           bg-white hover:border-brand-300 hover:bg-brand-50/40 transition-all group"
-              >
-                <div className="w-7 h-7 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
-                  <Building2 size={13} className="text-brand-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-700 group-hover:text-brand-700
-                                 transition-colors truncate">
-                    {currentCustomer.name}
-                  </p>
-                  {currentCustomer.code && (
-                    <p className="text-[10px] font-mono text-slate-400">
-                      #{currentCustomer.code}
-                    </p>
-                  )}
-                </div>
-                <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-400 flex-shrink-0 transition-colors" />
-              </Link>
-            </div>
-          )}
         </div>
 
         {/* Verticale tab-navigatie */}
@@ -426,6 +399,18 @@ export default function ProjectDetailClient({
                 <DataRow label="Status">
                   <StatusBadge status={project.status} />
                 </DataRow>
+
+                {currentCustomer && (
+                  <DataRow label="Klant">
+                    <Link
+                      href={`/customers/${currentCustomer.id}`}
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors"
+                    >
+                      <Building2 size={13} />
+                      {currentCustomer.name}
+                    </Link>
+                  </DataRow>
+                )}
 
                 {project.owner && (
                   <DataRow label="Eigenaar">

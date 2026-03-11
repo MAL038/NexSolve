@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus, Pencil, Trash2, FolderKanban, Search, Layers,
   Building2, Calendar, Users, CheckSquare, Square,
-  ChevronDown, X, Loader2, CheckCircle2, ChevronRight,
+  ChevronDown, X, Loader2, CheckCircle2, ChevronRight, Star,
 } from "lucide-react";
 import clsx from "clsx";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -65,6 +65,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
   const [themeDropdown,  setThemeDropdown]  = useState(false);
   const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
   const [activeView,     setActiveView]     = useState<"list" | "trash">("list");
+  const [showFavs,       setShowFavs]       = useState(false);
   const [favouriteIds,   setFavouriteIds]   = useState<Set<string>>(new Set());
   const [loadingFavs,    setLoadingFavs]    = useState(true);
 
@@ -80,6 +81,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
 
   const filtered = useMemo(() => {
     return projects.filter((p: Project) => {
+      if (showFavs && !favouriteIds.has(p.id)) return false;
       const matchSearch = !search ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.customer?.name?.toLowerCase().includes(search.toLowerCase());
@@ -98,7 +100,7 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
 
       return matchSearch && matchStatus && matchTheme;
     });
-  }, [projects, search, statusFilter, themeFilter, processFilter, hierarchy]);
+  }, [projects, search, statusFilter, themeFilter, processFilter, hierarchy, showFavs, favouriteIds]);
 
   const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMore = filtered.length > visibleCount;
@@ -198,6 +200,20 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
               <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }} placeholder="Zoeken…"
                 className="pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 w-52" />
             </div>
+            <button
+              onClick={() => setShowFavs(v => !v)}
+              className={clsx(
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
+                showFavs
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+              )}
+              title="Toon favorieten"
+            >
+              <Star size={12} className={showFavs ? "fill-amber-500 text-amber-500" : ""} />
+              Favorieten
+            </button>
+
             <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
               {["all","active","in-progress","archived"].map(s => (
                 <button key={s} onClick={() => { setStatusFilter(s); setVisibleCount(PAGE_SIZE); }} className={clsx(
