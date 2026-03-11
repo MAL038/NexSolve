@@ -35,12 +35,18 @@ export default async function TeamDetailPage({
 
   const canManage = ["superuser", "admin", "projectleider"].includes(profile?.role ?? "");
 
+  const { data: allUsers } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url, role")
+    .order("full_name", { ascending: true });
+
   return (
     <TeamDetailClient
       team={team}
       initialProjects={projects ?? []}
       currentUserId={profile?.id ?? ""}
       canManage={canManage}
+      allUsers={allUsers ?? []}
     />
   );
 }

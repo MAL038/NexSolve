@@ -42,15 +42,17 @@ interface EditState {
   contact_phone:   string;
 }
 
-type Tab = "algemeen" | "projecten" | "taken" | "dossier" | "activiteit" | "exporteren";
+type Tab = "algemeen" | "adres" | "contactpersoon" | "projecten" | "taken" | "dossier" | "activiteit" | "exporteren";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "algemeen",   label: "Algemeen",   icon: Building2    },
-  { id: "projecten",  label: "Projecten",  icon: FolderKanban },
-  { id: "taken",      label: "Taken",      icon: GitBranch    },
-  { id: "dossier",    label: "Dossier",    icon: FileText     },
-  { id: "activiteit", label: "Activiteit", icon: Activity     },
-  { id: "exporteren", label: "Exporteren", icon: Download     },
+  { id: "algemeen",      label: "Algemeen",      icon: Building2    },
+  { id: "adres",         label: "Adres",         icon: MapPin       },
+  { id: "contactpersoon", label: "Contactpersoon", icon: User        },
+  { id: "projecten",     label: "Projecten",     icon: FolderKanban },
+  { id: "taken",         label: "Taken",         icon: GitBranch    },
+  { id: "dossier",       label: "Dossier",       icon: FileText     },
+  { id: "activiteit",    label: "Activiteit",    icon: Activity     },
+  { id: "exporteren",    label: "Exporteren",    icon: Download     },
 ];
 
 // ─── Helper: labelled data row ────────────────────────────────
@@ -754,6 +756,183 @@ export default function CustomerDetailClient({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ── Adres ─────────────────────────────────────── */}
+        {activeTab === "adres" && (
+          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Adres</h2>
+                <button onClick={editOpen ? () => setEditOpen(false) : openEdit}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600 px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium">
+                  <Pencil size={12} /> {editOpen ? "Sluiten" : "Bewerken"}
+                </button>
+              </div>
+              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                {customer.address_street ? (
+                  <DataRow label="Straat"><span>{customer.address_street}</span></DataRow>
+                ) : null}
+                {(customer.address_zip || customer.address_city) ? (
+                  <DataRow label="Postcode / Stad">
+                    <span>{[customer.address_zip, customer.address_city].filter(Boolean).join(" ")}</span>
+                  </DataRow>
+                ) : null}
+                {customer.address_country ? (
+                  <DataRow label="Land"><span>{customer.address_country}</span></DataRow>
+                ) : null}
+                {!customer.address_street && !customer.address_zip && !customer.address_city && !customer.address_country && (
+                  <p className="text-sm text-slate-400 col-span-2">Geen adres ingevuld.</p>
+                )}
+              </div>
+            </div>
+
+            {editOpen && (
+              <div className="card overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-700">Adres bewerken</h2>
+                  <button onClick={() => { setEditOpen(false); setError(null); }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="px-5 py-5 space-y-3">
+                  {error && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                      <AlertCircle size={14} className="flex-shrink-0" /> {error}
+                    </div>
+                  )}
+                  <div>
+                    <label className="label">Straat</label>
+                    <input disabled={saving} value={edit.address_street}
+                      onChange={e => setEdit(p => ({ ...p, address_street: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="Straatnaam 1" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Postcode</label>
+                      <input disabled={saving} value={edit.address_zip}
+                        onChange={e => setEdit(p => ({ ...p, address_zip: e.target.value }))}
+                        className="input disabled:opacity-60" placeholder="1234 AB" />
+                    </div>
+                    <div>
+                      <label className="label">Stad</label>
+                      <input disabled={saving} value={edit.address_city}
+                        onChange={e => setEdit(p => ({ ...p, address_city: e.target.value }))}
+                        className="input disabled:opacity-60" placeholder="Amsterdam" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">Land</label>
+                    <input disabled={saving} value={edit.address_country}
+                      onChange={e => setEdit(p => ({ ...p, address_country: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="Nederland" />
+                  </div>
+                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                    <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
+                      {saving ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</> : <><Check size={14} /> Opslaan</>}
+                    </button>
+                    <button onClick={() => { setEditOpen(false); setError(null); }} className="btn-outline">
+                      <X size={14} /> Annuleren
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Contactpersoon ────────────────────────────── */}
+        {activeTab === "contactpersoon" && (
+          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Contactpersoon</h2>
+                <button onClick={editOpen ? () => setEditOpen(false) : openEdit}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600 px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium">
+                  <Pencil size={12} /> {editOpen ? "Sluiten" : "Bewerken"}
+                </button>
+              </div>
+              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                {customer.contact_name ? (
+                  <DataRow label="Naam"><span className="font-medium">{customer.contact_name}</span></DataRow>
+                ) : null}
+                {customer.contact_role ? (
+                  <DataRow label="Functie"><span>{customer.contact_role}</span></DataRow>
+                ) : null}
+                {customer.contact_email ? (
+                  <DataRow label="E-mail">
+                    <a href={`mailto:${customer.contact_email}`}
+                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors">
+                      <Mail size={13} />{customer.contact_email}
+                    </a>
+                  </DataRow>
+                ) : null}
+                {customer.contact_phone ? (
+                  <DataRow label="Telefoon">
+                    <a href={`tel:${customer.contact_phone}`}
+                      className="inline-flex items-center gap-1.5 text-slate-700 hover:text-brand-600 transition-colors">
+                      <Phone size={13} />{customer.contact_phone}
+                    </a>
+                  </DataRow>
+                ) : null}
+                {!customer.contact_name && !customer.contact_email && !customer.contact_phone && (
+                  <p className="text-sm text-slate-400 col-span-2">Geen contactpersoon ingevuld.</p>
+                )}
+              </div>
+            </div>
+
+            {editOpen && (
+              <div className="card overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-700">Contactpersoon bewerken</h2>
+                  <button onClick={() => { setEditOpen(false); setError(null); }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="px-5 py-5 space-y-3">
+                  {error && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                      <AlertCircle size={14} className="flex-shrink-0" /> {error}
+                    </div>
+                  )}
+                  <div>
+                    <label className="label">Naam</label>
+                    <input disabled={saving} value={edit.contact_name}
+                      onChange={e => setEdit(p => ({ ...p, contact_name: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="Jan Jansen" />
+                  </div>
+                  <div>
+                    <label className="label">Functie</label>
+                    <input disabled={saving} value={edit.contact_role}
+                      onChange={e => setEdit(p => ({ ...p, contact_role: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="Directeur" />
+                  </div>
+                  <div>
+                    <label className="label">E-mail</label>
+                    <input disabled={saving} type="email" value={edit.contact_email}
+                      onChange={e => setEdit(p => ({ ...p, contact_email: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="jan@bedrijf.nl" />
+                  </div>
+                  <div>
+                    <label className="label">Telefoon</label>
+                    <input disabled={saving} type="tel" value={edit.contact_phone}
+                      onChange={e => setEdit(p => ({ ...p, contact_phone: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="+31 6 87654321" />
+                  </div>
+                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                    <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
+                      {saving ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</> : <><Check size={14} /> Opslaan</>}
+                    </button>
+                    <button onClick={() => { setEditOpen(false); setError(null); }} className="btn-outline">
+                      <X size={14} /> Annuleren
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

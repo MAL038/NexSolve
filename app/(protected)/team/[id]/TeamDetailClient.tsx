@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Users, Crown, Shield, User,
   FolderKanban, Pencil, Trash2, Loader2, Check, X,
-  AlertCircle, ChevronRight,
+  AlertCircle, ChevronRight, UserPlus, Search,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -17,6 +17,14 @@ import { useConfirm } from "@/lib/hooks/useConfirm";
 import { relativeTime } from "@/lib/time";
 import clsx from "clsx";
 import type { Team, TeamMember } from "@/types";
+
+type UserRow = {
+  id:          string;
+  full_name:   string | null;
+  email:       string | null;
+  avatar_url?:  string | null;
+  role?:        string | null;
+};
 
 type ProjectRow = {
   id:          string;
@@ -32,6 +40,7 @@ interface Props {
   initialProjects: ProjectRow[];
   currentUserId:   string;
   canManage:       boolean;
+  allUsers:        UserRow[];
 }
 
 type Tab = "leden" | "projecten";
@@ -46,6 +55,7 @@ export default function TeamDetailClient({
   initialProjects,
   currentUserId,
   canManage,
+  allUsers,
 }: Props) {
   const router = useRouter();
   const { requestConfirm, confirmProps } = useConfirm();
@@ -61,8 +71,27 @@ export default function TeamDetailClient({
   const [editName,        setEditName]        = useState(team.name);
   const [editDescription, setEditDescription] = useState(team.description ?? "");
 
+  // Member management
+  const [memberSearch,    setMemberSearch]    = useState("");
+  const [memberAdding,    setMemberAdding]    = useState<string | null>(null);
+  const [memberRemoving,  setMemberRemoving]  = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
   const members = (team.members ?? []) as TeamMember[];
   const canEdit = canManage || team.leader_id === currentUserId;
+
+  const memberIds = useMemo(() => new Set(members.map(m => m.user_id)), [members]);
+
+  const filteredUsers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return [];
+    return allUsers
+      .filter(u => !memberIds.has(u.id) && (
+        u.full_name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q)
+      ))
+      .slice(0, 6);
+  }, [memberSearch, allUsers, memberIds]);
 
   async function handleSave() {
     if (!editName.trim()) { setError("Teamnaam is verplicht"); return; }
@@ -78,6 +107,41 @@ export default function TeamDetailClient({
     setTeam(json);
     setEditOpen(false);
     showToast("Team bijgewerkt");
+  }
+
+  async function handleAddMember(userId: string) {
+    setMemberAdding(userId);
+    const res = await fetch(`/api/teams/${team.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add", user_id: userId }),
+    });
+    const json = await res.json();
+    setMemberAdding(null);
+    if (!res.ok) { showToast(json.error ?? "Toevoegen mislukt", false); return; }
+    setTeam(json);
+    setMemberSearch("");
+    showToast("Lid toegevoegd");
+  }
+
+  async function handleRemoveMember(userId: string) {
+    if (!(await requestConfirm({
+      title:        "Lid verwijderen?",
+      description:  "Dit teamlid wordt verwijderd uit het team.",
+      confirmLabel: "Verwijderen",
+      variant:      "danger",
+    }))) return;
+    setMemberRemoving(userId);
+    const res = await fetch(`/api/teams/${team.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remove", user_id: userId }),
+    });
+    const json = await res.json();
+    setMemberRemoving(null);
+    if (!res.ok) { showToast(json.error ?? "Verwijderen mislukt", false); return; }
+    setTeam(json);
+    showToast("Lid verwijderd");
   }
 
   async function handleDelete() {
@@ -262,12 +326,63 @@ export default function TeamDetailClient({
 
         {/* ── Tab: Leden ─────────────────────────────────────── */}
         {activeTab === "leden" && (
-          <div className="p-5 sm:p-6 max-w-2xl">
+          <div className="p-5 sm:p-6 max-w-2xl space-y-4">
+
+            {/* Lid toevoegen */}
+            {canEdit && (
+              <div className="card overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                  <UserPlus size={14} className="text-slate-400" />
+                  <h2 className="text-sm font-semibold text-slate-700">Lid toevoegen</h2>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="relative">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <input
+                      ref={searchRef}
+                      value={memberSearch}
+                      onChange={e => setMemberSearch(e.target.value)}
+                      className="input pl-8 text-sm"
+                      placeholder="Zoek op naam of e-mail…"
+                    />
+                  </div>
+                  {filteredUsers.length > 0 && (
+                    <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+                      {filteredUsers.map(u => (
+                        <div key={u.id} className="flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-slate-50 transition-colors">
+                          <Avatar name={u.full_name ?? undefined} url={u.avatar_url ?? undefined} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{u.full_name}</p>
+                            <p className="text-xs text-slate-400 truncate">{u.email}</p>
+                          </div>
+                          <button
+                            onClick={() => handleAddMember(u.id)}
+                            disabled={memberAdding === u.id}
+                            className="btn-primary text-xs px-3 py-1.5 flex-shrink-0"
+                          >
+                            {memberAdding === u.id
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : <><UserPlus size={11} /> Toevoegen</>
+                            }
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {memberSearch.trim().length > 0 && filteredUsers.length === 0 && (
+                    <p className="mt-2 text-xs text-slate-400 text-center py-2">Geen gebruikers gevonden.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Ledenlijst */}
             <div className="card divide-y divide-slate-50 overflow-hidden">
               {members.length === 0 ? (
                 <div className="p-10 text-center text-sm text-slate-400">Geen leden in dit team.</div>
               ) : members.map((m: TeamMember) => {
                 const isLeader = m.user_id === team.leader_id;
+                const isRemoving = memberRemoving === m.user_id;
                 return (
                   <div key={m.user_id} className="flex items-center gap-3 px-5 py-3.5">
                     <Avatar name={m.profile?.full_name} url={m.profile?.avatar_url} size="sm" />
@@ -289,6 +404,16 @@ export default function TeamDetailClient({
                         {m.profile?.role === "admin" ? <Shield size={10} /> : <User size={10} />}
                         {m.profile?.role === "admin" ? "Admin" : "Lid"}
                       </span>
+                    )}
+                    {canEdit && !isLeader && (
+                      <button
+                        onClick={() => handleRemoveMember(m.user_id)}
+                        disabled={isRemoving}
+                        className="ml-1 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                        title="Verwijder uit team"
+                      >
+                        {isRemoving ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                      </button>
                     )}
                   </div>
                 );

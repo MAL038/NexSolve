@@ -384,7 +384,6 @@ export default async function DashboardPage() {
           {/* Activiteitenfeed — eigen client fetch */}
           <ActivityFeed
             limit={10}
-            compact
             title="Recente activiteit"
           />
         </div>
