@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Users, Mail, Plus, Trash2, Loader2, Clock,
-  Check, Shield, User, X, Send, Crown,
-  ChevronDown, ChevronRight, Pencil, Search,
+  Users, Plus, Trash2, Loader2,
+  Check, Shield, User, X, Crown,
+  ChevronRight, Pencil, Search,
   Building2, AlertCircle,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
@@ -33,15 +34,6 @@ interface PlatformMember {
   created_at: string;
 }
 
-interface Invite {
-  id: string;
-  email: string;
-  role: string;
-  created_at: string;
-  expires_at: string;
-  accepted_at: string | null;
-}
-
 interface Props {
   initialMembers:  PlatformMember[];
   currentUserId:   string;
@@ -49,7 +41,7 @@ interface Props {
   canManageTeams:  boolean;
 }
 
-type Tab = "members" | "teams" | "uitnodigingen";
+type Tab = "members" | "teams";
 
 // ─── Team aanmaken / bewerken modaal ─────────────────────────
 
@@ -227,64 +219,26 @@ export default function TeamClient({
   currentUserRole,
   canManageTeams,
 }: Props) {
+  const router = useRouter();
   const { requestConfirm, confirmProps } = useConfirm();
   const [members,      setMembers]      = useState<PlatformMember[]>(initialMembers);
   const [teams,        setTeams]        = useState<Team[]>([]);
-  const [invites,      setInvites]      = useState<Invite[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [activeTab,    setActiveTab]    = useState<Tab>("members");
 
-  // Invite form state
-  const [email,        setEmail]        = useState("");
-  const [sending,      setSending]      = useState(false);
-  const [inviteError,  setInviteError]  = useState("");
-
   // Team modaal
-  const [teamModal,    setTeamModal]    = useState<{ mode: "create" | "edit"; team?: Team } | null>(null);
-  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [teamModal, setTeamModal] = useState<{ mode: "create" | "edit"; team?: Team } | null>(null);
 
   const { toast, showToast, clearToast } = useToast();
 
   // ─── Data laden ────────────────────────────────────────────
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/team/invite").then(r => r.ok ? r.json() : []),
-      fetch("/api/teams").then(r => r.ok ? r.json() : []),
-    ]).then(([inv, tm]) => {
-      setInvites(Array.isArray(inv) ? inv : []);
+    fetch("/api/teams").then(r => r.ok ? r.json() : []).then(tm => {
       setTeams(Array.isArray(tm) ? tm : []);
       setTeamsLoading(false);
     });
   }, []);
-
-  // ─── Invite handlers ───────────────────────────────────────
-
-  async function sendInvite() {
-    if (!email.trim()) { setInviteError("Vul een e-mailadres in."); return; }
-    setSending(true); setInviteError("");
-    const res = await fetch("/api/team/invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), role: "member" }),
-    });
-    const data = await res.json();
-    setSending(false);
-    if (!res.ok) { setInviteError(data.error ?? "Uitnodiging mislukt."); return; }
-    setInvites(prev => [data.invite, ...prev]);
-    setEmail("");
-    showToast(`Uitnodiging verstuurd naar ${email.trim()}`);
-  }
-
-  async function revokeInvite(id: string) {
-    if (!(await requestConfirm({
-      title:        "Uitnodiging intrekken?",
-      confirmLabel: "Intrekken",
-      variant:      "danger",
-    }))) return;
-    await fetch(`/api/team/invite/${id}`, { method: "DELETE" });
-    setInvites(prev => prev.filter(i => i.id !== id));
-  }
 
   // ─── Team handlers ─────────────────────────────────────────
 
@@ -337,36 +291,12 @@ export default function TeamClient({
     }
   }
 
-  async function handleToggleMember(teamId: string, userId: string, action: "add" | "remove") {
-    const res  = await fetch(`/api/teams/${teamId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, user_id: userId }),
-    });
-    const json = await res.json();
-    if (res.ok) {
-      setTeams(prev => prev.map(t => t.id === teamId ? json : t));
-    } else {
-      showToast(json.error ?? "Lidmaatschap wijzigen mislukt", false);
-    }
-  }
-
   // ─── Computed (memoized) ───────────────────────────────────
 
-  const pendingInvites = useMemo(
-    () => invites.filter(i => !i.accepted_at && new Date(i.expires_at) > new Date()),
-    [invites]
-  );
-  const expiredInvites = useMemo(
-    () => invites.filter(i => !i.accepted_at && new Date(i.expires_at) <= new Date()),
-    [invites]
-  );
-
   const TABS = useMemo<{ id: Tab; label: string; icon: React.ElementType; badge?: number }[]>(() => [
-    { id: "members",       label: "Leden",        icon: Users,     badge: members.length    },
-    { id: "teams",         label: "Teams",         icon: Building2, badge: teams.length      },
-    { id: "uitnodigingen", label: "Uitnodigingen", icon: Mail,      badge: pendingInvites.length > 0 ? pendingInvites.length : undefined },
-  ], [members.length, teams.length, pendingInvites.length]);
+    { id: "members", label: "Leden",  icon: Users,     badge: members.length },
+    { id: "teams",   label: "Teams",  icon: Building2, badge: teams.length   },
+  ], [members.length, teams.length]);
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -394,8 +324,8 @@ export default function TeamClient({
           {/* Stats */}
           <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
             {[
-              { label: "Leden",  value: members.length, color: "text-slate-800"   },
-              { label: "Teams",  value: teams.length,   color: "text-brand-700"   },
+              { label: "Leden",  value: members.length, color: "text-slate-800" },
+              { label: "Teams",  value: teams.length,   color: "text-brand-700" },
             ].map(s => (
               <div key={s.label} className="text-center">
                 <p className={clsx("text-lg font-bold", s.color)}>{s.value}</p>
@@ -434,22 +364,16 @@ export default function TeamClient({
         </nav>
 
         {/* Acties onderaan */}
-        <div className="px-4 py-4 border-t border-slate-200 space-y-2">
-          {canManageTeams && (
+        {canManageTeams && (
+          <div className="px-4 py-4 border-t border-slate-200">
             <button
               onClick={() => { setTeamModal({ mode: "create" }); setActiveTab("teams"); }}
               className="btn-primary w-full justify-center"
             >
               <Plus size={14} /> Nieuw team
             </button>
-          )}
-          <button
-            onClick={() => setActiveTab("uitnodigingen")}
-            className="btn-outline w-full justify-center"
-          >
-            <Mail size={14} /> Teamlid uitnodigen
-          </button>
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* ══ INHOUD ═══════════════════════════════════════════ */}
@@ -528,9 +452,9 @@ export default function TeamClient({
 
         {/* ── Tab: Teams ─────────────────────────────────────── */}
         {activeTab === "teams" && (
-          <div className="p-5 sm:p-6 max-w-3xl space-y-3">
+          <div className="p-5 sm:p-6">
             {teamsLoading ? (
-              <div className="card p-10 flex items-center justify-center">
+              <div className="flex items-center justify-center py-16">
                 <Loader2 size={20} className="animate-spin text-slate-400" />
               </div>
             ) : teams.length === 0 ? (
@@ -544,197 +468,65 @@ export default function TeamClient({
                   </button>
                 )}
               </div>
-            ) : teams.map(team => {
-              const isExpanded  = expandedTeam === team.id;
-              const canEdit     = canManageTeams || team.leader_id === currentUserId;
-              const memberCount = team.members?.length ?? 0;
-
-              return (
-                <div key={team.id} className="card overflow-hidden">
-                  {/* Team header */}
-                  <div className="flex items-center gap-3 px-5 py-4">
-                    <button
-                      onClick={() => setExpandedTeam(isExpanded ? null : team.id)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teams.map(team => {
+                  const canEdit     = canManageTeams || team.leader_id === currentUserId;
+                  const memberCount = team.members?.length ?? 0;
+                  return (
+                    <div
+                      key={team.id}
+                      onClick={() => router.push(`/team/${team.id}`)}
+                      className="card p-5 cursor-pointer hover:border-brand-200 hover:shadow-sm transition-all group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
-                        <Users size={18} className="text-brand-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-slate-800">{team.name}</p>
-                          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                            {memberCount} lid{memberCount !== 1 ? "en" : ""}
-                          </span>
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
+                          <Users size={18} className="text-brand-600" />
                         </div>
-                        {team.leader && (
-                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                            <Crown size={10} className="text-amber-500" /> {team.leader.full_name}
-                          </p>
-                        )}
-                        {team.description && (
-                          <p className="text-xs text-slate-400 truncate mt-0.5">{team.description}</p>
-                        )}
-                      </div>
-                      {isExpanded
-                        ? <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
-                        : <ChevronRight size={16} className="text-slate-400 flex-shrink-0" />}
-                    </button>
-
-                    {canEdit && (
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => setTeamModal({ mode: "edit", team })}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors">
-                          <Pencil size={14} />
-                        </button>
-                        {canManageTeams && (
-                          <button onClick={() => handleDeleteTeam(team.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Uitgebreide ledenlijst */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 divide-y divide-slate-50">
-                      {(team.members ?? []).length === 0 ? (
-                        <p className="text-sm text-slate-400 text-center py-4">Geen leden in dit team</p>
-                      ) : (team.members ?? []).map((m: TeamMember) => {
-                        const isLeader = m.user_id === team.leader_id;
-                        return (
-                          <div key={m.user_id} className="flex items-center gap-3 px-5 py-3">
-                            <Avatar name={m.profile?.full_name} url={m.profile?.avatar_url} size="sm" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-800 truncate">{m.profile?.full_name}</p>
-                              <p className="text-xs text-slate-400 truncate">{m.profile?.email}</p>
-                            </div>
-                            {isLeader ? (
-                              <span className="flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                                <Crown size={10} /> Teamleider
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                                Lid
-                              </span>
-                            )}
-                            {canEdit && !isLeader && (
+                        {canEdit && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button
+                              onClick={e => { e.stopPropagation(); setTeamModal({ mode: "edit", team }); }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            {canManageTeams && (
                               <button
-                                onClick={() => handleToggleMember(team.id, m.user_id, "remove")}
-                                className="p-1 rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                                title="Lid verwijderen">
-                                <X size={13} />
+                                onClick={e => { e.stopPropagation(); handleDeleteTeam(team.id); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 size={13} />
                               </button>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                        )}
+                      </div>
 
-        {/* ── Tab: Uitnodigingen ─────────────────────────────── */}
-        {activeTab === "uitnodigingen" && (
-          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
+                      <p className="font-semibold text-slate-800 group-hover:text-brand-700 transition-colors mb-1 leading-tight">
+                        {team.name}
+                      </p>
+                      {team.description && (
+                        <p className="text-xs text-slate-400 line-clamp-2 mb-3">{team.description}</p>
+                      )}
 
-            {/* Uitnodiging versturen */}
-            <div className="card p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Send size={14} className="text-brand-500" /> Nieuw teamlid uitnodigen
-              </h3>
-
-              {inviteError && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                  <AlertCircle size={14} /> {inviteError}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="label">E-mailadres *</label>
-                  <input
-                    type="email"
-                    className="input"
-                    placeholder="naam@bedrijf.nl"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && sendInvite()}
-                    autoFocus
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button onClick={sendInvite} disabled={sending} className="btn-primary">
-                    {sending ? <><Loader2 size={14} className="animate-spin" /> Versturen…</> : <><Send size={14} /> Versturen</>}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Openstaande uitnodigingen */}
-            {pendingInvites.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
-                  <Clock size={14} className="text-amber-500" /> Openstaande uitnodigingen
-                </h3>
-                <div className="card divide-y divide-slate-50 overflow-hidden">
-                  {pendingInvites.map(inv => {
-                    const days = Math.ceil((new Date(inv.expires_at).getTime() - Date.now()) / 86400000);
-                    return (
-                      <div key={inv.id} className="flex items-center gap-3 px-5 py-3.5">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                          <Mail size={16} className="text-amber-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{inv.email}</p>
-                          <p className="text-xs text-slate-400">Verloopt over {days} dag{days !== 1 ? "en" : ""}</p>
-                        </div>
-                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
-                          {ROLE_LABEL[inv.role] ?? inv.role}
+                      <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
+                        <span className="text-xs text-slate-400">
+                          {memberCount} lid{memberCount !== 1 ? "en" : ""}
                         </span>
-                        <button onClick={() => revokeInvite(inv.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
+                        {team.leader && (
+                          <span className="flex items-center gap-1 text-xs text-amber-600">
+                            <Crown size={10} />
+                            <span className="truncate max-w-[100px]">
+                              {(team.leader as { full_name: string }).full_name}
+                            </span>
+                          </span>
+                        )}
+                        <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-400 transition-colors flex-shrink-0" />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Verlopen uitnodigingen */}
-            {expiredInvites.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-slate-500 flex items-center gap-2 mb-3">
-                  Verlopen uitnodigingen
-                </h3>
-                <div className="card divide-y divide-slate-50 overflow-hidden opacity-60">
-                  {expiredInvites.map(inv => (
-                    <div key={inv.id} className="flex items-center gap-3 px-5 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-600 truncate">{inv.email}</p>
-                        <p className="text-xs text-slate-400">Verlopen</p>
-                      </div>
-                      <button onClick={() => revokeInvite(inv.id)}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors">
-                        <Trash2 size={13} />
-                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {pendingInvites.length === 0 && expiredInvites.length === 0 && (
-              <div className="card p-10 text-center">
-                <Mail size={28} className="mx-auto mb-3 text-slate-300" />
-                <p className="text-sm text-slate-500 font-medium">Geen openstaande uitnodigingen</p>
+                  );
+                })}
               </div>
             )}
           </div>

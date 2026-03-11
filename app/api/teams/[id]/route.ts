@@ -35,6 +35,25 @@ async function guardTeam(supabase: Awaited<ReturnType<typeof createClient>>, tea
   return null;
 }
 
+export async function GET(
+  _: NextRequest,
+  { params }: { params: Promise<Record<string, string>> },
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
+  const { data, error } = await supabase
+    .from("teams")
+    .select(FULL_SELECT)
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+  return NextResponse.json(data);
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<Record<string, string>> },

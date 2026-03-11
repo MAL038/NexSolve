@@ -1,18 +1,6 @@
 "use client";
 
-/**
- * ProjectDetailClient — refactored naar DetailPageShell
- * ──────────────────────────────────────────────────────
- * WAT ER VERANDERD IS (minimale diff):
- *   1. Import DetailPageShell, SidebarMetaRow, TabContent
- *   2. De grote JSX-structuur (aside + content-div) vervangen door <DetailPageShell>
- *   3. entityMeta, sidebarMeta, headerActions als aparte variabelen gedefinieerd
- *   4. Alle tab-inhoud gewikkeld in <TabContent maxWidth="...">
- *   5. Toast + error state werkt nu via shell props — eigen toast-div weg
- *   6. De rest van de state/logica is ONGEWIJZIGD
- */
-
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Calendar, Building2, Users, GitBranch,
@@ -42,7 +30,7 @@ import {
 
 import type {
   Project, Subprocess, ThemeWithChildren,
-  Customer, ProjectStatus, ProjectMember,
+  Customer, ProjectStatus, ProjectMember, Team,
 } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -94,7 +82,14 @@ export default function ProjectDetailClient({
   const [activeTab, setActiveTab] = useState<Tab>("algemeen");
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [toast,     setToast]     = useState<string | null>(null);
+  const [editOpen,  setEditOpen]  = useState(false);
+
+  // Teams
+  const [allTeams,      setAllTeams]      = useState<Team[]>([]);
+  const [teamsLoaded,   setTeamsLoaded]   = useState(false);
+  const [teamLinking,   setTeamLinking]   = useState(false);
+
+  const { toast, showToast, clearToast } = useToast();
 
   const [edit, setEdit] = useState<EditState>({
     name:        initialProject.name,
@@ -171,29 +166,61 @@ export default function ProjectDetailClient({
     setEdit((prev: EditState) => ({ ...prev, customer_id: c.id }));
   }, []);
 
-  // ── Tab definities ────────────────────────────────────────
-  const TABS: TabDef<Tab>[] = [
-    { id: "algemeen",   label: "Algemeen",   icon: LayoutGrid,    },
-    { id: "taken",      label: "Taken",      icon: GitBranch,     badge: totalSubs > 0 ? `${doneSubs}/${totalSubs}` : null },
-    { id: "team",       label: "Team",       icon: Users,         },
-    { id: "intake",     label: "Intake",     icon: ClipboardList, },
-    { id: "dossier",    label: "Dossier",    icon: FileText,      },
-    { id: "activiteit", label: "Activiteit", icon: Activity,      },
-    { id: "exporteren", label: "Exporteren", icon: Download,      },
-  ];
+  // Load teams when Team tab is first opened
+  useEffect(() => {
+    if (activeTab === "team" && !teamsLoaded) {
+      fetch("/api/teams").then(r => r.ok ? r.json() : []).then(data => {
+        setAllTeams(Array.isArray(data) ? data : []);
+        setTeamsLoaded(true);
+      });
+    }
+  }, [activeTab, teamsLoaded]);
 
-  // ── Shell slots ───────────────────────────────────────────
+  async function linkTeam(teamId: string | null) {
+    setTeamLinking(true);
+    const res = await fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_id: teamId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setProject((prev: Project) => ({ ...prev, team_id: data.team_id, team: data.team ?? null }));
+      showToast(teamId ? "Team gekoppeld" : "Team ontkoppeld");
+    } else {
+      showToast("Koppelen mislukt", false);
+    }
+    setTeamLinking(false);
+  }
 
-  // Progress + klantblok in de sidebar onder de titel
-  const entityMeta = (
-    <>
-      {totalSubs > 0 && (
-        <div className="mt-1">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-              Voortgang
-            </span>
-            <span className="text-[10px] font-bold text-slate-600">{pct}%</span>
+  // ── Render ────────────────────────────────────────────────
+  return (
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
+
+      <Toast toast={toast} onClose={clearToast} />
+
+      {/* ════════ SIDEBAR ════════ */}
+      <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
+
+        <div className="px-5 pt-5 pb-4 border-b border-slate-100">
+          <Link href="/projects"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-600 font-medium transition-colors mb-3">
+            <ArrowLeft size={13} /> Terug naar projecten
+          </Link>
+
+          <div className="flex items-start gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center
+                            justify-center flex-shrink-0 mt-0.5">
+              <FolderKanban size={16} className="text-brand-600" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-slate-800 leading-tight break-words">{project.name}</h1>
+              {project.code && (
+                <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5 mt-0.5">
+                  <Hash size={8} />{project.code}
+                </span>
+              )}
+            </div>
           </div>
           <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
             <div
@@ -317,14 +344,105 @@ export default function ProjectDetailClient({
             )}
           </div>
 
-          {project.code && (
-            <div>
-              <label className="label">Projectcode</label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200
-                              bg-slate-50 text-sm text-slate-600 font-mono">
-                <Hash size={13} className="text-slate-400" />
-                {project.code}
-                <span className="ml-auto text-[10px] text-slate-400 font-sans">Niet wijzigbaar</span>
+              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <DataRow label="Naam">
+                  <span className="font-medium">{project.name}</span>
+                </DataRow>
+
+                <DataRow label="Status">
+                  <StatusBadge status={project.status} />
+                </DataRow>
+
+                {project.owner && (
+                  <DataRow label="Eigenaar">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={project.owner.full_name} url={project.owner.avatar_url} size="xs" />
+                      <span>{project.owner.full_name}</span>
+                    </div>
+                  </DataRow>
+                )}
+
+                {project.start_date && (
+                  <DataRow label="Startdatum">
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                      <Calendar size={13} className="text-slate-400" />
+                      {formatDate(project.start_date)}
+                    </div>
+                  </DataRow>
+                )}
+
+                {project.end_date && (
+                  <DataRow label="Einddatum">
+                    <div className={clsx(
+                      "flex items-center gap-1.5",
+                      isOverdue ? "text-red-600 font-semibold" : "text-slate-600"
+                    )}>
+                      <Calendar size={13} className={isOverdue ? "text-red-400" : "text-slate-400"} />
+                      {formatDate(project.end_date)}
+                      {isOverdue && (
+                        <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md">
+                          verlopen
+                        </span>
+                      )}
+                    </div>
+                  </DataRow>
+                )}
+
+                {displayTheme && (
+                  <DataRow label="Thema">
+                    <div className="flex items-center gap-1.5">
+                      <Tag size={13} className="text-slate-400" />
+                      {displayTheme}
+                      {displayProcess && <><span className="text-slate-400">›</span><span className="text-slate-600">{displayProcess}</span></>}
+                      {displayPt      && <><span className="text-slate-400">›</span><span className="text-slate-500">{displayPt}</span></>}
+                    </div>
+                  </DataRow>
+                )}
+
+                {members.length > 0 && (
+                  <DataRow label={`Team (${members.length})`}>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {members.slice(0, 5).map(m => (
+                        <div key={m.user_id} title={m.profile?.full_name ?? "Onbekend"}>
+                          <Avatar name={m.profile?.full_name} url={m.profile?.avatar_url} size="xs" />
+                        </div>
+                      ))}
+                      {members.length > 5 && (
+                        <span className="text-xs text-slate-400 ml-1">+{members.length - 5}</span>
+                      )}
+                    </div>
+                  </DataRow>
+                )}
+
+                {totalSubs > 0 && (
+                  <DataRow label="Voortgang taken">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>{doneSubs} van {totalSubs} afgerond</span>
+                        <span className="font-bold text-slate-700">{pct}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={clsx(
+                            "h-full rounded-full transition-all duration-500",
+                            pct === 100 ? "bg-emerald-500" : pct >= 50 ? "bg-brand-500" : "bg-amber-400"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </DataRow>
+                )}
+
+                {project.description && (
+                  <div className="sm:col-span-2">
+                    <DataRow label="Beschrijving">
+                      <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">
+                        {project.description}
+                      </p>
+                    </DataRow>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -339,26 +457,76 @@ export default function ProjectDetailClient({
               placeholder="Projectnaam"
             />
           </div>
+        )}
 
-          <div>
-            <label className="label">Status</label>
-            <div className="flex gap-2 flex-wrap mt-1">
-              {STATUS_OPTIONS.map(s => (
-                <button key={s.value} type="button"
-                  disabled={!isOwnerOrMember}
-                  onClick={() => setEdit(p => ({ ...p, status: s.value }))}
-                  className={clsx(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
-                    edit.status === s.value
-                      ? "ring-2 ring-brand-400 ring-offset-1 border-transparent bg-brand-50"
-                      : "border-slate-200 bg-white hover:border-slate-300",
-                  )}
-                >
-                  <span className={clsx("w-2 h-2 rounded-full", s.dot)} />
-                  {s.label}
-                </button>
-              ))}
+        {/* ── Tab: Team ────────────────────────────────── */}
+        {activeTab === "team" && (
+          <div className="p-6 max-w-2xl space-y-5">
+            {/* Gekoppeld team */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Gekoppeld team</h2>
+              </div>
+              <div className="px-5 py-4">
+                {project.team ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
+                      <Users size={16} className="text-brand-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/team/${project.team.id}`}
+                        className="text-sm font-semibold text-slate-800 hover:text-brand-700 transition-colors">
+                        {project.team.name}
+                      </Link>
+                    </div>
+                    {isOwnerOrMember && (
+                      <button
+                        onClick={() => linkTeam(null)}
+                        disabled={teamLinking}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Team ontkoppelen"
+                      >
+                        {teamLinking ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">Geen team gekoppeld.</p>
+                )}
+
+                {isOwnerOrMember && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <label className="label">Team koppelen</label>
+                    {!teamsLoaded ? (
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <Loader2 size={12} className="animate-spin" /> Laden…
+                      </div>
+                    ) : (
+                      <select
+                        className="input bg-white"
+                        value={project.team_id ?? ""}
+                        onChange={e => linkTeam(e.target.value || null)}
+                        disabled={teamLinking}
+                      >
+                        <option value="">— Geen team —</option>
+                        {allTeams.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Teamleden */}
+            <MembersPanel
+              projectId={project.id}
+              ownerId={project.owner_id}
+              currentUserId={currentUserId}
+              owner={project.owner}
+              initialMembers={members}
+            />
           </div>
 
           <div>

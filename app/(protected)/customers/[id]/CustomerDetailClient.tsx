@@ -1,20 +1,20 @@
 "use client";
 
-/**
- * CustomerDetailClient — refactored naar DetailPageShell
- * ──────────────────────────────────────────────────────
- * Alleen de shell-structuur is vervangen. Alle state/logica ongewijzigd.
- * Verwijderd: eigen aside, eigen toast-div, eigen mobile-header.
- * Toegevoegd: DetailPageShell met de juiste slot-props.
- */
-
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  Mail, Phone, Globe, MapPin, User, Briefcase,
-  FolderKanban, Activity, Link2, Search, Loader2,
-  CheckCircle2, XCircle, AlertCircle, X,
+  ArrowLeft, Building2, FolderKanban, Mail, Phone,
+  Globe, MapPin, User, Hash, CheckCircle2, XCircle,
+  Loader2, AlertCircle, FileText, Activity, Link2,
+  Search, X, Check, Pencil, Download, GitBranch,
 } from "lucide-react";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { DossierList } from "@/components/dossiers/DossierList";
+import { ActivityFeed } from "@/components/activity/ActivityFeed";
+import PdfExportButton from "@/components/ui/PdfExportButton";
+import { relativeTime } from "@/lib/time";
+import { useToast } from "@/lib/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
 import { formatDate, relativeTime } from "@/lib/time";
 
@@ -48,11 +48,18 @@ interface EditState {
   contact_phone:   string;
 }
 
-interface Props {
-  customer:        Customer;
-  linkedProjects:  Project[];
-  allProjects:     Project[];
-}
+type Tab = "algemeen" | "projecten" | "taken" | "dossier" | "activiteit" | "exporteren";
+
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  { id: "algemeen",   label: "Algemeen",   icon: Building2    },
+  { id: "projecten",  label: "Projecten",  icon: FolderKanban },
+  { id: "taken",      label: "Taken",      icon: GitBranch    },
+  { id: "dossier",    label: "Dossier",    icon: FileText     },
+  { id: "activiteit", label: "Activiteit", icon: Activity     },
+  { id: "exporteren", label: "Exporteren", icon: Download     },
+];
+
+// ─── Helper: labelled data row ────────────────────────────────
 
 // ─── Hulpcomponenten (ongewijzigd) ────────────────────────────
 
@@ -126,7 +133,13 @@ export default function CustomerDetailClient({ customer: initial, linkedProjects
   const [toast,       setToast]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
-  const [showLink,    setShowLink]    = useState(false);
+
+  // Taken tab
+  const [projectTasks,  setProjectTasks]  = useState<Record<string, { id: string; title: string; status: string }[]>>({});
+  const [tasksLoading,  setTasksLoading]  = useState(false);
+  const [tasksLoaded,   setTasksLoaded]   = useState(false);
+
+  const { toast, showToast, clearToast } = useToast();
 
   const [edit, setEdit] = useState<EditState>({
     name:            initial.name,
@@ -217,17 +230,46 @@ export default function CustomerDetailClient({ customer: initial, linkedProjects
     setLinkLoading(null);
   }
 
-  // Derived
-  const fullAddress = [
-    edit.address_street,
-    `${edit.address_zip} ${edit.address_city}`.trim(),
-    edit.address_country,
-  ].filter(Boolean).join(", ");
-  const mapsUrl = fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined;
-  const linkable = allProjects.filter(p =>
-    !linked.find(l => l.id === p.id) &&
-    (p.name.toLowerCase().includes(linkSearch.toLowerCase()) || !linkSearch)
-  );
+  // Taken laden per project
+  useEffect(() => {
+    if (activeTab === "taken" && !tasksLoaded && linked.length > 0) {
+      setTasksLoading(true);
+      Promise.all(
+        linked.map(p =>
+          fetch(`/api/projects/${p.id}/subprocesses`)
+            .then(r => r.ok ? r.json() : [])
+            .then(data => ({ projectId: p.id, tasks: Array.isArray(data) ? data : [] }))
+            .catch(() => ({ projectId: p.id, tasks: [] }))
+        )
+      ).then(results => {
+        const map: Record<string, { id: string; title: string; status: string }[]> = {};
+        results.forEach(r => { map[r.projectId] = r.tasks; });
+        setProjectTasks(map);
+        setTasksLoaded(true);
+        setTasksLoading(false);
+      });
+    }
+  }, [activeTab, tasksLoaded, linked]);
+
+  // Samengesteld adres
+  const addressParts = useMemo(() => [
+    customer.address_street,
+    customer.address_zip && customer.address_city
+      ? `${customer.address_zip} ${customer.address_city}`
+      : (customer.address_zip ?? customer.address_city ?? null),
+    customer.address_country,
+  ].filter(Boolean), [
+    customer.address_street, customer.address_zip,
+    customer.address_city,   customer.address_country,
+  ]);
+
+  return (
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
+
+      <Toast toast={toast} onClose={clearToast} />
+
+      {/* ══ SIDEBAR ══════════════════════════════════════════ */}
+      <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
 
   // ── Tab definities ────────────────────────────────────────
   const TABS: TabDef<Tab>[] = [
@@ -333,6 +375,131 @@ export default function CustomerDetailClient({ customer: initial, linkedProjects
             <InlineField label="Website" value={edit.website} type="url" onChange={set("website")}
               placeholder="www.bedrijf.nl" href={edit.website || undefined} />
           </div>
+        </div>
+
+        {/* Tab navigatie */}
+        <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1">
+          {TABS.map(tab => {
+            const Icon   = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left",
+                  active
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                )}>
+                <Icon size={15} className={active ? "opacity-80" : "text-slate-400"} />
+                {tab.label}
+                {tab.id === "projecten" && linked.length > 0 && (
+                  <span className={clsx(
+                    "ml-auto text-[11px] font-bold px-1.5 py-0.5 rounded-full",
+                    active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                  )}>
+                    {linked.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Quick meta onderaan */}
+        <div className="px-5 py-4 border-t border-slate-200 space-y-2 text-xs text-slate-500">
+          {customer.email && (
+            <a href={`mailto:${customer.email}`}
+              className="flex items-center gap-2 hover:text-brand-600 transition-colors min-w-0">
+              <Mail size={11} className="text-slate-400 flex-shrink-0" />
+              <span className="truncate">{customer.email}</span>
+            </a>
+          )}
+          {customer.phone && (
+            <a href={`tel:${customer.phone}`}
+              className="flex items-center gap-2 hover:text-brand-600 transition-colors">
+              <Phone size={11} className="text-slate-400 flex-shrink-0" />{customer.phone}
+            </a>
+          )}
+          {addressParts.length > 0 && (
+            <div className="flex items-start gap-2">
+              <MapPin size={11} className="text-slate-400 flex-shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{addressParts.join(", ")}</span>
+            </div>
+          )}
+          {customer.contact_name && (
+            <div className="pt-2 mt-2 border-t border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Contactpersoon</p>
+              <div className="flex items-center gap-2">
+                <User size={11} className="text-slate-400 flex-shrink-0" />
+                <span className="font-medium text-slate-600 truncate">{customer.contact_name}</span>
+              </div>
+              {customer.contact_role && (
+                <p className="text-slate-400 ml-4 truncate">{customer.contact_role}</p>
+              )}
+              {customer.contact_email && (
+                <a href={`mailto:${customer.contact_email}`}
+                  className="flex items-center gap-2 mt-1 hover:text-brand-600 transition-colors min-w-0 ml-0">
+                  <Mail size={11} className="text-slate-400 flex-shrink-0" />
+                  <span className="truncate">{customer.contact_email}</span>
+                </a>
+              )}
+              {customer.contact_phone && (
+                <a href={`tel:${customer.contact_phone}`}
+                  className="flex items-center gap-2 mt-1 hover:text-brand-600 transition-colors">
+                  <Phone size={11} className="text-slate-400 flex-shrink-0" />{customer.contact_phone}
+                </a>
+              )}
+            </div>
+          )}
+          <p className="text-slate-400 text-[11px] pt-1.5 border-t border-slate-100">
+            Bijgewerkt {relativeTime(customer.updated_at)}
+          </p>
+        </div>
+      </aside>
+
+      {/* ══ TAB INHOUD ═══════════════════════════════════════ */}
+      <div className="flex-1 min-w-0 overflow-y-auto bg-slate-50">
+
+        {/* Mobiele header */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
+          <Link href="/customers" className="text-slate-500 hover:text-brand-600 transition-colors">
+            <ArrowLeft size={16} />
+          </Link>
+          <h1 className="font-bold text-slate-800 flex-1 truncate">{customer.name}</h1>
+        </div>
+        <div className="lg:hidden flex gap-1 px-4 py-2 bg-white border-b border-slate-200 overflow-x-auto">
+          {TABS.map(tab => {
+            const Icon   = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  "flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  active ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                )}>
+                <Icon size={12} /> {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Algemeen ──────────────────────────────────── */}
+        {activeTab === "algemeen" && (
+          <div className="p-5 sm:p-6 max-w-2xl space-y-5">
+
+            {/* Klantoverzicht (altijd zichtbaar) */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Klantoverzicht</h2>
+                <button
+                  onClick={editOpen ? () => setEditOpen(false) : openEdit}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
+                             px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium"
+                >
+                  <Pencil size={12} />
+                  {editOpen ? "Sluiten" : "Bewerken"}
+                </button>
+              </div>
 
           <div className="card p-5 space-y-4">
             <SectionLabel>Adres</SectionLabel>
@@ -423,18 +590,90 @@ export default function CustomerDetailClient({ customer: initial, linkedProjects
               </Link>
             ))}
           </div>
-        </TabContent>
-      )}
+        )}
 
-      {/* ── Tab: Activiteit ──────────────────────────────── */}
-      {activeTab === "activiteit" && (
-        <TabContent maxWidth="md">
-          {/* ActivityFeed met customer filter — voeg customerId prop toe als die er nog niet is */}
-          <div className="text-sm text-slate-400 text-center py-10">
-            Activiteitenlog voor klant volgt hier
+        {/* ── Taken ─────────────────────────────────────── */}
+        {activeTab === "taken" && (
+          <div className="p-5 sm:p-6 max-w-2xl space-y-4">
+            {linked.length === 0 ? (
+              <div className="card p-12 text-center">
+                <GitBranch size={32} className="mx-auto mb-3 text-slate-300" />
+                <p className="text-sm text-slate-500 font-medium">Geen projecten gekoppeld.</p>
+              </div>
+            ) : tasksLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={20} className="animate-spin text-slate-400" />
+              </div>
+            ) : linked.map((p: Project) => {
+              const tasks = projectTasks[p.id] ?? [] as { id: string; title: string; status: string }[];
+              const done  = tasks.filter(t => t.status === "done").length;
+              return (
+                <div key={p.id} className="card overflow-hidden">
+                  <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100">
+                    <FolderKanban size={14} className="text-slate-400 flex-shrink-0" />
+                    <Link href={`/projects/${p.id}`}
+                      className="flex-1 text-sm font-semibold text-slate-700 hover:text-brand-700 transition-colors truncate">
+                      {p.name}
+                    </Link>
+                    <StatusBadge status={p.status} />
+                    {tasks.length > 0 && (
+                      <span className="text-xs text-slate-400 flex-shrink-0">{done}/{tasks.length}</span>
+                    )}
+                  </div>
+                  {tasks.length === 0 ? (
+                    <p className="text-xs text-slate-400 px-5 py-3">Geen taken.</p>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {tasks.map(t => (
+                        <div key={t.id} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className={clsx(
+                            "w-2 h-2 rounded-full flex-shrink-0",
+                            t.status === "done"        ? "bg-emerald-400" :
+                            t.status === "in-progress" ? "bg-amber-400"   :
+                            t.status === "blocked"     ? "bg-red-400"     :
+                            "bg-slate-300"
+                          )} />
+                          <span className={clsx(
+                            "flex-1 text-sm truncate",
+                            t.status === "done" ? "line-through text-slate-400" : "text-slate-700"
+                          )}>
+                            {t.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </TabContent>
-      )}
-    </DetailPageShell>
+        )}
+
+        {/* ── Dossier ───────────────────────────────────── */}
+        {activeTab === "dossier" && (
+          <div className="p-5 sm:p-6"><DossierList customerId={customer.id} /></div>
+        )}
+
+        {/* ── Activiteit ────────────────────────────────── */}
+        {activeTab === "activiteit" && (
+          <div className="p-5 sm:p-6 max-w-2xl">
+            <ActivityFeed customerId={customer.id} title="" />
+          </div>
+        )}
+
+        {/* ── Exporteren ────────────────────────────────── */}
+        {activeTab === "exporteren" && (
+          <div className="p-5 sm:p-6 max-w-sm space-y-4">
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-1">PDF exporteren</h3>
+              <p className="text-sm text-slate-400 mb-4">
+                Exporteer deze klant inclusief gekoppelde projecten en contactgegevens.
+              </p>
+            </div>
+            <PdfExportButton scope={`customer:${customer.id}`} label="Download PDF" />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
