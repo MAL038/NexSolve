@@ -12,12 +12,11 @@ export default function AppShellClient({
   sidebar: React.ReactNode;
   children: React.ReactNode;
   primaryColor?: string | null;
-  accentColor?:  string | null;
+  accentColor?: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
   const sidebarNode = useMemo(() => {
-    // Sidebar kan een component zijn; geef optioneel een callback mee zodat we de drawer kunnen sluiten na navigatie.
     if (React.isValidElement(sidebar)) {
       return React.cloneElement(sidebar as any, {
         onNavigate: () => setOpen(false),
@@ -26,47 +25,26 @@ export default function AppShellClient({
     return sidebar;
   }, [sidebar]);
 
-  // Voorkom scrollen van de body wanneer de mobiele drawer open staat
+  // Voorkom body-scroll als mobiele drawer open staat
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // ── Hulpfuncties voor kleurberekening ──────────────────────
-  function hexToRgb(hex: string): [number, number, number] | null {
-    const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-    if (!m) return null;
-    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
-  }
-  function mixWhite([r, g, b]: [number, number, number], t: number): string {
-    return `${Math.round(r*t+255*(1-t))} ${Math.round(g*t+255*(1-t))} ${Math.round(b*t+255*(1-t))}`;
-  }
-  function mixBlack([r, g, b]: [number, number, number], t: number): string {
-    return `${Math.round(r*t)} ${Math.round(g*t)} ${Math.round(b*t)}`;
-  }
-
-  const pRgb = hexToRgb(primaryColor ?? "");
-  const aRgb = hexToRgb(accentColor  ?? "");
-
-  const brandVars = (pRgb && aRgb) ? {
-    "--brand-50-rgb":  mixWhite(pRgb, 0.08),
-    "--brand-100-rgb": mixWhite(pRgb, 0.15),
-    "--brand-200-rgb": mixWhite(pRgb, 0.30),
-    "--brand-300-rgb": mixWhite(pRgb, 0.55),
-    "--brand-400-rgb": mixWhite(pRgb, 0.75),
-    "--brand-500-rgb": `${pRgb[0]} ${pRgb[1]} ${pRgb[2]}`,
-    "--brand-600-rgb": `${aRgb[0]} ${aRgb[1]} ${aRgb[2]}`,
-    "--brand-700-rgb": mixBlack(aRgb, 0.85),
-    "--brand-800-rgb": mixBlack(aRgb, 0.65),
-    "--brand-900-rgb": mixBlack(aRgb, 0.45),
-  } as React.CSSProperties : undefined;
-
   return (
-    <div className="flex min-h-screen min-h-[100svh] min-h-[100dvh] overflow-x-clip bg-slate-50" style={brandVars}>
+    // ── FIX: h-dvh + overflow-hidden i.p.v. min-h-dvh ──────────
+    // De shell is exact het viewport. Scrollen gebeurt BINNEN de
+    // main of binnen de DetailPageShell — nooit op de body zelf.
+    <div
+      className="flex h-dvh overflow-hidden bg-slate-50"
+      style={{
+        ...(primaryColor ? { "--color-brand": primaryColor } as React.CSSProperties : {}),
+        ...(accentColor  ? { "--color-accent": accentColor  } as React.CSSProperties : {}),
+      }}
+    >
+
       {/* Mobile overlay */}
       {open && (
         <button
@@ -76,64 +54,53 @@ export default function AppShellClient({
         />
       )}
 
-      {/* Sidebar: drawer op mobile, vast op lg+ */}
+      {/* Sidebar — drawer op mobile, statisch op lg+ */}
       <div
         className={
-          "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0" +
+          "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-200" +
+          " lg:static lg:z-auto lg:w-64 lg:translate-x-0 lg:flex-shrink-0" +
           (open ? " translate-x-0" : " -translate-x-full lg:translate-x-0")
         }
       >
-        {/* We injecteren de sidebar; deze blijft zelf client-side */}
-        <div
-          // Op lg is dit irrelevant, op mobile willen we een 'sheet' effect
-          className="h-full shadow-xl lg:shadow-none"
-          onClick={() => {
-            // Klikken ín de sidebar moet niet sluiten; links/buttons sluiten we via event bubbling niet.
-          }}
-        >
+        <div className="h-full shadow-xl lg:shadow-none">
           {sidebarNode}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Topbar
-            pt-safe: voegt env(safe-area-inset-top) toe voor de notch op iPhone.
-            Met statusBarStyle="black-translucent" overlapt de status bar de app,
-            dus de topbar schuift omlaag met de hoogte van de safe area.          */}
-        <header className="sticky top-0 z-30 flex flex-col border-b border-slate-100 bg-white">
-          <div className="pt-safe" />
-          <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
+      {/* Content kolom — vult de rest, scrollt zelf */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+
+        {/* Topbar — sticky bovenaan de content-kolom */}
+        <header className="flex-shrink-0 sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-100 bg-white px-4 lg:px-6">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          <div className="min-w-0 flex-1" />
+
+          {open && (
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
+              onClick={() => setOpen(false)}
+              aria-label="Sluit menu"
             >
-              <Menu size={20} />
+              <X size={20} />
             </button>
-
-            <div className="min-w-0 flex-1" />
-
-            {open && (
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 lg:hidden"
-                onClick={() => setOpen(false)}
-                aria-label="Sluit menu"
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
+          )}
         </header>
 
-        <main className="min-h-0 flex-1 overflow-x-clip overflow-y-auto px-4 py-4 [overscroll-behavior-y:contain] sm:px-6 sm:py-6">
-          <div className="mx-auto w-full max-w-7xl">
-            {children}
-            {/* Spacer voor de home indicator (env safe-area-inset-bottom) */}
-            <div className="pb-safe" />
-          </div>
+        {/* ── FIX: flex-1 + overflow-y-auto ───────────────────────
+            Hierdoor heeft main een vaste hoogte (resterende viewport)
+            en kan hij zelf scrollen. Detailpagina's overschrijven
+            dit via -mx / -my negative margin + eigen scroll-lagen. */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
