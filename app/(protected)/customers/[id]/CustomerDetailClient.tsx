@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, FolderKanban, Mail, Phone,
   Globe, MapPin, User, Hash, CheckCircle2, XCircle,
@@ -17,13 +16,20 @@ import { relativeTime } from "@/lib/time";
 import { useToast } from "@/lib/hooks/useToast";
 import Toast from "@/components/ui/Toast";
 import clsx from "clsx";
+import { formatDate, relativeTime } from "@/lib/time";
+
+import {
+  DetailPageShell,
+  SidebarMetaRow,
+  TabContent,
+  type TabDef,
+} from "@/components/layout/DetailPageShell";
+
 import type { Customer, Project, CustomerStatus } from "@/types";
 
-interface Props {
-  customer:       Customer;
-  linkedProjects: Project[];
-  allProjects:    Project[];
-}
+// ─── Types ────────────────────────────────────────────────────
+
+type Tab = "algemeen" | "projecten" | "activiteit";
 
 interface EditState {
   name:            string;
@@ -55,30 +61,76 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 // ─── Helper: labelled data row ────────────────────────────────
 
-function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
+// ─── Hulpcomponenten (ongewijzigd) ────────────────────────────
+
+function InlineField({
+  label, value, onChange, type = "text", placeholder, href, readonly,
+}: {
+  label:        string;
+  value:        string;
+  onChange?:    (v: string) => void;
+  type?:        string;
+  placeholder?: string;
+  href?:        string;
+  readonly?:    boolean;
+}) {
+  const [focused, setFocused] = useState(false);
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-      <div className="text-sm text-slate-700 leading-snug">{children}</div>
+      <div className={clsx(
+        "flex items-center gap-2 px-3.5 py-2.5 rounded-xl border transition-all text-sm",
+        readonly ? "border-slate-200 bg-slate-50"
+          : focused ? "border-brand-500 ring-2 ring-brand-500/20 bg-white"
+          : "border-slate-200 bg-white hover:border-slate-300",
+      )}>
+        <input
+          type={type} value={value}
+          placeholder={readonly ? "—" : (placeholder ?? `${label}…`)}
+          readOnly={readonly}
+          onChange={(e) => onChange?.(e.target.value)}
+          onFocus={() => !readonly && setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          className={clsx(
+            "flex-1 bg-transparent placeholder:text-slate-400 focus:outline-none min-w-0",
+            readonly ? "text-slate-500 cursor-default" : "text-slate-800",
+          )}
+        />
+        {!readonly && !focused && value && href && (
+          <a href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+            className="text-slate-400 hover:text-brand-600 transition-colors flex-shrink-0">
+            <Globe size={12} />
+          </a>
+        )}
+        {readonly && (
+          <span className="text-[10px] text-slate-400 flex-shrink-0">Niet wijzigbaar</span>
+        )}
+      </div>
     </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500
+                  pb-2 border-b border-slate-100 mb-4">
+      {children}
+    </p>
   );
 }
 
 // ─── Main ─────────────────────────────────────────────────────
 
-export default function CustomerDetailClient({
-  customer: initial,
-  linkedProjects: initialLinked,
-  allProjects,
-}: Props) {
-  const router = useRouter();
-
+export default function CustomerDetailClient({ customer: initial, linkedProjects: initialLinked, allProjects }: Props) {
   const [customer,    setCustomer]    = useState<Customer>(initial);
   const [linked,      setLinked]      = useState<Project[]>(initialLinked);
   const [activeTab,   setActiveTab]   = useState<Tab>("algemeen");
   const [saving,      setSaving]      = useState(false);
-  const [editOpen,    setEditOpen]    = useState(false);
+  const [dirty,       setDirty]       = useState(false);
   const [error,       setError]       = useState<string | null>(null);
+  const [toast,       setToast]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
 
@@ -106,42 +158,33 @@ export default function CustomerDetailClient({
     contact_phone:   initial.contact_phone ?? "",
   });
 
-  const stats = useMemo(() => ({
-    total:    linked.length,
-    active:   linked.filter((p: Project) => p.status === "active").length,
-    archived: linked.filter((p: Project) => p.status === "archived").length,
-  }), [linked]);
-
-  const linkable = useMemo(() =>
-    allProjects.filter(p =>
-      p.customer_id !== customer.id &&
-      p.name.toLowerCase().includes(linkSearch.toLowerCase())
-    ),
-    [allProjects, customer.id, linkSearch]
-  );
-
-  function openEdit() {
-    setEdit({
-      name:            customer.name,
-      code:            customer.code ?? "",
-      status:          customer.status,
-      email:           customer.email ?? "",
-      phone:           customer.phone ?? "",
-      website:         customer.website ?? "",
-      address_street:  customer.address_street ?? "",
-      address_zip:     customer.address_zip ?? "",
-      address_city:    customer.address_city ?? "",
-      address_country: customer.address_country ?? "",
-      contact_name:    customer.contact_name ?? "",
-      contact_role:    customer.contact_role ?? "",
-      contact_email:   customer.contact_email ?? "",
-      contact_phone:   customer.contact_phone ?? "",
-    });
-    setError(null);
-    setEditOpen(true);
+  function set(field: keyof EditState) {
+    return (v: string) => {
+      setEdit(p => ({ ...p, [field]: v }));
+      setDirty(true);
+    };
   }
 
-  const handleSave = useCallback(async (overrides?: Partial<EditState>) => {
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  function resetEdit() {
+    setEdit({
+      name: customer.name, code: customer.code ?? "",
+      status: customer.status, email: customer.email ?? "",
+      phone: customer.phone ?? "", website: customer.website ?? "",
+      address_street: customer.address_street ?? "", address_zip: customer.address_zip ?? "",
+      address_city: customer.address_city ?? "", address_country: customer.address_country ?? "",
+      contact_name: customer.contact_name ?? "", contact_role: customer.contact_role ?? "",
+      contact_email: customer.contact_email ?? "", contact_phone: customer.contact_phone ?? "",
+    });
+    setDirty(false);
+    setError(null);
+  }
+
+  async function handleSave(overrides?: Partial<EditState>) {
     setSaving(true); setError(null);
     const payload = { ...edit, ...overrides };
     try {
@@ -152,19 +195,14 @@ export default function CustomerDetailClient({
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Opslaan mislukt"); return; }
-      setCustomer(data as Customer);
-      if (!overrides) setEditOpen(false);
-      showToast("Opgeslagen");
+      setCustomer(data);
+      setDirty(false);
+      showToast("Klant opgeslagen");
     } catch {
       setError("Er ging iets mis");
     } finally {
       setSaving(false);
     }
-  }, [edit, customer.id]);
-
-  async function setStatus(status: CustomerStatus) {
-    setEdit((p: EditState) => ({ ...p, status }));
-    await handleSave({ status });
   }
 
   async function linkProject(projectId: string) {
@@ -176,7 +214,7 @@ export default function CustomerDetailClient({
     });
     if (res.ok) {
       const project = allProjects.find(p => p.id === projectId);
-      if (project) setLinked((prev: Project[]) => [{ ...project, customer_id: customer.id }, ...prev]);
+      if (project) setLinked(prev => [{ ...project, customer_id: customer.id }, ...prev]);
     }
     setLinkLoading(null);
   }
@@ -188,7 +226,7 @@ export default function CustomerDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ customer_id: null }),
     });
-    if (res.ok) setLinked((prev: Project[]) => prev.filter((p: Project) => p.id !== projectId));
+    if (res.ok) setLinked(prev => prev.filter(p => p.id !== projectId));
     setLinkLoading(null);
   }
 
@@ -233,63 +271,109 @@ export default function CustomerDetailClient({
       {/* ══ SIDEBAR ══════════════════════════════════════════ */}
       <aside className="hidden lg:flex flex-col w-[260px] flex-shrink-0 border-r border-slate-200 bg-white">
 
-        <div className="px-5 pt-5 pb-4 border-b border-slate-200">
-          <Link href="/customers"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-600
-                       font-medium transition-colors mb-3">
-            <ArrowLeft size={13} /> Terug naar klanten
-          </Link>
+  // ── Tab definities ────────────────────────────────────────
+  const TABS: TabDef<Tab>[] = [
+    { id: "algemeen",   label: "Algemeen",   icon: User,          },
+    { id: "projecten",  label: "Projecten",  icon: FolderKanban,  badge: linked.length > 0 ? linked.length : null },
+    { id: "activiteit", label: "Activiteit", icon: Activity,      },
+  ];
 
-          {/* Naam + code */}
-          <div className="flex items-start gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center
-                            justify-center flex-shrink-0 mt-0.5">
-              <Building2 size={16} className="text-brand-600" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-base font-bold text-slate-800 leading-tight break-words">{customer.name}</h1>
-              {customer.code && (
-                <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5 mt-0.5">
-                  <Hash size={8} />{customer.code}
-                </span>
-              )}
-            </div>
+  // ── Shell slots ───────────────────────────────────────────
+
+  const sidebarMeta = (
+    <>
+      {customer.email && (
+        <SidebarMetaRow icon={Mail} label={customer.email} href={`mailto:${customer.email}`} />
+      )}
+      {customer.phone && (
+        <SidebarMetaRow icon={Phone} label={customer.phone} href={`tel:${customer.phone}`} />
+      )}
+      {customer.address_city && (
+        <SidebarMetaRow icon={MapPin} label={customer.address_city} />
+      )}
+      <SidebarMetaRow
+        icon={Activity}
+        label={`Bijgewerkt ${relativeTime(customer.updated_at)}`}
+        variant="muted"
+      />
+    </>
+  );
+
+  const headerActions = dirty ? (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => resetEdit()}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200
+                   text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors"
+      >
+        <X size={13} /> Reset
+      </button>
+      <button
+        onClick={() => handleSave()}
+        disabled={saving}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 text-white
+                   text-xs font-semibold hover:bg-brand-700 transition-colors
+                   disabled:opacity-60 shadow-sm shadow-brand-200"
+      >
+        {saving
+          ? <><Loader2 size={13} className="animate-spin" /> Opslaan…</>
+          : <><CheckCircle2 size={13} /> Opslaan</>
+        }
+      </button>
+    </div>
+  ) : undefined;
+
+  // Status badge voor in de header
+  const titleBadge = (
+    <span className={clsx(
+      "inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium",
+      customer.status === "active"
+        ? "text-emerald-600 bg-emerald-50"
+        : "text-slate-400 bg-slate-100",
+    )}>
+      {customer.status === "active"
+        ? <><CheckCircle2 size={11} /> Actief</>
+        : <><XCircle size={11} /> Inactief</>
+      }
+    </span>
+  );
+
+  // ── Render ────────────────────────────────────────────────
+  return (
+    <DetailPageShell<Tab>
+      breadcrumb={[
+        { label: "Klanten", href: "/customers" },
+        { label: customer.name },
+      ]}
+      title={customer.name}
+      titleBadge={titleBadge}
+      subtitle={customer.code ? `#${customer.code}` : null}
+      tabs={TABS}
+      activeTab={activeTab}
+      onTabChange={(tab) => { setActiveTab(tab); setDirty(false); }}
+      sidebarMeta={sidebarMeta}
+      headerActions={activeTab === "algemeen" ? headerActions : undefined}
+      toast={toast}
+      error={error}
+      onErrorDismiss={() => setError(null)}
+    >
+      {/* ── Tab: Algemeen ─────────────────────────────────── */}
+      {activeTab === "algemeen" && (
+        <TabContent maxWidth="md" className="space-y-4">
+          <div className="card p-5 space-y-4">
+            <SectionLabel>Identiteit</SectionLabel>
+            <InlineField label="Code" value={edit.code} readonly />
+            <InlineField label="Naam" value={edit.name} onChange={set("name")} placeholder="Klantnaam" />
           </div>
 
-          {/* Status knoppen */}
-          <div className="flex gap-1.5">
-            <button onClick={() => setStatus("active")}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                customer.status === "active"
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-              )}>
-              <CheckCircle2 size={11} /> Actief
-            </button>
-            <button onClick={() => setStatus("inactive")}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                customer.status === "inactive"
-                  ? "bg-slate-700 text-white border-slate-700 shadow-sm"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
-              )}>
-              <XCircle size={11} /> Inactief
-            </button>
-          </div>
-
-          {/* Projecten stats */}
-          <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
-            {[
-              { label: "Totaal",  value: stats.total,    color: "text-slate-800"   },
-              { label: "Actief",  value: stats.active,   color: "text-emerald-700" },
-              { label: "Archief", value: stats.archived, color: "text-slate-500"   },
-            ].map(s => (
-              <div key={s.label} className="text-center">
-                <p className={clsx("text-lg font-bold", s.color)}>{s.value}</p>
-                <p className="text-[10px] font-semibold text-slate-400">{s.label}</p>
-              </div>
-            ))}
+          <div className="card p-5 space-y-4">
+            <SectionLabel>Contactgegevens</SectionLabel>
+            <InlineField label="E-mail" value={edit.email} type="email" onChange={set("email")}
+              placeholder="info@bedrijf.nl" href={edit.email ? `mailto:${edit.email}` : undefined} />
+            <InlineField label="Telefoon" value={edit.phone} type="tel" onChange={set("phone")}
+              placeholder="+31 6 12345678" href={edit.phone ? `tel:${edit.phone}` : undefined} />
+            <InlineField label="Website" value={edit.website} type="url" onChange={set("website")}
+              placeholder="www.bedrijf.nl" href={edit.website || undefined} />
           </div>
         </div>
 
@@ -417,286 +501,94 @@ export default function CustomerDetailClient({
                 </button>
               </div>
 
-              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                <DataRow label="Naam">
-                  <span className="font-medium">{customer.name}</span>
-                </DataRow>
-                <DataRow label="Status">
-                  <StatusBadge status={customer.status} />
-                </DataRow>
-
-                {customer.email && (
-                  <DataRow label="E-mail">
-                    <a href={`mailto:${customer.email}`}
-                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors">
-                      <Mail size={13} />{customer.email}
-                    </a>
-                  </DataRow>
-                )}
-
-                {customer.phone && (
-                  <DataRow label="Telefoon">
-                    <a href={`tel:${customer.phone}`}
-                      className="inline-flex items-center gap-1.5 text-slate-700 hover:text-brand-600 transition-colors">
-                      <Phone size={13} />{customer.phone}
-                    </a>
-                  </DataRow>
-                )}
-
-                {customer.website && (
-                  <DataRow label="Website">
-                    <a href={customer.website.startsWith("http") ? customer.website : `https://${customer.website}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors">
-                      <Globe size={13} />{customer.website}
-                    </a>
-                  </DataRow>
-                )}
-
-                {addressParts.length > 0 && (
-                  <DataRow label="Adres">
-                    <div className="flex items-start gap-1.5 text-slate-600">
-                      <MapPin size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                      <span>{addressParts.join(", ")}</span>
-                    </div>
-                  </DataRow>
-                )}
-
-                {customer.contact_name && (
-                  <div className="sm:col-span-2">
-                    <DataRow label="Contactpersoon">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <User size={13} className="text-slate-400 flex-shrink-0" />
-                        <span className="font-medium">{customer.contact_name}</span>
-                        {customer.contact_role && (
-                          <span className="text-slate-400">· {customer.contact_role}</span>
-                        )}
-                        {customer.contact_email && (
-                          <a href={`mailto:${customer.contact_email}`}
-                            className="text-brand-600 hover:text-brand-700 transition-colors"
-                            title={customer.contact_email}>
-                            <Mail size={13} />
-                          </a>
-                        )}
-                        {customer.contact_phone && (
-                          <a href={`tel:${customer.contact_phone}`}
-                            className="text-slate-600 hover:text-brand-600 transition-colors"
-                            title={customer.contact_phone}>
-                            <Phone size={13} />
-                          </a>
-                        )}
-                      </div>
-                    </DataRow>
-                  </div>
-                )}
-              </div>
+          <div className="card p-5 space-y-4">
+            <SectionLabel>Adres</SectionLabel>
+            <InlineField label="Straat" value={edit.address_street} onChange={set("address_street")} />
+            <div className="grid grid-cols-2 gap-4">
+              <InlineField label="Postcode" value={edit.address_zip} onChange={set("address_zip")} />
+              <InlineField label="Stad" value={edit.address_city} onChange={set("address_city")} />
             </div>
-
-            {/* Gegevens bewerken (inklapbaar) */}
-            <div className={clsx("card overflow-hidden transition-all", !editOpen && "hidden")}>
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-700">Gegevens bewerken</h2>
-                <button
-                  onClick={() => { setEditOpen(false); setError(null); }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="px-5 py-5 space-y-5">
-                {error && (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200
-                                  rounded-xl text-sm text-red-700">
-                    <AlertCircle size={14} className="flex-shrink-0" /> {error}
-                  </div>
-                )}
-
-                {/* Identiteit */}
-                <div>
-                  <label className="label">Naam *</label>
-                  <input
-                    disabled={saving}
-                    value={edit.name}
-                    onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
-                    className="input disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Klantnaam"
-                  />
-                </div>
-
-                {/* Contactgegevens */}
-                <div className="pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                    Contactgegevens
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="label">E-mail</label>
-                      <input disabled={saving} type="email" value={edit.email}
-                        onChange={e => setEdit(p => ({ ...p, email: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="info@bedrijf.nl" />
-                    </div>
-                    <div>
-                      <label className="label">Telefoon</label>
-                      <input disabled={saving} type="tel" value={edit.phone}
-                        onChange={e => setEdit(p => ({ ...p, phone: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 12345678" />
-                    </div>
-                    <div>
-                      <label className="label">Website</label>
-                      <input disabled={saving} type="url" value={edit.website}
-                        onChange={e => setEdit(p => ({ ...p, website: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="www.bedrijf.nl" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Adres */}
-                <div className="pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                    Adres
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="label">Straat</label>
-                      <input disabled={saving} value={edit.address_street}
-                        onChange={e => setEdit(p => ({ ...p, address_street: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Straatnaam 1" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="label">Postcode</label>
-                        <input disabled={saving} value={edit.address_zip}
-                          onChange={e => setEdit(p => ({ ...p, address_zip: e.target.value }))}
-                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="1234 AB" />
-                      </div>
-                      <div>
-                        <label className="label">Stad</label>
-                        <input disabled={saving} value={edit.address_city}
-                          onChange={e => setEdit(p => ({ ...p, address_city: e.target.value }))}
-                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Amsterdam" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="label">Land</label>
-                      <input disabled={saving} value={edit.address_country}
-                        onChange={e => setEdit(p => ({ ...p, address_country: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Nederland" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contactpersoon */}
-                <div className="pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                    Contactpersoon
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="label">Naam</label>
-                      <input disabled={saving} value={edit.contact_name}
-                        onChange={e => setEdit(p => ({ ...p, contact_name: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Jan Jansen" />
-                    </div>
-                    <div>
-                      <label className="label">Functie</label>
-                      <input disabled={saving} value={edit.contact_role}
-                        onChange={e => setEdit(p => ({ ...p, contact_role: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Directeur" />
-                    </div>
-                    <div>
-                      <label className="label">E-mail</label>
-                      <input disabled={saving} type="email" value={edit.contact_email}
-                        onChange={e => setEdit(p => ({ ...p, contact_email: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="jan@bedrijf.nl" />
-                    </div>
-                    <div>
-                      <label className="label">Telefoon</label>
-                      <input disabled={saving} type="tel" value={edit.contact_phone}
-                        onChange={e => setEdit(p => ({ ...p, contact_phone: e.target.value }))}
-                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 87654321" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Opslaan */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                  <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
-                    {saving
-                      ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-                      : <><Check size={14} /> Opslaan</>
-                    }
-                  </button>
-                  <button onClick={() => { setEditOpen(false); setError(null); }} className="btn-outline">
-                    <X size={14} /> Annuleren
-                  </button>
-                </div>
-              </div>
-            </div>
+            <InlineField label="Land" value={edit.address_country} onChange={set("address_country")} />
           </div>
-        )}
 
-        {/* ── Projecten ─────────────────────────────────── */}
-        {activeTab === "projecten" && (
-          <div className="p-5 sm:p-6 max-w-2xl space-y-4">
-            <div className="card p-4 space-y-3">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                <Link2 size={11} /> Project koppelen
-              </p>
+          <div className="card p-5 space-y-4">
+            <SectionLabel>Contactpersoon</SectionLabel>
+            <InlineField label="Naam" value={edit.contact_name} onChange={set("contact_name")} />
+            <InlineField label="Rol" value={edit.contact_role} onChange={set("contact_role")} />
+            <InlineField label="E-mail" value={edit.contact_email} type="email" onChange={set("contact_email")}
+              href={edit.contact_email ? `mailto:${edit.contact_email}` : undefined} />
+            <InlineField label="Telefoon" value={edit.contact_phone} type="tel" onChange={set("contact_phone")}
+              href={edit.contact_phone ? `tel:${edit.contact_phone}` : undefined} />
+          </div>
+        </TabContent>
+      )}
+
+      {/* ── Tab: Projecten ────────────────────────────────── */}
+      {activeTab === "projecten" && (
+        <TabContent maxWidth="md" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-700 text-sm">Gekoppelde projecten ({linked.length})</h3>
+            <button
+              onClick={() => setShowLink(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700
+                         font-semibold transition-colors"
+            >
+              <Link2 size={13} />
+              {showLink ? "Verbergen" : "Project koppelen"}
+            </button>
+          </div>
+
+          {showLink && (
+            <div className="card p-4 space-y-2">
               <div className="relative">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input className="input pl-8 text-sm" placeholder="Zoek project…"
-                  value={linkSearch}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLinkSearch(e.target.value)} />
+                <input className="input pl-8 w-full text-sm" placeholder="Zoek project…"
+                  value={linkSearch} onChange={e => setLinkSearch(e.target.value)} autoFocus />
               </div>
-              {linkSearch && (
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
-                  {linkable.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4">Geen projecten gevonden.</p>
-                  ) : linkable.map(p => (
-                    <div key={p.id} className="flex items-center justify-between px-3 py-2.5">
-                      <span className="text-sm text-slate-700 font-medium truncate">{p.name}</span>
-                      <button onClick={() => linkProject(p.id)} disabled={linkLoading === p.id}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-brand-50 text-brand-700
-                                   hover:bg-brand-100 font-bold border border-brand-100 flex-shrink-0 ml-2">
-                        {linkLoading === p.id ? <Loader2 size={12} className="animate-spin" /> : "Koppelen"}
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+                {linkable.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">Geen projecten gevonden</p>
+                ) : linkable.map(p => {
+                  const isLinked = !!linked.find(l => l.id === p.id);
+                  return (
+                    <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-slate-700 truncate flex-1">{p.name}</span>
+                      <button
+                        onClick={() => isLinked ? unlinkProject(p.id) : linkProject(p.id)}
+                        disabled={linkLoading === p.id}
+                        className={clsx(
+                          "ml-3 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors flex-shrink-0",
+                          isLinked
+                            ? "bg-brand-100 text-brand-700 hover:bg-red-50 hover:text-red-600"
+                            : "bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-700",
+                        )}
+                      >
+                        {linkLoading === p.id
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : isLinked ? "✓ Gekoppeld" : "Koppelen"
+                        }
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
+          )}
 
+          <div className="space-y-2">
             {linked.length === 0 ? (
-              <div className="card p-10 text-center">
-                <FolderKanban size={32} className="mx-auto mb-3 text-slate-300" />
-                <p className="text-sm text-slate-500 font-medium">Nog geen projecten gekoppeld.</p>
+              <div className="card p-10 text-center text-slate-400 text-sm">
+                Nog geen projecten gekoppeld aan deze klant
               </div>
-            ) : (
-              <div className="space-y-2">
-                {linked.map((p: Project) => (
-                  <div key={p.id}
-                    className="card p-4 flex items-center gap-3 hover:border-brand-200
-                               hover:bg-brand-50/30 transition-all group cursor-pointer"
-                    onClick={() => router.push(`/projects/${p.id}`)}>
-                    <FolderKanban size={15} className="text-slate-400 flex-shrink-0" />
-                    <span className="flex-1 text-sm font-semibold text-slate-700
-                                     group-hover:text-brand-700 transition-colors truncate">
-                      {p.name}
-                    </span>
-                    <StatusBadge status={p.status} />
-                    <button
-                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); unlinkProject(p.id); }}
-                      disabled={linkLoading === p.id}
-                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50
-                                 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                      title="Ontkoppelen">
-                      {linkLoading === p.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : linked.map(p => (
+              <Link key={p.id} href={`/projects/${p.id}`}
+                className="card flex items-center gap-3 px-4 py-3 hover:border-brand-200
+                           hover:bg-brand-50/30 transition-all group">
+                <FolderKanban size={15} className="text-brand-400 flex-shrink-0" />
+                <span className="flex-1 text-sm font-medium text-slate-700 group-hover:text-brand-700
+                                 transition-colors truncate">{p.name}</span>
+              </Link>
+            ))}
           </div>
         )}
 
