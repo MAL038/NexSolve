@@ -8,9 +8,10 @@ interface Props {
   entityType:  string;
   entityId:    string;
   initialFav:  boolean;
+  onToggle?:   (id: string, isFav: boolean) => void;
 }
 
-export default function FavouriteButton({ entityType, entityId, initialFav }: Props) {
+export default function FavouriteButton({ entityType, entityId, initialFav, onToggle }: Props) {
   const [fav,     setFav]     = useState(initialFav);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +32,9 @@ export default function FavouriteButton({ entityType, entityId, initialFav }: Pr
           body: JSON.stringify({ entity_type: entityType, entity_id: entityId }),
         });
       }
-      setFav(f => !f);
+      const next = !fav;
+      setFav(next);
+      onToggle?.(entityId, next);
     } finally {
       setLoading(false);
     }

@@ -373,6 +373,11 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
                             entityType="project"
                             entityId={p.id}
                             initialFav={favouriteIds.has(p.id)}
+                            onToggle={(id, isFav) => setFavouriteIds(prev => {
+                              const next = new Set(prev);
+                              if (isFav) next.add(id); else next.delete(id);
+                              return next;
+                            })}
                           />
                           <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditProject(p); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Bewerken"><Pencil size={13} /></button>
                           <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(p.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
