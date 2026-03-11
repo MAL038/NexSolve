@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, FolderKanban, Mail, Phone,
   Globe, MapPin, User, Hash, CheckCircle2, XCircle,
   Loader2, AlertCircle, FileText, Activity, Link2,
-  Search, X, Check, Pencil,
+  Search, X, Check, Pencil, Download, GitBranch,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { DossierList } from "@/components/dossiers/DossierList";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
+import PdfExportButton from "@/components/ui/PdfExportButton";
 import { relativeTime } from "@/lib/time";
 import { useToast } from "@/lib/hooks/useToast";
 import Toast from "@/components/ui/Toast";
@@ -41,13 +42,15 @@ interface EditState {
   contact_phone:   string;
 }
 
-type Tab = "algemeen" | "projecten" | "dossier" | "activiteit";
+type Tab = "algemeen" | "projecten" | "taken" | "dossier" | "activiteit" | "exporteren";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "algemeen",   label: "Algemeen",   icon: Building2    },
   { id: "projecten",  label: "Projecten",  icon: FolderKanban },
+  { id: "taken",      label: "Taken",      icon: GitBranch    },
   { id: "dossier",    label: "Dossier",    icon: FileText     },
   { id: "activiteit", label: "Activiteit", icon: Activity     },
+  { id: "exporteren", label: "Exporteren", icon: Download     },
 ];
 
 // ─── Helper: labelled data row ────────────────────────────────
@@ -78,6 +81,11 @@ export default function CustomerDetailClient({
   const [error,       setError]       = useState<string | null>(null);
   const [linkSearch,  setLinkSearch]  = useState("");
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
+
+  // Taken tab
+  const [projectTasks,  setProjectTasks]  = useState<Record<string, { id: string; title: string; status: string }[]>>({});
+  const [tasksLoading,  setTasksLoading]  = useState(false);
+  const [tasksLoaded,   setTasksLoaded]   = useState(false);
 
   const { toast, showToast, clearToast } = useToast();
 
@@ -183,6 +191,27 @@ export default function CustomerDetailClient({
     if (res.ok) setLinked((prev: Project[]) => prev.filter((p: Project) => p.id !== projectId));
     setLinkLoading(null);
   }
+
+  // Taken laden per project
+  useEffect(() => {
+    if (activeTab === "taken" && !tasksLoaded && linked.length > 0) {
+      setTasksLoading(true);
+      Promise.all(
+        linked.map(p =>
+          fetch(`/api/projects/${p.id}/subprocesses`)
+            .then(r => r.ok ? r.json() : [])
+            .then(data => ({ projectId: p.id, tasks: Array.isArray(data) ? data : [] }))
+            .catch(() => ({ projectId: p.id, tasks: [] }))
+        )
+      ).then(results => {
+        const map: Record<string, { id: string; title: string; status: string }[]> = {};
+        results.forEach(r => { map[r.projectId] = r.tasks; });
+        setProjectTasks(map);
+        setTasksLoaded(true);
+        setTasksLoading(false);
+      });
+    }
+  }, [activeTab, tasksLoaded, linked]);
 
   // Samengesteld adres
   const addressParts = useMemo(() => [
@@ -307,10 +336,36 @@ export default function CustomerDetailClient({
               <Phone size={11} className="text-slate-400 flex-shrink-0" />{customer.phone}
             </a>
           )}
-          {customer.address_city && (
-            <span className="flex items-center gap-2">
-              <MapPin size={11} className="text-slate-400 flex-shrink-0" />{customer.address_city}
-            </span>
+          {addressParts.length > 0 && (
+            <div className="flex items-start gap-2">
+              <MapPin size={11} className="text-slate-400 flex-shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{addressParts.join(", ")}</span>
+            </div>
+          )}
+          {customer.contact_name && (
+            <div className="pt-2 mt-2 border-t border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Contactpersoon</p>
+              <div className="flex items-center gap-2">
+                <User size={11} className="text-slate-400 flex-shrink-0" />
+                <span className="font-medium text-slate-600 truncate">{customer.contact_name}</span>
+              </div>
+              {customer.contact_role && (
+                <p className="text-slate-400 ml-4 truncate">{customer.contact_role}</p>
+              )}
+              {customer.contact_email && (
+                <a href={`mailto:${customer.contact_email}`}
+                  className="flex items-center gap-2 mt-1 hover:text-brand-600 transition-colors min-w-0 ml-0">
+                  <Mail size={11} className="text-slate-400 flex-shrink-0" />
+                  <span className="truncate">{customer.contact_email}</span>
+                </a>
+              )}
+              {customer.contact_phone && (
+                <a href={`tel:${customer.contact_phone}`}
+                  className="flex items-center gap-2 mt-1 hover:text-brand-600 transition-colors">
+                  <Phone size={11} className="text-slate-400 flex-shrink-0" />{customer.contact_phone}
+                </a>
+              )}
+            </div>
           )}
           <p className="text-slate-400 text-[11px] pt-1.5 border-t border-slate-100">
             Bijgewerkt {relativeTime(customer.updated_at)}
@@ -645,6 +700,63 @@ export default function CustomerDetailClient({
           </div>
         )}
 
+        {/* ── Taken ─────────────────────────────────────── */}
+        {activeTab === "taken" && (
+          <div className="p-5 sm:p-6 max-w-2xl space-y-4">
+            {linked.length === 0 ? (
+              <div className="card p-12 text-center">
+                <GitBranch size={32} className="mx-auto mb-3 text-slate-300" />
+                <p className="text-sm text-slate-500 font-medium">Geen projecten gekoppeld.</p>
+              </div>
+            ) : tasksLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={20} className="animate-spin text-slate-400" />
+              </div>
+            ) : linked.map((p: Project) => {
+              const tasks = projectTasks[p.id] ?? [] as { id: string; title: string; status: string }[];
+              const done  = tasks.filter(t => t.status === "done").length;
+              return (
+                <div key={p.id} className="card overflow-hidden">
+                  <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100">
+                    <FolderKanban size={14} className="text-slate-400 flex-shrink-0" />
+                    <Link href={`/projects/${p.id}`}
+                      className="flex-1 text-sm font-semibold text-slate-700 hover:text-brand-700 transition-colors truncate">
+                      {p.name}
+                    </Link>
+                    <StatusBadge status={p.status} />
+                    {tasks.length > 0 && (
+                      <span className="text-xs text-slate-400 flex-shrink-0">{done}/{tasks.length}</span>
+                    )}
+                  </div>
+                  {tasks.length === 0 ? (
+                    <p className="text-xs text-slate-400 px-5 py-3">Geen taken.</p>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {tasks.map(t => (
+                        <div key={t.id} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className={clsx(
+                            "w-2 h-2 rounded-full flex-shrink-0",
+                            t.status === "done"        ? "bg-emerald-400" :
+                            t.status === "in-progress" ? "bg-amber-400"   :
+                            t.status === "blocked"     ? "bg-red-400"     :
+                            "bg-slate-300"
+                          )} />
+                          <span className={clsx(
+                            "flex-1 text-sm truncate",
+                            t.status === "done" ? "line-through text-slate-400" : "text-slate-700"
+                          )}>
+                            {t.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Dossier ───────────────────────────────────── */}
         {activeTab === "dossier" && (
           <div className="p-5 sm:p-6"><DossierList customerId={customer.id} /></div>
@@ -654,6 +766,19 @@ export default function CustomerDetailClient({
         {activeTab === "activiteit" && (
           <div className="p-5 sm:p-6 max-w-2xl">
             <ActivityFeed customerId={customer.id} title="" />
+          </div>
+        )}
+
+        {/* ── Exporteren ────────────────────────────────── */}
+        {activeTab === "exporteren" && (
+          <div className="p-5 sm:p-6 max-w-sm space-y-4">
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-1">PDF exporteren</h3>
+              <p className="text-sm text-slate-400 mb-4">
+                Exporteer deze klant inclusief gekoppelde projecten en contactgegevens.
+              </p>
+            </div>
+            <PdfExportButton scope={`customer:${customer.id}`} label="Download PDF" />
           </div>
         )}
       </div>

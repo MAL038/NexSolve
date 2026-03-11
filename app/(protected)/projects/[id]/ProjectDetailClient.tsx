@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
@@ -24,7 +24,7 @@ import { useToast } from "@/lib/hooks/useToast";
 import clsx from "clsx";
 import type {
   Project, Subprocess, ThemeWithChildren,
-  Customer, ProjectStatus, ProjectMember,
+  Customer, ProjectStatus, ProjectMember, Team,
 } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -104,6 +104,11 @@ export default function ProjectDetailClient({
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [editOpen,  setEditOpen]  = useState(false);
+
+  // Teams
+  const [allTeams,      setAllTeams]      = useState<Team[]>([]);
+  const [teamsLoaded,   setTeamsLoaded]   = useState(false);
+  const [teamLinking,   setTeamLinking]   = useState(false);
 
   const { toast, showToast, clearToast } = useToast();
 
@@ -202,6 +207,33 @@ export default function ProjectDetailClient({
     setCustomers((prev: Customer[]) => [...prev, c]);
     setEdit((prev: EditState) => ({ ...prev, customer_id: c.id }));
   }, []);
+
+  // Load teams when Team tab is first opened
+  useEffect(() => {
+    if (activeTab === "team" && !teamsLoaded) {
+      fetch("/api/teams").then(r => r.ok ? r.json() : []).then(data => {
+        setAllTeams(Array.isArray(data) ? data : []);
+        setTeamsLoaded(true);
+      });
+    }
+  }, [activeTab, teamsLoaded]);
+
+  async function linkTeam(teamId: string | null) {
+    setTeamLinking(true);
+    const res = await fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_id: teamId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setProject((prev: Project) => ({ ...prev, team_id: data.team_id, team: data.team ?? null }));
+      showToast(teamId ? "Team gekoppeld" : "Team ontkoppeld");
+    } else {
+      showToast("Koppelen mislukt", false);
+    }
+    setTeamLinking(false);
+  }
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -394,18 +426,6 @@ export default function ProjectDetailClient({
                 <DataRow label="Status">
                   <StatusBadge status={project.status} />
                 </DataRow>
-
-                {currentCustomer && (
-                  <DataRow label="Klant">
-                    <Link
-                      href={`/customers/${currentCustomer.id}`}
-                      className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-medium transition-colors"
-                    >
-                      <Building2 size={13} />
-                      {currentCustomer.name}
-                    </Link>
-                  </DataRow>
-                )}
 
                 {project.owner && (
                   <DataRow label="Eigenaar">
@@ -656,7 +676,65 @@ export default function ProjectDetailClient({
 
         {/* ── Tab: Team ────────────────────────────────── */}
         {activeTab === "team" && (
-          <div className="p-6 max-w-2xl">
+          <div className="p-6 max-w-2xl space-y-5">
+            {/* Gekoppeld team */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Gekoppeld team</h2>
+              </div>
+              <div className="px-5 py-4">
+                {project.team ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
+                      <Users size={16} className="text-brand-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/team/${project.team.id}`}
+                        className="text-sm font-semibold text-slate-800 hover:text-brand-700 transition-colors">
+                        {project.team.name}
+                      </Link>
+                    </div>
+                    {isOwnerOrMember && (
+                      <button
+                        onClick={() => linkTeam(null)}
+                        disabled={teamLinking}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Team ontkoppelen"
+                      >
+                        {teamLinking ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">Geen team gekoppeld.</p>
+                )}
+
+                {isOwnerOrMember && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <label className="label">Team koppelen</label>
+                    {!teamsLoaded ? (
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <Loader2 size={12} className="animate-spin" /> Laden…
+                      </div>
+                    ) : (
+                      <select
+                        className="input bg-white"
+                        value={project.team_id ?? ""}
+                        onChange={e => linkTeam(e.target.value || null)}
+                        disabled={teamLinking}
+                      >
+                        <option value="">— Geen team —</option>
+                        {allTeams.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Teamleden */}
             <MembersPanel
               projectId={project.id}
               ownerId={project.owner_id}
