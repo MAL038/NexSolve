@@ -16,11 +16,20 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirm } from "@/lib/hooks/useConfirm";
 import { relativeTime } from "@/lib/time";
 import clsx from "clsx";
-import type { Team, TeamMember, Project } from "@/types";
+import type { Team, TeamMember } from "@/types";
+
+type ProjectRow = {
+  id:          string;
+  name:        string;
+  status:      string;
+  code?:       string | null;
+  customer_id?: string | null;
+  customer?:   { name: string } | { name: string }[] | null;
+};
 
 interface Props {
   team:            Team;
-  initialProjects: Project[];
+  initialProjects: ProjectRow[];
   currentUserId:   string;
   canManage:       boolean;
 }
@@ -43,7 +52,7 @@ export default function TeamDetailClient({
   const { toast, showToast, clearToast }  = useToast();
 
   const [team,      setTeam]      = useState<Team>(initialTeam);
-  const [projects]                = useState<Project[]>(initialProjects);
+  const [projects]                = useState<ProjectRow[]>(initialProjects);
   const [activeTab, setActiveTab] = useState<Tab>("leden");
   const [editOpen,  setEditOpen]  = useState(false);
   const [saving,    setSaving]    = useState(false);
@@ -298,24 +307,25 @@ export default function TeamDetailClient({
               </div>
             ) : (
               <div className="space-y-2">
-                {projects.map((p: Project) => (
-                  <Link key={p.id} href={`/projects/${p.id}`}
-                    className="card p-4 flex items-center gap-3 hover:border-brand-200 hover:bg-brand-50/30 transition-all group">
-                    <FolderKanban size={15} className="text-slate-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-700 group-hover:text-brand-700 transition-colors truncate">
-                        {p.name}
-                      </p>
-                      {p.customer && (
-                        <p className="text-xs text-slate-400 truncate">
-                          {(p.customer as { name: string }).name}
+                {projects.map((p: ProjectRow) => {
+                  const cust = Array.isArray(p.customer) ? p.customer[0] : p.customer;
+                  return (
+                    <Link key={p.id} href={`/projects/${p.id}`}
+                      className="card p-4 flex items-center gap-3 hover:border-brand-200 hover:bg-brand-50/30 transition-all group">
+                      <FolderKanban size={15} className="text-slate-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 group-hover:text-brand-700 transition-colors truncate">
+                          {p.name}
                         </p>
-                      )}
-                    </div>
-                    <StatusBadge status={p.status} />
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-400 flex-shrink-0 transition-colors" />
-                  </Link>
-                ))}
+                        {cust && (
+                          <p className="text-xs text-slate-400 truncate">{cust.name}</p>
+                        )}
+                      </div>
+                      <StatusBadge status={p.status as "active" | "in-progress" | "archived"} />
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-400 flex-shrink-0 transition-colors" />
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
