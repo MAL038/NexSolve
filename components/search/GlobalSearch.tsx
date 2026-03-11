@@ -34,7 +34,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ─── Component ────────────────────────────────────────────────
 
-export function GlobalSearch() {
+export function GlobalSearch({ compact = false }: { compact?: boolean }) {
   const router = useRouter()
   const inputRef  = useRef<HTMLInputElement>(null)
   const panelRef  = useRef<HTMLDivElement>(null)
@@ -124,23 +124,40 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={panelRef} className="relative w-full">
+    <div ref={panelRef} className={clsx("relative", compact ? "w-auto" : "w-full")}>
       {/* Search trigger */}
-      <button
-        onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
-        className={clsx(
-          'w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all',
-          open
-            ? 'border-brand-400 ring-2 ring-brand-100 bg-white'
-            : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-white'
-        )}
-      >
-        <Search size={14} className="shrink-0" />
-        <span className="flex-1 text-left text-xs">Zoeken...</span>
-        <kbd className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-mono hidden lg:block">
-          ⌘K
-        </kbd>
-      </button>
+      {compact ? (
+        <button
+          onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
+          title="Zoeken (⌘K)"
+          className={clsx(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all',
+            open
+              ? 'border-brand-400 ring-2 ring-brand-100 bg-white text-brand-600'
+              : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-white hover:text-slate-600'
+          )}
+        >
+          <Search size={13} className="shrink-0" />
+          <span className="hidden sm:inline">Zoeken</span>
+          <kbd className="text-[10px] bg-slate-100 text-slate-400 px-1 py-0.5 rounded font-mono hidden md:block">⌘K</kbd>
+        </button>
+      ) : (
+        <button
+          onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
+          className={clsx(
+            'w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all',
+            open
+              ? 'border-brand-400 ring-2 ring-brand-100 bg-white'
+              : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-white'
+          )}
+        >
+          <Search size={14} className="shrink-0" />
+          <span className="flex-1 text-left text-xs">Zoeken...</span>
+          <kbd className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-mono hidden lg:block">
+            ⌘K
+          </kbd>
+        </button>
+      )}
 
       {/* Dropdown panel */}
       {open && (

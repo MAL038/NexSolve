@@ -1,5 +1,6 @@
 "use client";
 // app/(protected)/beheer/BeheerClient.tsx
+// Settings-layout: left subnavigation + right content area.
 
 import { useState } from "react";
 import {
@@ -7,7 +8,7 @@ import {
   ToggleLeft, ToggleRight, Crown, FolderKanban,
   Users, ClipboardList, CalendarDays,
   BarChart3, UserPlus, Mail, Trash2, Activity,
-  ShieldCheck, TrendingUp,
+  ShieldCheck, TrendingUp, ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { formatDate } from "@/lib/time";
@@ -53,14 +54,26 @@ const MODULE_META: Record<OrgModule, { label: string; icon: React.ElementType }>
   hrm:       { label: "HRM",        icon: Users         },
 };
 
-const PLAN_LABEL: Record<OrgPlan, string> = {
-  trial: "Trial", starter: "Starter", pro: "Pro", enterprise: "Enterprise",
+const PLAN_LABEL: Record<OrgPlan, { label: string; color: string }> = {
+  trial:      { label: "Trial",      color: "bg-slate-100 text-slate-600 border-slate-200" },
+  starter:    { label: "Starter",    color: "bg-blue-50 text-blue-600 border-blue-200"    },
+  pro:        { label: "Pro",        color: "bg-brand-50 text-brand-700 border-brand-200"  },
+  enterprise: { label: "Enterprise", color: "bg-amber-50 text-amber-700 border-amber-200" },
 };
 
-type Tab = "overzicht" | "leden" | "instellingen" | "activiteit";
+type Tab = "overzicht" | "leden" | "modules" | "instellingen" | "activiteit";
+
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  { id: "overzicht",    label: "Overzicht",    icon: TrendingUp  },
+  { id: "leden",        label: "Leden",        icon: Users       },
+  { id: "modules",      label: "Modules",      icon: ShieldCheck },
+  { id: "instellingen", label: "Instellingen", icon: Globe       },
+  { id: "activiteit",   label: "Activiteit",   icon: Activity    },
+];
 
 export default function BeheerClient({ org, orgId, modules, members, activity, projectCount }: Props) {
   const { requestConfirm, confirmProps } = useConfirm();
+  const { toast, showToast, clearToast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("overzicht");
 
   // Instellingen state
@@ -69,8 +82,8 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
   const [primaryColor, setPrimaryColor] = useState(org?.primary_color ?? "#0A6645");
   const [accentColor,  setAccentColor]  = useState(org?.accent_color  ?? "#69B296");
   const initialModules = Object.fromEntries(modules.map(m => [m.module, m.is_enabled])) as Record<OrgModule, boolean>;
-  const [moduleState, setModuleState] = useState<Record<OrgModule, boolean>>(initialModules);
-  const [saving, setSaving] = useState(false);
+  const [moduleState,  setModuleState]  = useState<Record<OrgModule, boolean>>(initialModules);
+  const [saving,       setSaving]       = useState(false);
 
   // Leden state
   const [memberList,   setMemberList]   = useState<OrgMember[]>(members);
@@ -87,9 +100,6 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     activity.length === 50 ? activity[activity.length - 1].created_at : null
   );
 
-  const { toast, showToast, clearToast } = useToast();
-
-  // ── Instellingen ────────────────────────────────────────────
   async function handleSaveOrg() {
     setSaving(true);
     const res = await fetch("/api/organisation", {
@@ -112,7 +122,6 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     });
   }
 
-  // ── Leden ───────────────────────────────────────────────────
   async function handleInvite() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -128,7 +137,6 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     showToast(data.message ?? "Uitnodiging verstuurd");
     setInviteEmail(""); setInviteName("");
     setTimeout(() => setInviteDone(false), 2500);
-    // Herlaad leden
     const fresh = await fetch("/api/organisation/invite").then(r => r.json());
     setMemberList(fresh);
   }
@@ -151,315 +159,385 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     setMemberList(prev => prev.filter(m => m.profile.id !== userId));
   }
 
-  // ── Activiteit ──────────────────────────────────────────────
   async function loadMoreActivity() {
     if (!cursor) return;
     setLoadingMore(true);
-    const res = await fetch(`/api/activity?limit=50&org_id=${orgId}&cursor=${cursor}`);
+    const res  = await fetch(`/api/activity?limit=50&org_id=${orgId}&cursor=${cursor}`);
     const data = await res.json();
     setLoadingMore(false);
     setActivityList(prev => [...prev, ...(data.data ?? [])]);
     setCursor(data.nextCursor ?? null);
   }
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: "overzicht",    label: "Overzicht",    icon: TrendingUp  },
-    { id: "leden",        label: "Leden",        icon: Users       },
-    { id: "instellingen", label: "Instellingen", icon: ShieldCheck },
-    { id: "activiteit",   label: "Activiteit",   icon: Activity    },
-  ];
+  const plan = PLAN_LABEL[org?.plan ?? "trial"];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    // Full-bleed settings layout: matches the -mx/-my negative margin pattern
+    <div className="-mx-4 sm:-mx-6 -my-4 sm:-my-6 flex min-h-[calc(100dvh-56px)]">
       <Toast toast={toast} onClose={clearToast} />
+      <ConfirmDialog {...confirmProps} />
 
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-5">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-              <Building2 size={18} className="text-brand-600" />
+      {/* ── Left nav ──────────────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 border-r border-slate-200 bg-white">
+
+        {/* Org identity */}
+        <div className="px-5 pt-6 pb-5 border-b border-slate-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
+              <Building2 size={16} className="text-brand-600" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-800">{org?.name ?? "Organisatie"}</h1>
-              <p className="text-xs text-slate-400">{org?.slug} · {PLAN_LABEL[org?.plan ?? "trial"]}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-800 truncate">{org?.name ?? "Organisatie"}</p>
+              <p className="text-xs text-slate-400 truncate">{org?.slug}</p>
             </div>
           </div>
+          <span className={clsx("inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-lg border", plan.color)}>
+            {plan.label}
+          </span>
+        </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1">
-            {TABS.map(tab => (
+        {/* Stats */}
+        <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+          {[
+            { label: "Leden",     value: memberList.length  },
+            { label: "Projecten", value: projectCount       },
+          ].map(s => (
+            <div key={s.label} className="py-3 text-center">
+              <p className="text-lg font-bold text-slate-800">{s.value}</p>
+              <p className="text-[10px] text-slate-400 font-medium">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 flex flex-col gap-0.5 px-2 py-3">
+          {TABS.map(tab => {
+            const Icon   = tab.icon;
+            const active = activeTab === tab.id;
+            return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={clsx(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  activeTab === tab.id
-                    ? "bg-brand-600 text-white"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left",
+                  active
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
                 )}
               >
-                <tab.icon size={14} />
+                <Icon size={15} className={active ? "opacity-80" : "text-slate-400"} />
                 {tab.label}
+                {active && <ChevronRight size={13} className="ml-auto opacity-60" />}
               </button>
-            ))}
-          </div>
-        </div>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* ── Mobile tab bar ────────────────────────────────────── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 flex divide-x divide-slate-100">
+        {TABS.map(tab => {
+          const Icon   = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={clsx(
+                "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors",
+                active ? "text-brand-600" : "text-slate-400"
+              )}>
+              <Icon size={18} className={active ? "text-brand-600" : "text-slate-400"} />
+              {tab.label.split(" ")[0]}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+      {/* ── Right content ─────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 overflow-y-auto bg-slate-50 pb-20 lg:pb-0">
+        <div className="max-w-2xl mx-auto px-5 sm:px-8 py-6 space-y-5">
 
-        {/* ── OVERZICHT ────────────────────────────────────── */}
-        {activeTab === "overzicht" && (
-          <div className="space-y-4">
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Leden",     value: memberList.length,  icon: Users       },
-                { label: "Projecten", value: projectCount,        icon: FolderKanban},
-                { label: "Acties",    value: activityList.length, icon: Activity    },
-              ].map(stat => (
-                <div key={stat.label} className="card p-5 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
-                    <stat.icon size={16} className="text-brand-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-800">{stat.value}</p>
+          {/* ── OVERZICHT ─────────────────────────────────── */}
+          {activeTab === "overzicht" && (
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-slate-800">Overzicht</h2>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Leden",     value: memberList.length,  icon: Users        },
+                  { label: "Projecten", value: projectCount,        icon: FolderKanban },
+                  { label: "Acties",    value: activityList.length, icon: Activity     },
+                ].map(stat => (
+                  <div key={stat.label} className="card p-4 flex flex-col items-center text-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
+                      <stat.icon size={15} className="text-brand-600" />
+                    </div>
+                    <p className="text-xl font-bold text-slate-800">{stat.value}</p>
                     <p className="text-xs text-slate-400">{stat.label}</p>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Recente activiteit preview */}
-            <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <Activity size={14} className="text-brand-500" /> Recente activiteit
-              </h2>
-              <div className="space-y-2">
-                {activityList.slice(0, 8).map(a => (
-                  <div key={a.id} className="flex items-center gap-3 py-1.5">
-                    <div className="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0">
-                      {a.actor?.full_name?.charAt(0) ?? "?"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-700">
-                        <span className="font-medium">{a.actor?.full_name}</span>
-                        {" "}{a.action}{" "}
+              {/* Actieve modules */}
+              <div className="card p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <ShieldCheck size={14} className="text-brand-500" /> Actieve modules
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(MODULE_META) as OrgModule[]).map(mod => (
+                    <span key={mod} className={clsx(
+                      "text-xs px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1",
+                      moduleState[mod]
+                        ? "bg-brand-50 text-brand-700 border-brand-200"
+                        : "bg-slate-100 text-slate-400 border-slate-200"
+                    )}>
+                      {moduleState[mod] ? <Check size={10} /> : <X size={10} />}
+                      {MODULE_META[mod].label}
+                    </span>
+                  ))}
+                </div>
+                <button onClick={() => setActiveTab("modules")}
+                  className="text-xs text-brand-600 hover:underline font-medium">
+                  Modules beheren →
+                </button>
+              </div>
+
+              {/* Recente activiteit */}
+              <div className="card p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Activity size={14} className="text-brand-500" /> Recente activiteit
+                </h3>
+                <div className="space-y-2">
+                  {activityList.slice(0, 8).map(a => (
+                    <div key={a.id} className="flex items-center gap-3 py-1">
+                      <div className="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0">
+                        {a.actor?.full_name?.charAt(0) ?? "?"}
+                      </div>
+                      <p className="flex-1 text-xs text-slate-700 truncate">
+                        <span className="font-medium">{a.actor?.full_name}</span>{" "}
+                        {a.action}{" "}
                         <span className="text-slate-500">{a.entity_name}</span>
                       </p>
+                      <p className="text-xs text-slate-400 flex-shrink-0">{formatDate(a.created_at)}</p>
                     </div>
-                    <p className="text-xs text-slate-400 flex-shrink-0">{formatDate(a.created_at)}</p>
-                  </div>
-                ))}
-                {activityList.length === 0 && (
-                  <p className="text-sm text-slate-400 text-center py-4">Nog geen activiteit</p>
+                  ))}
+                  {activityList.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-4">Nog geen activiteit</p>
+                  )}
+                </div>
+                {activityList.length > 8 && (
+                  <button onClick={() => setActiveTab("activiteit")}
+                    className="text-xs text-brand-600 hover:underline font-medium">
+                    Alle activiteit →
+                  </button>
                 )}
               </div>
-              {activityList.length > 8 && (
-                <button onClick={() => setActiveTab("activiteit")} className="text-xs text-brand-600 hover:underline mt-2">
-                  Alle activiteit bekijken →
-                </button>
-              )}
             </div>
+          )}
 
-            {/* Modules overzicht */}
-            <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <ShieldCheck size={14} className="text-brand-500" /> Actieve modules
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(MODULE_META) as OrgModule[]).map(mod => (
-                  <span key={mod} className={clsx(
-                    "text-xs px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1",
-                    moduleState[mod]
-                      ? "bg-brand-50 text-brand-700 border-brand-200"
-                      : "bg-slate-100 text-slate-400 border-slate-200"
-                  )}>
-                    {moduleState[mod] ? <Check size={10} /> : <X size={10} />}
-                    {MODULE_META[mod].label}
-                  </span>
+          {/* ── LEDEN ─────────────────────────────────────── */}
+          {activeTab === "leden" && (
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-slate-800">Leden</h2>
+
+              {/* Uitnodigen */}
+              <div className="card p-5 space-y-3">
+                <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <UserPlus size={14} className="text-brand-500" /> Nieuwe gebruiker uitnodigen
+                </p>
+                <div className="space-y-2">
+                  <input className="input text-sm w-full" placeholder="E-mailadres *" type="email"
+                    value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleInvite()} />
+                  <input className="input text-sm w-full" placeholder="Naam (optioneel)"
+                    value={inviteName} onChange={e => setInviteName(e.target.value)} />
+                </div>
+                <button onClick={handleInvite} disabled={inviting || inviteDone || !inviteEmail.trim()}
+                  className={clsx("btn-primary w-full justify-center text-sm", (!inviteEmail.trim() || inviting) && "opacity-60")}>
+                  {inviteDone
+                    ? <><Check size={14} /> Uitnodiging verstuurd</>
+                    : inviting ? "Versturen..."
+                    : <><Mail size={14} /> Uitnodiging versturen</>}
+                </button>
+              </div>
+
+              {/* Ledenlijst */}
+              <div className="card overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">{memberList.length} leden</p>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {memberList.map(m => (
+                    <div key={m.profile.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0">
+                        {m.profile.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{m.profile.full_name || "—"}</p>
+                        <p className="text-xs text-slate-400 truncate">{m.profile.email}</p>
+                      </div>
+                      <span className={clsx(
+                        "text-xs font-semibold px-2 py-0.5 rounded-lg border flex-shrink-0",
+                        m.role === "owner"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      )}>
+                        {m.role === "owner" ? <><Crown size={9} className="inline mr-1" />Eigenaar</> : "Gebruiker"}
+                      </span>
+                      <p className="text-xs text-slate-400 flex-shrink-0 hidden sm:block">{formatDate(m.joined_at)}</p>
+                      {m.role !== "owner" && (
+                        <button
+                          onClick={() => handleRemoveMember(m.profile.id, m.profile.full_name)}
+                          disabled={removingId === m.profile.id}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MODULES ───────────────────────────────────── */}
+          {activeTab === "modules" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Modules</h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Schakel modules in of uit voor jouw organisatie.
+                </p>
+              </div>
+              <div className="card overflow-hidden divide-y divide-slate-100">
+                {(Object.entries(MODULE_META) as [OrgModule, { label: string; icon: React.ElementType }][]).map(([mod, meta]) => (
+                  <div key={mod} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/40 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={clsx(
+                        "w-8 h-8 rounded-xl flex items-center justify-center border",
+                        moduleState[mod]
+                          ? "bg-brand-50 border-brand-100"
+                          : "bg-slate-100 border-slate-200"
+                      )}>
+                        <meta.icon size={14} className={moduleState[mod] ? "text-brand-600" : "text-slate-400"} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{meta.label}</p>
+                        <p className="text-xs text-slate-400">
+                          {moduleState[mod] ? "Ingeschakeld" : "Uitgeschakeld"}
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleToggleModule(mod)} className="text-slate-400 hover:text-brand-600 transition-colors">
+                      {moduleState[mod]
+                        ? <ToggleRight size={28} className="text-brand-500" />
+                        : <ToggleLeft size={28} />}
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── LEDEN ────────────────────────────────────────── */}
-        {activeTab === "leden" && (
-          <div className="space-y-4">
-            {/* Uitnodigen */}
-            <div className="card p-5 space-y-3">
-              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <UserPlus size={14} className="text-brand-500" /> Nieuwe gebruiker uitnodigen
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <input className="input text-sm col-span-2" placeholder="E-mailadres *" type="email"
-                  value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleInvite()} />
-                <input className="input text-sm col-span-2" placeholder="Naam (optioneel)"
-                  value={inviteName} onChange={e => setInviteName(e.target.value)} />
+          {/* ── INSTELLINGEN ──────────────────────────────── */}
+          {activeTab === "instellingen" && (
+            <div className="space-y-5">
+              <h2 className="text-base font-bold text-slate-800">Instellingen</h2>
+
+              {/* Identiteit */}
+              <div className="card p-5 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Globe size={14} className="text-brand-500" /> Identiteit
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">Organisatienaam</label>
+                    <input className="input" value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Logo URL</label>
+                    <input className="input" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://…" />
+                    {logoUrl && <img src={logoUrl} alt="Logo preview" className="mt-2 h-10 rounded" />}
+                  </div>
+                  <div>
+                    <label className="label text-slate-400">Slug (alleen-lezen)</label>
+                    <input className="input bg-slate-50 text-slate-400 cursor-not-allowed" value={org?.slug ?? ""} readOnly />
+                  </div>
+                </div>
               </div>
-              <button onClick={handleInvite} disabled={inviting || inviteDone || !inviteEmail.trim()}
-                className={clsx("btn-primary w-full justify-center text-sm", (!inviteEmail.trim() || inviting) && "opacity-60")}>
-                {inviteDone
-                  ? <><Check size={14} /> Uitnodiging verstuurd</>
-                  : inviting ? "Versturen..."
-                  : <><Mail size={14} /> Uitnodiging versturen</>}
+
+              {/* Huisstijl */}
+              <div className="card p-5 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Palette size={14} className="text-brand-500" /> Huisstijl
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: "Primaire kleur", value: primaryColor, set: setPrimaryColor },
+                    { label: "Accentkleur",    value: accentColor,  set: setAccentColor  },
+                  ].map(c => (
+                    <div key={c.label}>
+                      <label className="label">{c.label}</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={c.value} onChange={e => c.set(e.target.value)}
+                          className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
+                        <input className="input font-mono text-sm" value={c.value}
+                          onChange={e => c.set(e.target.value)} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={handleSaveOrg} disabled={saving} className="btn-primary w-full justify-center">
+                {saving ? "Opslaan..." : <><Save size={14} /> Wijzigingen opslaan</>}
               </button>
             </div>
+          )}
 
-            {/* Ledenlijst */}
-            <div className="card overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <p className="text-sm font-semibold text-slate-700">{memberList.length} leden</p>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {memberList.map(m => (
-                  <div key={m.profile.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/60">
-                    <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0">
-                      {m.profile.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+          {/* ── ACTIVITEIT ────────────────────────────────── */}
+          {activeTab === "activiteit" && (
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-slate-800">Activiteitslog</h2>
+              <div className="card overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {activityList.map(a => (
+                    <div key={a.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
+                      <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0 mt-0.5">
+                        {a.actor?.full_name?.charAt(0) ?? "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-700">
+                          <span className="font-medium">{a.actor?.full_name}</span>
+                          {" "}<span className="text-slate-500">{a.action}</span>
+                          {a.entity_name && <> <span className="font-medium text-slate-700">{a.entity_name}</span></>}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">{a.entity_type} · {formatDate(a.created_at)}</p>
+                      </div>
+                      <p className="text-xs text-slate-400 flex-shrink-0">
+                        {new Date(a.created_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{m.profile.full_name || "—"}</p>
-                      <p className="text-xs text-slate-400 truncate">{m.profile.email}</p>
-                    </div>
-                    <span className={clsx(
-                      "text-xs font-semibold px-2 py-0.5 rounded-lg border flex-shrink-0",
-                      m.role === "owner" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-500 border-slate-200"
-                    )}>
-                      {m.role === "owner" ? <><Crown size={9} className="inline mr-1" />Eigenaar</> : "Gebruiker"}
-                    </span>
-                    <p className="text-xs text-slate-400 flex-shrink-0 hidden sm:block">{formatDate(m.joined_at)}</p>
-                    {m.role !== "owner" && (
-                      <button onClick={() => handleRemoveMember(m.profile.id, m.profile.full_name)}
-                        disabled={removingId === m.profile.id}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+                  ))}
+                  {activityList.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-12">Nog geen activiteit geregistreerd</p>
+                  )}
+                </div>
+                {cursor && (
+                  <div className="px-5 py-3 border-t border-slate-100">
+                    <button onClick={loadMoreActivity} disabled={loadingMore}
+                      className="text-sm text-brand-600 hover:underline font-medium">
+                      {loadingMore ? "Laden…" : "Meer laden"}
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── INSTELLINGEN ─────────────────────────────────── */}
-        {activeTab === "instellingen" && (
-          <div className="space-y-5">
-            {/* Identiteit */}
-            <div className="card p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Globe size={14} className="text-brand-500" /> Identiteit
-              </h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="label">Organisatienaam</label>
-                  <input className="input" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="label">Logo URL</label>
-                  <input className="input" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." />
-                  {logoUrl && <img src={logoUrl} alt="Logo preview" className="mt-2 h-10 rounded" />}
-                </div>
-                <div>
-                  <label className="label text-slate-400">Slug (alleen-lezen)</label>
-                  <input className="input bg-slate-50 text-slate-400 cursor-not-allowed" value={org?.slug ?? ""} readOnly />
-                </div>
-              </div>
-            </div>
-
-            {/* Huisstijl */}
-            <div className="card p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Palette size={14} className="text-brand-500" /> Huisstijl
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: "Primaire kleur", value: primaryColor, set: setPrimaryColor },
-                  { label: "Accentkleur",    value: accentColor,  set: setAccentColor  },
-                ].map(c => (
-                  <div key={c.label}>
-                    <label className="label">{c.label}</label>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={c.value} onChange={e => c.set(e.target.value)}
-                        className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
-                      <input className="input font-mono text-sm" value={c.value} onChange={e => c.set(e.target.value)} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Modules */}
-            <div className="card p-5 space-y-3">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <ShieldCheck size={14} className="text-brand-500" /> Modules
-              </h2>
-              {(Object.entries(MODULE_META) as [OrgModule, { label: string; icon: React.ElementType }][]).map(([mod, meta]) => (
-                <div key={mod} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <meta.icon size={15} className="text-slate-500" />
-                    <span className="text-sm text-slate-700">{meta.label}</span>
-                  </div>
-                  <button onClick={() => handleToggleModule(mod)} className="text-slate-400 hover:text-brand-600">
-                    {moduleState[mod]
-                      ? <ToggleRight size={24} className="text-brand-500" />
-                      : <ToggleLeft size={24} />}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button onClick={handleSaveOrg} disabled={saving} className="btn-primary w-full justify-center">
-              {saving ? "Opslaan..." : <><Save size={14} /> Wijzigingen opslaan</>}
-            </button>
-          </div>
-        )}
-
-        {/* ── ACTIVITEIT ───────────────────────────────────── */}
-        {activeTab === "activiteit" && (
-          <div className="card overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Activity size={14} className="text-brand-500" /> Activiteitenlog
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">Alle acties binnen jouw organisatie</p>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {activityList.map(a => (
-                <div key={a.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/60">
-                  <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 flex-shrink-0 mt-0.5">
-                    {a.actor?.full_name?.charAt(0) ?? "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700">
-                      <span className="font-medium">{a.actor?.full_name}</span>
-                      {" "}<span className="text-slate-500">{a.action}</span>
-                      {a.entity_name && <> <span className="font-medium text-slate-700">{a.entity_name}</span></>}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{a.entity_type} · {formatDate(a.created_at)}</p>
-                  </div>
-                  <p className="text-xs text-slate-400 flex-shrink-0">{new Date(a.created_at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}</p>
-                </div>
-              ))}
-              {activityList.length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-10">Nog geen activiteit geregistreerd</p>
-              )}
-            </div>
-            {cursor && (
-              <div className="px-5 py-3 border-t border-slate-100">
-                <button onClick={loadMoreActivity} disabled={loadingMore}
-                  className="text-sm text-brand-600 hover:underline font-medium">
-                  {loadingMore ? "Laden..." : "Meer laden"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
-      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

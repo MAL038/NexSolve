@@ -18,13 +18,13 @@ import {
   ChevronDown,
   Clock,
   Landmark,
+  Workflow,
 } from "lucide-react";
 import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
 import Avatar from "@/components/ui/Avatar";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { createClient } from "@/lib/supabaseClient";
-import { GlobalSearch } from "@/components/search/GlobalSearch";
 import type { Profile, ThemeWithChildren } from "@/types";
 
 interface SidebarProps {
@@ -170,12 +170,8 @@ export default function Sidebar({
   return (
     // min-h-dvh: dynamic viewport height voor iOS, pt/pb-safe voor notch & home indicator
     <aside className="flex flex-col w-64 h-full bg-white border-r border-slate-100 py-6 px-4 flex-shrink-0">
-      <div className="px-2 mt-6 mb-4">
+      <div className="px-2 mt-6 mb-6">
         <Logo variant="main" />
-      </div>
-
-      <div className="mb-4">
-        <GlobalSearch />
       </div>
 
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
@@ -210,6 +206,14 @@ export default function Sidebar({
             onNavigate={onNavigate}
           />
         )}
+
+        <NavItem
+          href="/processen"
+          icon={Workflow}
+          label="Processen"
+          active={pathname.startsWith("/processen")}
+          onNavigate={onNavigate}
+        />
 
         {showTeam && (
           <NavItem

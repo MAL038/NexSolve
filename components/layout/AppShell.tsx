@@ -104,6 +104,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
     <AppShellClient
       primaryColor={orgPrimaryColor}
       accentColor={orgAccentColor}
+      profile={profile}
       sidebar={
         <Sidebar
           profile={profile}
