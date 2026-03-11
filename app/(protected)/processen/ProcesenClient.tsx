@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Workflow, ChevronDown, ChevronRight, Search,
-  GitBranch, Layers, Tag, FolderOpen,
+  GitBranch, Layers, Tag, FolderOpen, ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -108,9 +108,10 @@ export default function ProcesenClient({ themes }: Props) {
               <div key={theme.id} className="card overflow-hidden">
 
                 {/* ── Thema header ────────────────────────── */}
+                <div className="relative group">
                 <button
                   onClick={() => toggleTheme(theme.id)}
-                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-slate-50/60 transition-colors group"
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-slate-50/60 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
                     <Layers size={14} className="text-brand-600" />
@@ -131,6 +132,15 @@ export default function ProcesenClient({ themes }: Props) {
                     )}
                   />
                 </button>
+                <Link
+                  href={`/processen/${theme.id}`}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-300 hover:text-brand-600
+                             hover:bg-brand-50 transition-all opacity-0 group-hover:opacity-100"
+                  title="Thema bekijken"
+                >
+                  <ExternalLink size={13} />
+                </Link>
+                </div>
 
                 {/* ── Processen ───────────────────────────── */}
                 {expanded && procs.length > 0 && (

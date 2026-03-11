@@ -2,13 +2,13 @@
 // app/(protected)/beheer/BeheerClient.tsx
 // Settings-layout: left subnavigation + right content area.
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Building2, Save, Check, X, Globe, Palette,
   ToggleLeft, ToggleRight, Crown, FolderKanban,
   Users, ClipboardList, CalendarDays,
   BarChart3, UserPlus, Mail, Trash2, Activity,
-  ShieldCheck, TrendingUp, ChevronRight,
+  ShieldCheck, TrendingUp, ChevronRight, UsersRound, Shield,
 } from "lucide-react";
 import clsx from "clsx";
 import { formatDate } from "@/lib/time";
@@ -61,11 +61,13 @@ const PLAN_LABEL: Record<OrgPlan, { label: string; color: string }> = {
   enterprise: { label: "Enterprise", color: "bg-amber-50 text-amber-700 border-amber-200" },
 };
 
-type Tab = "overzicht" | "leden" | "modules" | "instellingen" | "activiteit";
+type Tab = "overzicht" | "gebruikers" | "teams" | "rollen" | "modules" | "instellingen" | "activiteit";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overzicht",    label: "Overzicht",    icon: TrendingUp  },
-  { id: "leden",        label: "Leden",        icon: Users       },
+  { id: "gebruikers",   label: "Gebruikers",   icon: Users       },
+  { id: "teams",        label: "Teams",        icon: UsersRound  },
+  { id: "rollen",       label: "Rollen",       icon: Shield      },
   { id: "modules",      label: "Modules",      icon: ShieldCheck },
   { id: "instellingen", label: "Instellingen", icon: Globe       },
   { id: "activiteit",   label: "Activiteit",   icon: Activity    },
@@ -235,14 +237,14 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
       </aside>
 
       {/* ── Mobile tab bar ────────────────────────────────────── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 flex divide-x divide-slate-100">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 flex overflow-x-auto">
         {TABS.map(tab => {
           const Icon   = tab.icon;
           const active = activeTab === tab.id;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors",
+                "flex-shrink-0 flex flex-col items-center gap-1 px-4 py-2.5 text-[10px] font-semibold transition-colors",
                 active ? "text-brand-600" : "text-slate-400"
               )}>
               <Icon size={18} className={active ? "text-brand-600" : "text-slate-400"} />
@@ -335,10 +337,10 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
             </div>
           )}
 
-          {/* ── LEDEN ─────────────────────────────────────── */}
-          {activeTab === "leden" && (
+          {/* ── GEBRUIKERS ────────────────────────────────── */}
+          {activeTab === "gebruikers" && (
             <div className="space-y-4">
-              <h2 className="text-base font-bold text-slate-800">Leden</h2>
+              <h2 className="text-base font-bold text-slate-800">Gebruikers</h2>
 
               {/* Uitnodigen */}
               <div className="card p-5 space-y-3">
@@ -397,6 +399,69 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TEAMS ─────────────────────────────────────── */}
+          {activeTab === "teams" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Teams</h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Organiseer gebruikers in teams voor een beter overzicht.
+                </p>
+              </div>
+              <div className="card p-10 text-center">
+                <UsersRound size={36} className="mx-auto mb-3 text-slate-200" />
+                <p className="text-sm font-medium text-slate-500">Teams komen binnenkort beschikbaar.</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Je kunt gebruikers groeperen in teams en teamspecifieke rechten instellen.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── ROLLEN ────────────────────────────────────── */}
+          {activeTab === "rollen" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Rollen</h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Definieer rollen met specifieke rechten voor jouw organisatie.
+                </p>
+              </div>
+              <div className="card overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Standaardrollen</p>
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {[
+                    { role: "owner",  label: "Eigenaar",   desc: "Volledige toegang tot alle instellingen en gegevens."        },
+                    { role: "admin",  label: "Beheerder",  desc: "Kan gebruikers en instellingen beheren, geen facturatie."    },
+                    { role: "member", label: "Lid",        desc: "Toegang tot projecten en klanten op basis van toewijzing."   },
+                    { role: "viewer", label: "Lezer",      desc: "Alleen-lezen toegang. Kan geen wijzigingen aanbrengen."      },
+                  ].map(r => (
+                    <div key={r.role} className="flex items-start gap-4 px-5 py-4">
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Shield size={14} className="text-slate-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">{r.label}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{r.desc}</p>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400 flex-shrink-0 mt-1 bg-slate-100 px-2 py-0.5 rounded-lg">
+                        {r.role}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="card p-5 bg-brand-50/40 border-brand-100">
+                <p className="text-sm font-medium text-brand-700 mb-1">Aangepaste rollen</p>
+                <p className="text-xs text-brand-500">
+                  Aangepaste rollen met specifieke rechten zijn beschikbaar in het Pro-abonnement.
+                </p>
               </div>
             </div>
           )}
