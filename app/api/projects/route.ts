@@ -74,7 +74,7 @@ export const GET = apiRoute(
 );
 
 export const POST = apiRoute(
-  { requireOrg: false },
+  { requireOrg: true },
   async ({ supabase, user, orgId, body }) => {
     const result = projectSchema.safeParse(body);
     if (!result.success) {
