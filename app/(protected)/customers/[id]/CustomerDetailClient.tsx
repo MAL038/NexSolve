@@ -284,8 +284,8 @@ export default function CustomerDetailClient({
               className={clsx(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold border transition-all",
                 customer.status === "active"
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
+                  ? "bg-brand-600 text-white border-brand-600 shadow-sm"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-brand-400 hover:text-brand-700"
               )}>
               <CheckCircle2 size={11} /> Actief
             </button>
@@ -293,8 +293,8 @@ export default function CustomerDetailClient({
               className={clsx(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold border transition-all",
                 customer.status === "inactive"
-                  ? "bg-slate-700 text-white border-slate-700 shadow-sm"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
+                  ? "bg-slate-500 text-white border-slate-500 shadow-sm"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-600"
               )}>
               <XCircle size={11} /> Inactief
             </button>
@@ -799,9 +799,12 @@ export default function CustomerDetailClient({
                 <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                   <DataRow label="Naam"><span className="font-medium">{customer.name}</span></DataRow>
                   <DataRow label="Status"><StatusBadge status={customer.status} /></DataRow>
+                  {customer.code && <DataRow label="Klantnummer"><span className="font-mono text-xs">{customer.code}</span></DataRow>}
                   {customer.email && <DataRow label="E-mail"><span>{customer.email}</span></DataRow>}
                   {customer.phone && <DataRow label="Telefoon"><span>{customer.phone}</span></DataRow>}
                   {customer.website && <DataRow label="Website"><span>{customer.website}</span></DataRow>}
+                  {addressParts.length > 0 && <DataRow label="Adres"><span>{addressParts.join(", ")}</span></DataRow>}
+                  {customer.contact_name && <DataRow label="Contactpersoon"><span>{customer.contact_name}{customer.contact_role ? ` · ${customer.contact_role}` : ""}</span></DataRow>}
                 </div>
               ) : (
                 <div className="px-5 py-5 space-y-5">
@@ -812,22 +815,26 @@ export default function CustomerDetailClient({
                     </div>
                   )}
 
-                  <div>
-                    <label className="label">Naam *</label>
-                    <input
-                      disabled={saving}
-                      value={edit.name}
-                      onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
-                      className="input disabled:opacity-60 disabled:cursor-not-allowed"
-                      placeholder="Klantnaam"
-                    />
+                  {/* Algemeen */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Naam *</label>
+                      <input disabled={saving} value={edit.name}
+                        onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Klantnaam" />
+                    </div>
+                    <div>
+                      <label className="label">Klantnummer</label>
+                      <input disabled={saving} value={edit.code}
+                        onChange={e => setEdit(p => ({ ...p, code: e.target.value }))}
+                        className="input disabled:opacity-60 disabled:cursor-not-allowed font-mono" placeholder="KL-0001" />
+                    </div>
                   </div>
 
+                  {/* Contactgegevens */}
                   <div className="pt-3 border-t border-slate-100">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                      Contactgegevens
-                    </p>
-                    <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Contactgegevens</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="label">E-mail</label>
                         <input disabled={saving} type="email" value={edit.email}
@@ -840,11 +847,75 @@ export default function CustomerDetailClient({
                           onChange={e => setEdit(p => ({ ...p, phone: e.target.value }))}
                           className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 12345678" />
                       </div>
-                      <div>
+                      <div className="sm:col-span-2">
                         <label className="label">Website</label>
                         <input disabled={saving} type="url" value={edit.website}
                           onChange={e => setEdit(p => ({ ...p, website: e.target.value }))}
                           className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="www.bedrijf.nl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Adres */}
+                  <div className="pt-3 border-t border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Adres</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="label">Straat</label>
+                        <input disabled={saving} value={edit.address_street}
+                          onChange={e => setEdit(p => ({ ...p, address_street: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Straatnaam 1" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label">Postcode</label>
+                          <input disabled={saving} value={edit.address_zip}
+                            onChange={e => setEdit(p => ({ ...p, address_zip: e.target.value }))}
+                            className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="1234 AB" />
+                        </div>
+                        <div>
+                          <label className="label">Stad</label>
+                          <input disabled={saving} value={edit.address_city}
+                            onChange={e => setEdit(p => ({ ...p, address_city: e.target.value }))}
+                            className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Amsterdam" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="label">Land</label>
+                        <input disabled={saving} value={edit.address_country}
+                          onChange={e => setEdit(p => ({ ...p, address_country: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Nederland" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contactpersoon */}
+                  <div className="pt-3 border-t border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Contactpersoon</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Naam</label>
+                        <input disabled={saving} value={edit.contact_name}
+                          onChange={e => setEdit(p => ({ ...p, contact_name: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Jan Jansen" />
+                      </div>
+                      <div>
+                        <label className="label">Functie</label>
+                        <input disabled={saving} value={edit.contact_role}
+                          onChange={e => setEdit(p => ({ ...p, contact_role: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="Directeur" />
+                      </div>
+                      <div>
+                        <label className="label">E-mail</label>
+                        <input disabled={saving} type="email" value={edit.contact_email}
+                          onChange={e => setEdit(p => ({ ...p, contact_email: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="jan@bedrijf.nl" />
+                      </div>
+                      <div>
+                        <label className="label">Telefoon</label>
+                        <input disabled={saving} type="tel" value={edit.contact_phone}
+                          onChange={e => setEdit(p => ({ ...p, contact_phone: e.target.value }))}
+                          className="input disabled:opacity-60 disabled:cursor-not-allowed" placeholder="+31 6 87654321" />
                       </div>
                     </div>
                   </div>
