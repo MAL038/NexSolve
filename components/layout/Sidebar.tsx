@@ -21,6 +21,8 @@ import {
   Workflow,
   CheckSquare,
   FileText,
+  BarChart2,
+  LayoutTemplate,
 } from "lucide-react";
 import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
@@ -145,8 +147,10 @@ export default function Sidebar({
       { key: "projects",  match: (p) => p.startsWith("/projects"), redirectTo: "/dashboard" },
       { key: "customers", match: (p) => p.startsWith("/customers"), redirectTo: "/dashboard" },
       { key: "team",      match: (p) => p.startsWith("/team"), redirectTo: "/dashboard" },
-      { key: "time",      match: (p) => p.startsWith("/hours"), redirectTo: "/dashboard" },
-      { key: "calendar",  match: (p) => p.startsWith("/calendar"), redirectTo: "/dashboard" },
+      { key: "time",        match: (p) => p.startsWith("/hours"),       redirectTo: "/dashboard" },
+      { key: "calendar",    match: (p) => p.startsWith("/calendar"),    redirectTo: "/dashboard" },
+      { key: "rapportages", match: (p) => p.startsWith("/rapportages"), redirectTo: "/dashboard" },
+      { key: "templates",   match: (p) => p.startsWith("/templates"),   redirectTo: "/dashboard" },
       // Export is modal; geen route guard nodig
     ];
 
@@ -161,13 +165,15 @@ export default function Sidebar({
   // ─────────────────────────────────────────────────────────────
   // ✅ Stap 10B: menu-items conditioneel renderen
   // ─────────────────────────────────────────────────────────────
-  const showDashboard = isModuleEnabled(enabledModules, "dashboard");
-  const showProjects  = isModuleEnabled(enabledModules, "projects");
-  const showCustomers = isModuleEnabled(enabledModules, "customers");
-  const showTeam      = isModuleEnabled(enabledModules, "team");
-  const showHours     = isModuleEnabled(enabledModules, "time");
-  const showCalendar  = isModuleEnabled(enabledModules, "calendar");
-  const showExport    = isModuleEnabled(enabledModules, "export");
+  const showDashboard    = isModuleEnabled(enabledModules, "dashboard");
+  const showProjects     = isModuleEnabled(enabledModules, "projects");
+  const showCustomers    = isModuleEnabled(enabledModules, "customers");
+  const showTeam         = isModuleEnabled(enabledModules, "team");
+  const showHours        = isModuleEnabled(enabledModules, "time");
+  const showCalendar     = isModuleEnabled(enabledModules, "calendar");
+  const showExport       = isModuleEnabled(enabledModules, "export");
+  const showRapportages  = isModuleEnabled(enabledModules, "rapportages");
+  const showTemplates    = isModuleEnabled(enabledModules, "templates");
 
   return (
     // min-h-dvh: dynamic viewport height voor iOS, pt/pb-safe voor notch & home indicator
@@ -232,6 +238,26 @@ export default function Sidebar({
           active={pathname.startsWith("/documenten")}
           onNavigate={onNavigate}
         />
+
+        {showTemplates && (
+          <NavItem
+            href="/templates"
+            icon={LayoutTemplate}
+            label="Templates"
+            active={pathname.startsWith("/templates")}
+            onNavigate={onNavigate}
+          />
+        )}
+
+        {showRapportages && (
+          <NavItem
+            href="/rapportages"
+            icon={BarChart2}
+            label="Rapportages"
+            active={pathname.startsWith("/rapportages")}
+            onNavigate={onNavigate}
+          />
+        )}
 
         {showTeam && (
           <NavItem

@@ -6,7 +6,9 @@ export type ModuleKey =
   | "team"
   | "time"
   | "calendar"
-  | "export";
+  | "export"
+  | "rapportages"
+  | "templates";
 
 export function isModuleEnabled(
   enabled: Record<string, boolean> | null | undefined,
