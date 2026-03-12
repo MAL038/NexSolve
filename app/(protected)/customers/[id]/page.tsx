@@ -21,8 +21,9 @@ export default async function CustomerDetailPage({ params }: Props) {
 
   if (error || !customer) notFound();
 
-  const orgRole = (profile as any)?.org_role ?? "member";
-  const canEdit = orgRole === "admin" || orgRole === "manager";
+  const orgRole   = (profile as any)?.org_role ?? "member";
+  const canEdit   = !!profile;                                              // elke ingelogde org-member mag bewerken
+  const canDelete = orgRole === "admin" || orgRole === "owner";             // alleen admin/owner mag verwijderen
 
   return (
     <CustomerDetailClient
@@ -30,6 +31,7 @@ export default async function CustomerDetailPage({ params }: Props) {
       linkedProjects={(linkedProjects as Project[]) ?? []}
       allProjects={(allProjects as Project[]) ?? []}
       canEdit={canEdit}
+      canDelete={canDelete}
     />
   );
 }

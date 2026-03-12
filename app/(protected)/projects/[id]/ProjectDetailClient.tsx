@@ -52,7 +52,7 @@ interface EditState {
   customer_id: string | null;
 }
 
-type Tab = "overzicht" | "planning" | "taken" | "documenten" | "activiteiten" | "team" | "instellingen";
+type Tab = "overzicht" | "klant" | "planning" | "taken" | "documenten" | "activiteiten" | "team" | "instellingen";
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string; dot: string }[] = [
   { value: "active",      label: "Actief",        dot: "bg-brand-500" },
@@ -62,6 +62,7 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string; dot: string }[] = [
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "overzicht",    label: "Overzicht",    icon: LayoutGrid  },
+  { id: "klant",        label: "Klant",        icon: Building2   },
   { id: "planning",     label: "Planning",     icon: Calendar    },
   { id: "taken",        label: "Taken",        icon: GitBranch   },
   { id: "documenten",   label: "Documenten",   icon: FileText    },
@@ -497,6 +498,55 @@ export default function ProjectDetailClient({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── KLANT ─── */}
+        {activeTab === "klant" && (
+          <div className="p-5 sm:p-6 max-w-xl space-y-5">
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-700">Gekoppelde klant</h2>
+              </div>
+              <div className="px-5 py-5 space-y-4">
+                {isOwnerOrMember ? (
+                  <CustomerSelectWithCreate
+                    value={edit.customer_id ?? ""}
+                    onChange={async (v) => {
+                      const newId = v || null;
+                      setEdit(p => ({ ...p, customer_id: newId }));
+                      setSaving(true);
+                      try {
+                        const res = await fetch(`/api/projects/${project.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ customer_id: newId }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setProject((prev: Project) => ({ ...prev, ...data, customer: data.customer ?? prev.customer }));
+                          showToast("Klant bijgewerkt");
+                        }
+                      } finally { setSaving(false); }
+                    }}
+                    customers={customers}
+                    onCustomerCreated={handleCustomerCreated}
+                  />
+                ) : currentCustomer ? (
+                  <p className="text-sm font-medium text-slate-700">{currentCustomer.name}</p>
+                ) : (
+                  <p className="text-sm text-slate-400">Geen klant gekoppeld</p>
+                )}
+                {currentCustomer && (
+                  <Link
+                    href={`/customers/${currentCustomer.id}`}
+                    className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
+                  >
+                    <ExternalLink size={13} /> Naar klantpagina
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

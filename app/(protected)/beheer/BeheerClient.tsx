@@ -9,6 +9,7 @@ import {
   Users, ClipboardList, CalendarDays,
   BarChart3, UserPlus, Mail, Trash2, Activity,
   ShieldCheck, TrendingUp, ChevronRight, UsersRound, Shield,
+  LayoutDashboard, Clock, Download, UserCog,
 } from "lucide-react";
 import clsx from "clsx";
 import { formatDate } from "@/lib/time";
@@ -18,7 +19,7 @@ import { useToast } from "@/lib/hooks/useToast";
 import Toast from "@/components/ui/Toast";
 
 type OrgPlan   = "trial" | "starter" | "pro" | "enterprise";
-type OrgModule = "projects" | "customers" | "intake" | "planning" | "hrm" | "calendar";
+type OrgModule = "dashboard" | "projects" | "customers" | "team" | "time" | "calendar" | "export" | "intake" | "planning" | "hrm";
 
 interface Organisation {
   id: string; name: string; slug: string; logo_url: string | null;
@@ -45,13 +46,17 @@ interface Props {
   projectCount: number;
 }
 
-const MODULE_META: Record<OrgModule, { label: string; icon: React.ElementType }> = {
-  projects:  { label: "Projecten",  icon: FolderKanban  },
-  customers: { label: "Klanten",    icon: Building2     },
-  intake:    { label: "Intake",     icon: ClipboardList },
-  calendar:  { label: "Kalender",   icon: CalendarDays  },
-  planning:  { label: "Planning",   icon: BarChart3     },
-  hrm:       { label: "HRM",        icon: Users         },
+const MODULE_META: Record<OrgModule, { label: string; desc: string; icon: React.ElementType }> = {
+  dashboard: { label: "Dashboard",  desc: "Startpagina met KPI's, taken en activiteiten.", icon: LayoutDashboard },
+  projects:  { label: "Projecten",  desc: "Beheer projecten, taken en voortgang.",          icon: FolderKanban    },
+  customers: { label: "Klanten",    desc: "Klantendossiers en contactinformatie.",           icon: Building2       },
+  team:      { label: "Team",       desc: "Teamleden, rollen en toewijzingen.",              icon: Users           },
+  time:      { label: "Tijdregistratie", desc: "Uren per project en medewerker bijhouden.", icon: Clock           },
+  calendar:  { label: "Kalender",   desc: "Afspraken en deadlines per project.",            icon: CalendarDays    },
+  export:    { label: "Exporteren", desc: "Data exporteren als CSV of PDF.",                icon: Download        },
+  intake:    { label: "Intake",     desc: "Intakeformulieren en klantaanvragen.",           icon: ClipboardList   },
+  planning:  { label: "Planning",   desc: "Capaciteitsplanning en roosters.",               icon: BarChart3       },
+  hrm:       { label: "HRM",        desc: "Personeelsbeheer en HR-documenten.",             icon: Users           },
 };
 
 const PLAN_LABEL: Record<OrgPlan, { label: string; color: string }> = {
@@ -94,6 +99,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
   const [inviting,     setInviting]     = useState(false);
   const [inviteDone,   setInviteDone]   = useState(false);
   const [removingId,   setRemovingId]   = useState<string | null>(null);
+  const [changingRole, setChangingRole] = useState<string | null>(null);
 
   // Activity state
   const [activityList, setActivityList] = useState<ActivityRow[]>(activity);
@@ -141,6 +147,21 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
     setTimeout(() => setInviteDone(false), 2500);
     const fresh = await fetch("/api/organisation/invite").then(r => r.json());
     setMemberList(fresh);
+  }
+
+  async function handleChangeRole(userId: string, newRole: string) {
+    setChangingRole(userId);
+    const res = await fetch("/api/organisation/invite", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, role: newRole }),
+    });
+    setChangingRole(null);
+    if (!res.ok) { showToast("Rol wijzigen mislukt", false); return; }
+    setMemberList(prev => prev.map(m =>
+      m.profile.id === userId ? { ...m, role: newRole } : m
+    ));
+    showToast("Rol bijgewerkt");
   }
 
   async function handleRemoveMember(userId: string, name: string) {
@@ -378,14 +399,22 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
                         <p className="text-sm font-medium text-slate-800 truncate">{m.profile.full_name || "—"}</p>
                         <p className="text-xs text-slate-400 truncate">{m.profile.email}</p>
                       </div>
-                      <span className={clsx(
-                        "text-xs font-semibold px-2 py-0.5 rounded-lg border flex-shrink-0",
-                        m.role === "owner"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-slate-100 text-slate-500 border-slate-200"
-                      )}>
-                        {m.role === "owner" ? <><Crown size={9} className="inline mr-1" />Eigenaar</> : "Gebruiker"}
-                      </span>
+                      {m.role === "owner" ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0 flex items-center gap-1">
+                          <Crown size={9} />Eigenaar
+                        </span>
+                      ) : (
+                        <select
+                          value={m.role}
+                          disabled={changingRole === m.profile.id}
+                          onChange={e => handleChangeRole(m.profile.id, e.target.value)}
+                          className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 flex-shrink-0 cursor-pointer hover:border-brand-300 transition-colors"
+                        >
+                          <option value="admin">Beheerder</option>
+                          <option value="member">Lid</option>
+                          <option value="viewer">Lezer</option>
+                        </select>
+                      )}
                       <p className="text-xs text-slate-400 flex-shrink-0 hidden sm:block">{formatDate(m.joined_at)}</p>
                       {m.role !== "owner" && (
                         <button
@@ -489,9 +518,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-700">{meta.label}</p>
-                        <p className="text-xs text-slate-400">
-                          {moduleState[mod] ? "Ingeschakeld" : "Uitgeschakeld"}
-                        </p>
+                        <p className="text-xs text-slate-400">{meta.desc}</p>
                       </div>
                     </div>
                     <button onClick={() => handleToggleModule(mod)} className="text-slate-400 hover:text-brand-600 transition-colors">
