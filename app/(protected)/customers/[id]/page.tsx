@@ -11,19 +11,29 @@ export default async function CustomerDetailPage({ params }: Props) {
   const session = await requireAuth();
   const supabase = await createClient();
 
-  const [{ data: customer, error }, { data: linkedProjects }, { data: allProjects }, { data: profile }] =
+  // Resolve active org
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("current_org_id")
+    .eq("id", session.user.id)
+    .maybeSingle();
+  const orgId = (profileRow as any)?.current_org_id as string | null;
+
+  const [{ data: customer, error }, { data: linkedProjects }, { data: allProjects }, { data: membership }] =
     await Promise.all([
       supabase.from("customers").select("*").eq("id", id).single(),
       supabase.from("projects").select("*").eq("customer_id", id).order("created_at", { ascending: false }),
       supabase.from("projects").select("*, customer:customers(id, name)").order("name"),
-      supabase.from("profiles").select("org_role").eq("id", session.user.id).single(),
+      orgId
+        ? supabase.from("organisation_members").select("role").eq("org_id", orgId).eq("user_id", session.user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
   if (error || !customer) notFound();
 
-  const orgRole   = (profile as any)?.org_role ?? "member";
-  const canEdit   = !!profile;                                              // elke ingelogde org-member mag bewerken
-  const canDelete = orgRole === "admin" || orgRole === "owner";             // alleen admin/owner mag verwijderen
+  const orgRole   = (membership as any)?.role ?? "member";
+  const canEdit   = !!membership;
+  const canDelete = orgRole === "admin" || orgRole === "owner" || orgRole === "org.admin";
 
   return (
     <CustomerDetailClient
