@@ -108,11 +108,18 @@ export default function AppShellClient({
   // Org-branding: convert hex to --brand-N-rgb variables so Tailwind brand-* classes pick it up
   useEffect(() => {
     if (!primaryColor) return;
-    const hex = primaryColor.replace("#", "");
-    if (hex.length !== 6) return;
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
+    const raw = primaryColor.trim();
+    const hex = raw.startsWith("#") ? raw.slice(1) : raw;
+
+    // Support #RGB en #RRGGBB
+    const normalized = hex.length === 3
+      ? hex.split("").map((c) => c + c).join("")
+      : hex;
+
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return;
+    const r = parseInt(normalized.slice(0, 2), 16);
+    const g = parseInt(normalized.slice(2, 4), 16);
+    const b = parseInt(normalized.slice(4, 6), 16);
 
     function mix(ratio: number, dark = false): string {
       const factor = dark ? (1 - ratio) : ratio;

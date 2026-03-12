@@ -24,15 +24,20 @@ export default async function AppShell({ children }: { children: React.ReactNode
   let orgAccentColor:  string | null = null;
 
   if (profile) {
-    const { data: branding } = await supabase
-      .from("org_members")
-      .select("organisations(primary_color, accent_color)")
-      .eq("user_id", profile.id)
-      .maybeSingle();
+    // Gebruik expliciet de actieve organisatie (profiles.current_org_id),
+    // zodat branding altijd matcht met de gekozen tenant in OrgSwitcher.
+    const currentOrgId = (profile as any)?.current_org_id as string | null;
 
-    const org = (branding?.organisations as any);
-    orgPrimaryColor = org?.primary_color ?? null;
-    orgAccentColor  = org?.accent_color  ?? null;
+    if (currentOrgId) {
+      const { data: org } = await supabase
+        .from("organisations")
+        .select("primary_color, accent_color")
+        .eq("id", currentOrgId)
+        .maybeSingle();
+
+      orgPrimaryColor = (org as any)?.primary_color ?? null;
+      orgAccentColor  = (org as any)?.accent_color  ?? null;
+    }
   }
 
   const isSuperuser = isSu === true;
