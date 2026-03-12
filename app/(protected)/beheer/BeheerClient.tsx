@@ -505,7 +505,7 @@ export default function BeheerClient({ org, orgId, modules, members, activity, p
                 </p>
               </div>
               <div className="card overflow-hidden divide-y divide-slate-100">
-                {(Object.entries(MODULE_META) as [OrgModule, { label: string; icon: React.ElementType }][]).map(([mod, meta]) => (
+                {(Object.entries(MODULE_META) as [OrgModule, { label: string; desc: string; icon: React.ElementType }][]).map(([mod, meta]) => (
                   <div key={mod} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/40 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={clsx(
