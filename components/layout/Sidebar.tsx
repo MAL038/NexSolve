@@ -19,6 +19,8 @@ import {
   Clock,
   Landmark,
   Workflow,
+  CheckSquare,
+  FileText,
 } from "lucide-react";
 import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
@@ -212,6 +214,22 @@ export default function Sidebar({
           icon={Workflow}
           label="Processen"
           active={pathname.startsWith("/processen")}
+          onNavigate={onNavigate}
+        />
+
+        <NavItem
+          href="/taken"
+          icon={CheckSquare}
+          label="Taken"
+          active={pathname.startsWith("/taken")}
+          onNavigate={onNavigate}
+        />
+
+        <NavItem
+          href="/documenten"
+          icon={FileText}
+          label="Documenten"
+          active={pathname.startsWith("/documenten")}
           onNavigate={onNavigate}
         />
 

@@ -1,7 +1,7 @@
 /**
  * GET /api/search?q=...&limit=5
  *
- * Doorzoekt parallel: projecten, klanten, dossiers, teamleden
+ * Doorzoekt parallel: projecten, klanten, dossiers, teamleden, taken
  * Elke categorie geeft max `limit` resultaten (default 5).
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -9,17 +9,17 @@ import { requireApiContext } from '@/lib/api'
 export async function GET(req: NextRequest) {
   const auth = await requireApiContext();
   if (!auth.ok) return auth.res;
-  const { supabase, user } = auth.ctx;
+  const { supabase } = auth.ctx;
   const { searchParams } = req.nextUrl
   const q     = searchParams.get('q')?.trim() ?? ''
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '5'), 10)
 
-  if (q.length < 2) return NextResponse.json({ projects: [], customers: [], dossiers: [], members: [] })
+  if (q.length < 2) return NextResponse.json({ projects: [], customers: [], dossiers: [], members: [], tasks: [] })
 
   const pattern = `%${q}%`
 
   // Parallel ophalen — elk falen individueel afvangen
-  const [projectsRes, customersRes, dossiersRes, membersRes] = await Promise.allSettled([
+  const [projectsRes, customersRes, dossiersRes, membersRes, tasksRes] = await Promise.allSettled([
     supabase
       .from('projects')
       .select('id, name, status, customer:customers(name)')
@@ -47,6 +47,14 @@ export async function GET(req: NextRequest) {
       .or(`full_name.ilike.${pattern},email.ilike.${pattern}`)
       .order('full_name')
       .limit(limit),
+
+    supabase
+      .from('subprocesses')
+      .select('id, title, status, project_id, project:projects!inner(id, name)')
+      .ilike('title', pattern)
+      .neq('status', 'done')
+      .order('updated_at', { ascending: false })
+      .limit(limit),
   ])
 
   return NextResponse.json({
@@ -54,5 +62,6 @@ export async function GET(req: NextRequest) {
     customers: customersRes.status === 'fulfilled' ? (customersRes.value.data ?? []) : [],
     dossiers:  dossiersRes.status  === 'fulfilled' ? (dossiersRes.value.data  ?? []) : [],
     members:   membersRes.status   === 'fulfilled' ? (membersRes.value.data   ?? []) : [],
+    tasks:     tasksRes.status     === 'fulfilled' ? (tasksRes.value.data     ?? []) : [],
   })
 }
