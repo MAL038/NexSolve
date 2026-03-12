@@ -7,7 +7,7 @@ import {
   ArrowLeft, Calendar, Building2, Users, GitBranch,
   Pencil, Check, Loader2, AlertCircle, FileText, Activity, X,
   LayoutGrid, Hash, FolderKanban, Tag, Settings, Flag,
-  Trash2, Archive, ChevronRight, Clock,
+  Trash2, Archive, ChevronRight, Clock, ExternalLink,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Avatar from "@/components/ui/Avatar";
