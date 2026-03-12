@@ -38,15 +38,43 @@ export async function requireApiContext(
     };
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("organisation_members")
-    .select("org_id")
-    .eq("user_id", user.id)
-    .single();
+  // 1) Preferred org comes from profiles.current_org_id (set via OrgSwitcher)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_org_id")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const orgId = membership?.org_id ?? null;
+  const preferredOrgId = (profile as { current_org_id?: string | null } | null)?.current_org_id ?? null;
 
-  if (requireOrg && (!orgId || membershipError)) {
+  // 2) Resolve membership in preferred org first
+  let orgId: string | null = null;
+
+  if (preferredOrgId) {
+    const { data: preferredMembership } = await supabase
+      .from("organisation_members")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .eq("org_id", preferredOrgId)
+      .maybeSingle();
+
+    orgId = preferredMembership?.org_id ?? null;
+  }
+
+  // 3) Fallback: first membership (for users without current_org_id yet)
+  if (!orgId) {
+    const { data: fallbackMembership } = await supabase
+      .from("organisation_members")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    orgId = fallbackMembership?.org_id ?? null;
+  }
+
+  if (requireOrg && !orgId) {
     return {
       ok: false,
       res: NextResponse.json({ error: "Geen organisatie gevonden" }, { status: 403 }),
