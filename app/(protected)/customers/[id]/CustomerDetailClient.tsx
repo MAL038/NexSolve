@@ -404,7 +404,15 @@ export default function CustomerDetailClient({
             <div className="card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-700">Klantgegevens</h2>
+                {canEdit && (
+                  <button
+                    onClick={() => { setEditOpen(v => !v); setError(null); }}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600 px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium">
+                    <Pencil size={12} /> {editOpen ? "Sluiten" : "Bewerken"}
+                  </button>
+                )}
               </div>
+              {!editOpen ? (
               <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <DataRow label="Naam">
                   <span className="font-medium">{customer.name}</span>
@@ -447,6 +455,49 @@ export default function CustomerDetailClient({
                   </DataRow>
                 )}
               </div>
+              ) : (
+              <div className="px-5 py-5 space-y-4">
+                {error && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                    <AlertCircle size={14} className="flex-shrink-0" /> {error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Naam *</label>
+                    <input disabled={saving} value={edit.name}
+                      onChange={e => setEdit(p => ({ ...p, name: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="Klantnaam" />
+                  </div>
+                  <div>
+                    <label className="label">E-mail</label>
+                    <input disabled={saving} type="email" value={edit.email}
+                      onChange={e => setEdit(p => ({ ...p, email: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="info@bedrijf.nl" />
+                  </div>
+                  <div>
+                    <label className="label">Telefoon</label>
+                    <input disabled={saving} type="tel" value={edit.phone}
+                      onChange={e => setEdit(p => ({ ...p, phone: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="+31 6 12345678" />
+                  </div>
+                  <div>
+                    <label className="label">Website</label>
+                    <input disabled={saving} type="url" value={edit.website}
+                      onChange={e => setEdit(p => ({ ...p, website: e.target.value }))}
+                      className="input disabled:opacity-60" placeholder="www.bedrijf.nl" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                  <button onClick={() => handleSave()} disabled={saving} className="btn-primary">
+                    {saving ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</> : <><Check size={14} /> Opslaan</>}
+                  </button>
+                  <button onClick={() => { setEditOpen(false); setError(null); }} className="btn-outline">
+                    <X size={14} /> Annuleren
+                  </button>
+                </div>
+              </div>
+              )}
             </div>
 
             {/* Projecten samenvatting */}
