@@ -21,8 +21,24 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session
-  await supabase.auth.getUser();
+  // Refresh session (required to keep cookies fresh)
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isApiRoute  = pathname.startsWith('/api');
+
+  // Unauthenticated → redirect to login (skip API routes — they handle auth themselves)
+  if (!user && !isAuthRoute && !isApiRoute) {
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Already logged in → skip login page
+  if (user && pathname === '/auth/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
 
   return supabaseResponse;
 }
