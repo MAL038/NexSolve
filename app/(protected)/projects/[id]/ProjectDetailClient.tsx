@@ -16,6 +16,7 @@ import SubprocessesPanel from "@/components/ui/SubprocessesPanel";
 import PdfExportButton from "@/components/ui/PdfExportButton";
 import Toast from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import PermissionGate from "@/components/ui/PermissionGate";
 import { CustomerSelectWithCreate } from "@/components/customers/CustomerSelectWithCreate";
 import { DossierList } from "@/components/dossiers/DossierList";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
@@ -724,7 +725,7 @@ export default function ProjectDetailClient({
               <PdfExportButton scope={`project:${project.id}`} label="Download PDF" />
             </div>
 
-            {isOwnerOrMember && (
+            <PermissionGate allowed={isOwnerOrMember}>
               <div className="card overflow-hidden">
                 <div className="px-5 py-4 border-b border-red-100 bg-red-50/40">
                   <h2 className="text-sm font-semibold text-red-700">Gevarenzone</h2>
@@ -754,7 +755,7 @@ export default function ProjectDetailClient({
                   </div>
                 </div>
               </div>
-            )}
+            </PermissionGate>
           </div>
         )}
 

@@ -15,11 +15,12 @@ import {
   X, ChevronRight, ChevronLeft, Check, Loader2,
   FolderKanban, Layers, Building2, Users, Calendar,
   Sparkles, ExternalLink, Search, Crown,
-  AlertCircle,
+  AlertCircle, LayoutTemplate,
 } from "lucide-react";
 import clsx from "clsx";
 import Avatar from "@/components/ui/Avatar";
 import { CustomerWizard } from "@/components/CustomerWizard";
+import TemplateCard from "@/components/templates/TemplateCard";
 import type { ThemeWithChildren, Customer, Team, Profile } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -141,7 +142,8 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 export default function ProjectWizard({ onClose, onCreated, hierarchy, editProject }: Props) {
   const router  = useRouter();
-  const [step,    setStep]    = useState(1);
+  // Step 0 = template picker (alleen bij nieuw project), 1-4 = wizard stappen, 5 = confetti
+  const [step,    setStep]    = useState(editProject ? 1 : 0);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const [created, setCreated] = useState<any>(null);
@@ -152,6 +154,12 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
     customer_id: null,
     team_id: null, start_date: "", end_date: "",
   });
+
+  // Template picker state
+  const [templates,        setTemplates]        = useState<any[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [pendingTasks,     setPendingTasks]      = useState<any[]>([]);
 
   // Data voor dropdowns
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -172,6 +180,16 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
       setTeams(Array.isArray(t) ? t : []);
     });
   }, []);
+
+  // Templates ophalen (alleen bij nieuw project)
+  useEffect(() => {
+    if (editProject) return;
+    setTemplatesLoading(true);
+    fetch("/api/templates")
+      .then(r => r.ok ? r.json() : { templates: [] })
+      .then(data => setTemplates(data.templates ?? []))
+      .finally(() => setTemplatesLoading(false));
+  }, [editProject]);
 
   // Pre-fill form bij edit-modus
   useEffect(() => {
@@ -197,6 +215,24 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
     setForm(f => ({ ...f, [key]: value }));
   }
 
+  function applyTemplate(tpl: any) {
+    const isDeselect = selectedTemplate?.id === tpl.id;
+    if (isDeselect) {
+      setSelectedTemplate(null);
+      setPendingTasks([]);
+      setForm(f => ({ ...f, process_id: null }));
+      return;
+    }
+    setSelectedTemplate(tpl);
+    setPendingTasks(Array.isArray(tpl.default_tasks) ? tpl.default_tasks : []);
+    setForm(f => ({
+      ...f,
+      process_id: tpl.process?.id ?? null,
+      // pre-fill theme if available
+      theme_id: tpl.process?.theme?.id ?? f.theme_id,
+    }));
+  }
+
   // ─── Validatie per stap ──────────────────────────────────────
 
   function validateStep(s: number): string {
@@ -207,10 +243,11 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
   }
 
   function next() {
+    if (step === 0) { setError(""); setStep(1); return; }
     const err = validateStep(step);
     if (err) { setError(err); return; }
     setError("");
-    const lastStep = editProject ? 4 : 4;  // stap 5 = confetti, alleen bij nieuw
+    const lastStep = 4;  // stap 5 = confetti, alleen bij nieuw
     if (step < lastStep) { setStep(s => s + 1); return; }
     handleCreate();
   }
@@ -254,6 +291,20 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
       onCreated(json);  // caller update de lijst
       onClose();
     } else {
+      // Taaksjablonen aanmaken als er een template geselecteerd was
+      if (pendingTasks.length > 0) {
+        await Promise.allSettled(pendingTasks.map((task: any) =>
+          fetch(`/api/projects/${json.id}/subprocesses`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name:   task.name   ?? task.title ?? "Taak",
+              status: "todo",
+              description: task.description ?? null,
+            }),
+          })
+        ));
+      }
       setCreated(json);
       setStep(5);
       onCreated(json);
@@ -307,24 +358,30 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
         <div className="flex items-center justify-between px-6 pt-6 pb-2 flex-shrink-0 relative z-10">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
-              <FolderKanban size={16} className="text-brand-600" />
+              {step === 0 ? <LayoutTemplate size={16} className="text-brand-600" /> : <FolderKanban size={16} className="text-brand-600" />}
             </div>
             <div>
               <h3 className="font-bold text-slate-800 text-sm">
-                {step < 5 ? "Nieuw project aanmaken" : "Project aangemaakt! 🎉"}
+                {step === 0 ? "Kies een startpunt" : step < 5 ? "Nieuw project aanmaken" : "Project aangemaakt! 🎉"}
               </h3>
               <p className="text-xs text-slate-400">
-                {step < 5 ? `Stap ${step} van 4 — ${STEPS[step - 1].label}` : created?.name}
+                {step === 0
+                  ? "Start met een template of begin blanco"
+                  : step < 5
+                    ? `Stap ${step} van 4 — ${STEPS[step - 1].label}`
+                    : created?.name}
               </p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100"><X size={16} /></button>
         </div>
 
-        {/* Step indicator */}
-        <div className="px-6 py-3 relative z-10">
-          <StepIndicator current={step} total={5} />
-        </div>
+        {/* Step indicator — alleen zichtbaar vanaf stap 1 */}
+        {step >= 1 && (
+          <div className="px-6 py-3 relative z-10">
+            <StepIndicator current={step} total={5} />
+          </div>
+        )}
 
         {/* Body */}
         <div className="px-6 pb-2 flex-1 overflow-y-auto relative z-10">
@@ -335,9 +392,69 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
             </div>
           )}
 
+          {/* ── Stap 0: Template picker ──────────────────── */}
+          {step === 0 && (
+            <div className="space-y-4">
+              {/* Blanco optie */}
+              <button
+                onClick={() => { setSelectedTemplate(null); setPendingTasks([]); setStep(1); }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-600 hover:border-brand-300 hover:bg-brand-50/30 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <FolderKanban size={16} className="text-slate-500" />
+                </div>
+                <div>
+                  <p className="font-semibold">Blanco project</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Begin met een leeg project zonder vooraf ingestelde taken</p>
+                </div>
+                <ChevronRight size={14} className="ml-auto text-slate-300 flex-shrink-0" />
+              </button>
+
+              {/* Templates */}
+              {templatesLoading ? (
+                <div className="flex items-center justify-center py-8 text-slate-400 text-sm gap-2">
+                  <Loader2 size={14} className="animate-spin" /> Templates laden…
+                </div>
+              ) : templates.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-slate-100" />
+                    <span className="text-xs text-slate-400 font-medium">Of kies een template</span>
+                    <div className="h-px flex-1 bg-slate-100" />
+                  </div>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {templates.map(tpl => (
+                      <TemplateCard
+                        key={tpl.id}
+                        id={tpl.id}
+                        name={tpl.name}
+                        description={tpl.description}
+                        taskCount={Array.isArray(tpl.default_tasks) ? tpl.default_tasks.length : 0}
+                        processName={tpl.process?.name ?? null}
+                        themeName={tpl.process?.theme?.name ?? null}
+                        onSelect={() => { applyTemplate(tpl); setStep(1); }}
+                        selected={selectedTemplate?.id === tpl.id}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+
           {/* ── Stap 1: Identiteit ───────────────────────── */}
           {step === 1 && (
             <div className="space-y-4">
+              {selectedTemplate && (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-brand-50 border border-brand-200 text-sm">
+                  <LayoutTemplate size={13} className="text-brand-600 flex-shrink-0" />
+                  <span className="text-brand-700 font-medium flex-1 truncate">Template: {selectedTemplate.name}</span>
+                  <button
+                    onClick={() => { setSelectedTemplate(null); setPendingTasks([]); setForm(f => ({ ...f, process_id: null, theme_id: null })); }}
+                    className="text-brand-400 hover:text-brand-600"
+                  ><X size={13} /></button>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Projectnaam *</label>
                 <input
@@ -753,14 +870,14 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
         </div>
 
         {/* Footer navigatie */}
-        {step < 5 && (
+        {step < 5 && step !== 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-shrink-0">
             <button
-              onClick={step === 1 ? onClose : prev}
+              onClick={step === 1 ? (editProject ? onClose : () => setStep(0)) : prev}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100 transition-colors"
             >
               <ChevronLeft size={15} />
-              {step === 1 ? "Annuleren" : "Terug"}
+              {step === 1 && !editProject ? "Templates" : step === 1 ? "Annuleren" : "Terug"}
             </button>
 
             <div className="flex items-center gap-2">
@@ -787,6 +904,23 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
                 )}
               </button>
             </div>
+          </div>
+        )}
+        {/* Footer voor stap 0 */}
+        {step === 0 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100 transition-colors"
+            >
+              <X size={15} /> Annuleren
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+            >
+              Overslaan <ChevronRight size={14} />
+            </button>
           </div>
         )}
       </div>

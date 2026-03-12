@@ -28,6 +28,7 @@ import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
 import Avatar from "@/components/ui/Avatar";
 import { ExportModal } from "@/components/ui/ExportModal";
+import OrgSwitcher from "@/components/layout/OrgSwitcher";
 import { createClient } from "@/lib/supabaseClient";
 import type { Profile, ThemeWithChildren } from "@/types";
 
@@ -181,6 +182,9 @@ export default function Sidebar({
       <div className="px-2 mt-6 mb-6">
         <Logo variant="main" />
       </div>
+
+      {/* OrgSwitcher — alleen zichtbaar als user in meerdere orgs zit */}
+      <OrgSwitcher />
 
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
         {showDashboard && (
