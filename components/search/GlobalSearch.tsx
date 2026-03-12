@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, FolderKanban, Building2, FileText, Users, X, ArrowRight, Loader2 } from 'lucide-react'
+import { Search, FolderKanban, Building2, FileText, Users, X, ArrowRight, Loader2, CheckSquare } from 'lucide-react'
 import clsx from 'clsx'
 import Avatar from '@/components/ui/Avatar'
 
@@ -13,6 +13,7 @@ interface SearchResults {
   customers: Array<{ id: string; name: string; code?: string; status: string; email?: string }>
   dossiers:  Array<{ id: string; title: string; type: string; project_name?: string; customer_name?: string }>
   members:   Array<{ id: string; full_name: string; email: string; role: string; avatar_url?: string }>
+  tasks:     Array<{ id: string; title: string; status: string; project_id: string; project?: { id: string; name: string } }>
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -95,6 +96,7 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
     ...results.customers.map(c => ({ type: 'customer', id: c.id,  href: `/customers/${c.id}`, label: c.name,       sub: c.code ? `#${c.code}` : c.email ?? '' })),
     ...results.dossiers.map(d  => ({ type: 'dossier',  id: d.id,  href: null,                 label: d.title,      sub: d.project_name ?? d.customer_name ?? d.type })),
     ...results.members.map(m   => ({ type: 'member',   id: m.id,  href: `/team`,              label: m.full_name,  sub: m.email, avatar_url: (m as any).avatar_url })),
+    ...(results.tasks ?? []).map(t => ({ type: 'task', id: t.id, href: `/projects/${t.project_id}`, label: t.title, sub: t.project?.name ?? '' })),
   ] : []
 
   function navigate(href: string | null) {
@@ -113,7 +115,8 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
 
   const hasResults = results && (
     results.projects.length + results.customers.length +
-    results.dossiers.length + results.members.length > 0
+    results.dossiers.length + results.members.length +
+    (results.tasks?.length ?? 0) > 0
   )
 
   const iconFor = (type: string) => {
@@ -121,6 +124,7 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
     if (type === 'customer') return <Building2    size={14} className="text-violet-500" />
     if (type === 'dossier')  return <FileText     size={14} className="text-blue-500" />
     if (type === 'member')   return <Users        size={14} className="text-emerald-500" />
+    if (type === 'task')     return <CheckSquare  size={14} className="text-amber-500" />
   }
 
   return (
@@ -271,6 +275,29 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
                           sub={m.email}
                           active={fi === activeIdx}
                           onClick={() => navigate('/team')}
+                        />
+                      )
+                    })}
+                  </Section>
+                )}
+
+                {/* Taken */}
+                {(results!.tasks ?? []).length > 0 && (
+                  <Section title="Taken">
+                    {results!.tasks.map(t => {
+                      const fi = flatItems.findIndex(f => f.type === 'task' && f.id === t.id)
+                      const TASK_STATUS: Record<string, string> = { 'todo': 'Te doen', 'in-progress': 'In uitvoering', 'blocked': 'Geblokkeerd' }
+                      const TASK_COLOR: Record<string, string> = { 'todo': 'bg-slate-100 text-slate-500', 'in-progress': 'bg-amber-50 text-amber-600', 'blocked': 'bg-red-50 text-red-600' }
+                      return (
+                        <ResultRow
+                          key={t.id}
+                          icon={iconFor('task')}
+                          label={t.title}
+                          sub={t.project?.name ?? ''}
+                          badge={TASK_STATUS[t.status]}
+                          badgeColor={TASK_COLOR[t.status] ?? 'bg-slate-100 text-slate-500'}
+                          active={fi === activeIdx}
+                          onClick={() => navigate(`/projects/${t.project_id}`)}
                         />
                       )
                     })}

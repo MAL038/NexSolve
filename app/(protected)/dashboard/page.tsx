@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/time";
 import {
   FolderKanban, CheckCircle2, Building2,
   Plus, AlertTriangle, TrendingUp, ArrowRight,
-  CheckSquare, XCircle,
+  CheckSquare, AlertCircle, FileText,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Link from "next/link";
@@ -13,6 +13,33 @@ import type { Customer, Project, Subprocess } from "@/types";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 
 export const metadata = { title: "Dashboard" };
+
+// ─── Project health helper ────────────────────────────────────
+type HealthStatus = "good" | "attention" | "at_risk";
+
+function projectHealth(
+  project: { id: string; end_date?: string | null },
+  sps: Array<{ project_id: string; status: string; updated_at?: string }>
+): HealthStatus {
+  const projectSps = sps.filter(s => s.project_id === project.id);
+  if (projectSps.some(s => s.status === "blocked")) return "at_risk";
+  if (project.end_date) {
+    const daysLeft = Math.ceil((new Date(project.end_date).getTime() - Date.now()) / 86400000);
+    if (daysLeft < 0) return "at_risk";
+    if (daysLeft <= 3) return "attention";
+  }
+  if (projectSps.length > 0) {
+    const lastUpdate = Math.max(...projectSps.map(s => new Date((s as any).updated_at ?? 0).getTime()));
+    if ((Date.now() - lastUpdate) / 86400000 > 7) return "attention";
+  }
+  return "good";
+}
+
+const HEALTH_CFG: Record<HealthStatus, { label: string; dot: string; text: string; bg: string }> = {
+  good:      { label: "Op schema", dot: "bg-emerald-400", text: "text-emerald-700", bg: "bg-emerald-50"  },
+  attention: { label: "Let op",    dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50"    },
+  at_risk:   { label: "Risico",    dot: "bg-red-400",     text: "text-red-700",     bg: "bg-red-50"      },
+};
 
 // ─── Deadline urgency helper ──────────────────────────────────
 function deadlineUrgency(endDate: string): { label: string; color: string; bg: string; days: number } {
@@ -32,7 +59,7 @@ async function OpenTasksSection() {
     .select("id, title, status, project_id, projects(name)")
     .in("status", ["todo", "in-progress"])
     .order("updated_at", { ascending: true })
-    .limit(5);
+    .limit(6);
 
   const tasks = (data as any[]) ?? [];
 
@@ -78,8 +105,8 @@ async function OpenTasksSection() {
               </div>
             </Link>
           ))}
-          <Link href="/projects" className="block text-center text-xs text-brand-500 hover:text-brand-600 pt-1 font-medium">
-            Alle projecten bekijken →
+          <Link href="/taken" className="block text-center text-xs text-brand-500 hover:text-brand-600 pt-1 font-medium flex items-center justify-center gap-1">
+            Alle taken bekijken <ArrowRight size={11} />
           </Link>
         </div>
       )}
@@ -128,7 +155,7 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false }),
     supabase.from("customers").select("id, name, created_at").order("name"),
     supabase.from("profiles").select("id, full_name, avatar_url, role").order("full_name"),
-    supabase.from("subprocesses").select("id, project_id, status, title"),
+    supabase.from("subprocesses").select("id, project_id, status, title, updated_at"),
   ]);
 
   const ps  = (projectsRaw  as Project[])      ?? [];
@@ -139,7 +166,7 @@ export default async function DashboardPage() {
   const active       = ps.filter(p => p.status === "active").length;
   const inProgress   = ps.filter(p => p.status === "in-progress").length;
   const archived     = ps.filter(p => p.status === "archived").length;
-  const totalTasks   = sps.length;
+  const openTasks    = sps.filter(s => s.status === "todo" || s.status === "in-progress").length;
   const doneTasks    = sps.filter(s => s.status === "done").length;
   const blockedTasks = sps.filter(s => s.status === "blocked").length;
 
@@ -151,17 +178,21 @@ export default async function DashboardPage() {
     .sort((a, b) => a.urgency.days - b.urgency.days)
     .slice(0, 5);
 
-  // ── Voortgang per project (top 4 actieve) ────────────────
+  // ── Voortgang + health per project (top 6 actieve) ───────
   const activeProjects = ps
     .filter(p => p.status !== "archived")
-    .slice(0, 4)
+    .slice(0, 6)
     .map(p => {
       const projectSps = sps.filter(s => s.project_id === p.id);
       const done  = projectSps.filter(s => s.status === "done").length;
       const total = projectSps.length;
       const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { ...p, done, total, pct };
+      const health = projectHealth({ id: p.id, end_date: (p as any).end_date }, sps as any);
+      return { ...p, done, total, pct, health };
     });
+
+  // ── Projecten die aandacht vereisen ──────────────────────
+  const attentionProjects = activeProjects.filter(p => p.health !== "good").slice(0, 4);
 
   // ── Klanten met meeste projecten ─────────────────────────
   const customerMap: Record<string, number> = {};
@@ -207,15 +238,53 @@ export default async function DashboardPage() {
       {/* ── Stats row ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={FolderKanban} label="Actieve projecten"  value={active + inProgress}
-          sub={`${archived} gearchiveerd`}             color="bg-brand-50 text-brand-600"    />
-        <StatCard icon={CheckCircle2} label="Taken gereed"       value={doneTasks}
-          sub={`van ${totalTasks} totaal`}             color="bg-emerald-50 text-emerald-600" />
-        <StatCard icon={XCircle}      label="Geblokkeerde taken" value={blockedTasks}
+          sub={`${archived} gearchiveerd`}              color="bg-brand-50 text-brand-600"    />
+        <StatCard icon={CheckSquare}  label="Open taken"         value={openTasks}
+          sub={`${doneTasks} afgerond`}                 color="bg-amber-50 text-amber-600"    />
+        <StatCard icon={AlertCircle}  label="Geblokkeerde taken" value={blockedTasks}
           sub={blockedTasks > 0 ? "Actie vereist" : "Alles loopt goed"}
           color={blockedTasks > 0 ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400"} />
         <StatCard icon={Building2}    label="Klanten"            value={cs.length}
-          sub={`${teamRaw?.length ?? 0} teamleden`}   color="bg-violet-50 text-violet-600"  />
+          sub={`${teamRaw?.length ?? 0} teamleden`}    color="bg-violet-50 text-violet-600"  />
       </div>
+
+      {/* ── Aandacht vereist ─────────────────────────────────── */}
+      {attentionProjects.length > 0 && (
+        <div className="card p-5 border-amber-100 bg-amber-50/30">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-xl bg-amber-100 flex items-center justify-center">
+              <AlertTriangle size={14} className="text-amber-600" />
+            </div>
+            <h2 className="font-semibold text-slate-700 text-sm">Aandacht vereist</h2>
+            <span className="ml-auto text-xs text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full">
+              {attentionProjects.length}
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {attentionProjects.map(p => {
+              const hcfg = HEALTH_CFG[p.health as HealthStatus];
+              return (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/80 transition-colors group bg-white/50 border border-white"
+                >
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hcfg.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate group-hover:text-brand-600 transition-colors">{p.name}</p>
+                    {(p as any).customer && (
+                      <p className="text-xs text-slate-400 truncate">{(p as any).customer.name}</p>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${hcfg.bg} ${hcfg.text}`}>
+                    {hcfg.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Hoofdgrid: links 2/3, rechts 1/3 ───────────────── */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -285,10 +354,13 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {activeProjects.map(p => (
+                {activeProjects.map(p => {
+                  const hcfg = HEALTH_CFG[p.health as HealthStatus];
+                  return (
                   <Link key={p.id} href={`/projects/${p.id}`} className="block group">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hcfg.dot}`} title={hcfg.label} />
                         <p className="text-sm font-medium text-slate-700 truncate group-hover:text-brand-600 transition-colors">
                           {p.name}
                         </p>
@@ -297,7 +369,7 @@ export default async function DashboardPage() {
                         )}
                       </div>
                       <span className="text-xs text-slate-500 font-medium ml-3 shrink-0">
-                        {p.done}/{p.total} taken
+                        {p.done}/{p.total}
                       </span>
                     </div>
                     {p.total > 0 ? (
@@ -320,7 +392,8 @@ export default async function DashboardPage() {
                       {p.total === 0 ? "Nog geen deeltaken" : `${p.pct}% voltooid`}
                     </p>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -373,8 +446,29 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Rechts: openstaande taken + activiteit */}
+        {/* Rechts: quick links + openstaande taken + activiteit */}
         <div className="space-y-6">
+
+          {/* Quick links */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { href: "/taken",      icon: CheckSquare, label: "Taken",      color: "text-amber-600 bg-amber-50"  },
+              { href: "/documenten", icon: FileText,    label: "Documenten", color: "text-blue-600 bg-blue-50"    },
+            ].map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="card p-3.5 flex flex-col items-center gap-2 hover:border-brand-200 hover:bg-brand-50/30 transition-all group text-center"
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${item.color}`}>
+                  <item.icon size={15} />
+                </div>
+                <span className="text-xs font-semibold text-slate-600 group-hover:text-brand-700 transition-colors">
+                  {item.label}
+                </span>
+              </Link>
+            ))}
+          </div>
 
           {/* Openstaande taken via Suspense — laadt onafhankelijk */}
           <Suspense fallback={<OpenTasksSkeleton />}>
