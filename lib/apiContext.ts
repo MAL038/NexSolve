@@ -40,39 +40,62 @@ async function resolveMembership(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
-  // Prefer new schema (org_members), but fall back to legacy (organisation_members).
-  // We also fall back if the user simply has no row in org_members.
-  const primary = await supabase
+  // Step 1: lees preferred org uit profiles.current_org_id (gezet door OrgSwitcher)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const preferred = (profile as any)?.current_org_id as string | null;
+
+  // Step 2: helper — zoek membership voor een specifieke org
+  async function membershipFor(orgId: string) {
+    const { data: m } = await supabase
+      .from("org_members")
+      .select("org_id, org_role")
+      .eq("user_id", userId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (m?.org_id) return { orgId: m.org_id as string, orgRole: (m as any).org_role as OrgRole };
+
+    const { data: leg } = await supabase
+      .from("organisation_members")
+      .select("org_id, role")
+      .eq("user_id", userId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (leg?.org_id) return { orgId: leg.org_id as string, orgRole: (leg as any).role as OrgRole };
+
+    return null;
+  }
+
+  // Preferred org heeft prioriteit (OrgSwitcher keuze)
+  if (preferred) {
+    const mem = await membershipFor(preferred);
+    if (mem) return mem;
+  }
+
+  // Fallback: eerste org op joined_at (origineel gedrag)
+  const { data: first } = await supabase
     .from("org_members")
     .select("org_id, org_role")
     .eq("user_id", userId)
     .order("joined_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (first?.org_id) return { orgId: first.org_id as string, orgRole: (first as any).org_role as OrgRole };
 
-  if (!primary.error && primary.data?.org_id) {
-    return {
-      orgId: primary.data.org_id as string,
-      orgRole: (primary.data as any)?.org_role ?? null,
-    };
-  }
-
-  const legacy = await supabase
+  const { data: legFirst } = await supabase
     .from("organisation_members")
     .select("org_id, role")
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (legFirst?.org_id) return { orgId: legFirst.org_id as string, orgRole: (legFirst as any).role as OrgRole };
 
-  if (legacy.error || !legacy.data?.org_id) {
-    return { orgId: null as string | null, orgRole: null as OrgRole | null };
-  }
-
-  return {
-    orgId: legacy.data.org_id as string,
-    orgRole: (legacy.data as any)?.role ?? null,
-  };
+  return { orgId: null as string | null, orgRole: null as OrgRole | null };
 }
 
 async function isModuleEnabled(

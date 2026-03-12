@@ -128,7 +128,7 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div ref={panelRef} className={clsx("relative", compact ? "w-auto" : "w-full")}>
+    <div className={clsx(compact ? "w-auto" : "w-full")}>
       {/* Search trigger */}
       {compact ? (
         <button
@@ -163,32 +163,50 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
         </button>
       )}
 
-      {/* Dropdown panel */}
+      {/* Volledig-scherm zoekmodal */}
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] overflow-hidden">
-          {/* Input */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
-            <Search size={14} className="text-slate-400 shrink-0" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={e => { setQuery(e.target.value); setOpen(true) }}
-              onKeyDown={onKeyDown}
-              placeholder="Zoek projecten, klanten, dossiers..."
-              className="flex-1 text-sm text-slate-800 placeholder:text-slate-400 outline-none bg-transparent"
-              autoComplete="off"
-            />
-            {loading && <Loader2 size={13} className="animate-spin text-slate-400 shrink-0" />}
-            {query && !loading && (
-              <button onClick={() => { setQuery(''); setResults(null) }} className="text-slate-400 hover:text-slate-600">
-                <X size={13} />
-              </button>
-            )}
-          </div>
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[99] bg-black/25 backdrop-blur-[2px]"
+            onClick={() => { setOpen(false); setQuery(''); }}
+          />
 
-          {/* Results */}
-          <div className="max-h-[380px] overflow-y-auto">
+          {/* Gecentreerd paneel */}
+          <div
+            ref={panelRef}
+            className="fixed top-[15vh] left-1/2 -translate-x-1/2 z-[100]
+                       w-[calc(100vw-2rem)] max-w-2xl bg-white rounded-2xl
+                       shadow-2xl border border-slate-200 overflow-hidden"
+          >
+            {/* Input */}
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
+              <Search size={16} className="text-slate-400 shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Zoek projecten, klanten, dossiers..."
+                className="flex-1 text-base text-slate-800 placeholder:text-slate-400 outline-none bg-transparent"
+                autoComplete="off"
+                autoFocus
+              />
+              {loading && <Loader2 size={14} className="animate-spin text-slate-400 shrink-0" />}
+              {query && !loading && (
+                <button onClick={() => { setQuery(''); setResults(null); }} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
+                </button>
+              )}
+              <kbd
+                onClick={() => { setOpen(false); setQuery(''); }}
+                className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-mono cursor-pointer hover:bg-slate-200 hidden sm:block"
+              >Esc</kbd>
+            </div>
+
+            {/* Results */}
+            <div className="max-h-[60vh] overflow-y-auto">
             {query.length < 2 && (
               <div className="px-4 py-6 text-center text-xs text-slate-400">
                 Typ minimaal 2 tekens om te zoeken
@@ -308,12 +326,13 @@ export function GlobalSearch({ compact = false }: { compact?: boolean }) {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-100 px-3 py-2 flex items-center gap-3 text-[10px] text-slate-400">
+          <div className="border-t border-slate-100 px-4 py-2.5 flex items-center gap-4 text-[10px] text-slate-400">
             <span>↑↓ navigeren</span>
             <span>↵ openen</span>
             <span>Esc sluiten</span>
           </div>
         </div>
+        </>
       )}
     </div>
   )

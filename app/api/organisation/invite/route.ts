@@ -175,6 +175,48 @@ export async function GET() {
   return NextResponse.json(data ?? [])
 }
 
+// PATCH — Wijzig rol van een lid
+// Body: { user_id, role }
+export async function PATCH(req: NextRequest) {
+  const auth = await requireApiContext();
+  if (!auth.ok) return auth.res;
+  const { supabase, user } = auth.ctx;
+
+  const { user_id, role } = await req.json()
+  if (!user_id || !role) return NextResponse.json({ error: 'user_id en role zijn verplicht' }, { status: 400 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('current_org_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.current_org_id)
+    return NextResponse.json({ error: 'Geen actieve organisatie' }, { status: 400 })
+
+  const { data: membership } = await supabase
+    .from('organisation_members')
+    .select('role')
+    .eq('org_id', profile.current_org_id)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!membership || membership.role !== 'owner')
+    return NextResponse.json({ error: 'Geen rechten' }, { status: 403 })
+
+  if (user_id === user.id)
+    return NextResponse.json({ error: 'Je kunt je eigen rol niet wijzigen' }, { status: 400 })
+
+  const { error } = await supabase
+    .from('organisation_members')
+    .update({ role })
+    .eq('org_id', profile.current_org_id)
+    .eq('user_id', user_id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
 // DELETE — Verwijder lid uit org
 // Body: { user_id }
 export async function DELETE(req: NextRequest) {

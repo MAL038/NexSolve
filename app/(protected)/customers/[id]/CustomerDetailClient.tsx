@@ -27,6 +27,7 @@ interface Props {
   linkedProjects: Project[];
   allProjects:    Project[];
   canEdit?:       boolean;
+  canDelete?:     boolean;
 }
 
 interface EditState {
@@ -75,6 +76,7 @@ export default function CustomerDetailClient({
   linkedProjects: initialLinked,
   allProjects,
   canEdit = true,
+  canDelete = false,
 }: Props) {
   const router = useRouter();
 
@@ -825,7 +827,7 @@ export default function CustomerDetailClient({
             </div>
 
             {/* Danger zone */}
-            <PermissionGate allowed={canEdit}>
+            <PermissionGate allowed={canDelete}>
               <div className="card overflow-hidden border-red-100">
                 <div className="px-5 py-4 border-b border-red-100 bg-red-50/40">
                   <h2 className="text-sm font-semibold text-red-700">Gevarenzone</h2>

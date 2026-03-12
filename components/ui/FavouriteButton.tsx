@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import clsx from "clsx";
 
@@ -14,6 +14,9 @@ interface Props {
 export default function FavouriteButton({ entityType, entityId, initialFav, onToggle }: Props) {
   const [fav,     setFav]     = useState(initialFav);
   const [loading, setLoading] = useState(false);
+
+  // Sync wanneer parent async favorieten ophaalt en de prop bijwerkt
+  useEffect(() => { setFav(initialFav); }, [initialFav]);
 
   async function toggle(e: React.MouseEvent) {
     e.stopPropagation();
