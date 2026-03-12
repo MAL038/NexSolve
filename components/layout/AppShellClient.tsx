@@ -105,6 +105,37 @@ export default function AppShellClient({
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
 
+  // Org-branding: convert hex to --brand-N-rgb variables so Tailwind brand-* classes pick it up
+  useEffect(() => {
+    if (!primaryColor) return;
+    const hex = primaryColor.replace("#", "");
+    if (hex.length !== 6) return;
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+
+    function mix(ratio: number, dark = false): string {
+      const factor = dark ? (1 - ratio) : ratio;
+      const bg     = dark ? 0 : 255;
+      const nr = Math.round(r * factor + bg * (1 - factor));
+      const ng = Math.round(g * factor + bg * (1 - factor));
+      const nb = Math.round(b * factor + bg * (1 - factor));
+      return `${nr} ${ng} ${nb}`;
+    }
+
+    const root = document.documentElement;
+    root.style.setProperty("--brand-50-rgb",  mix(0.08));
+    root.style.setProperty("--brand-100-rgb", mix(0.15));
+    root.style.setProperty("--brand-200-rgb", mix(0.30));
+    root.style.setProperty("--brand-300-rgb", mix(0.55));
+    root.style.setProperty("--brand-400-rgb", mix(0.75));
+    root.style.setProperty("--brand-500-rgb", `${r} ${g} ${b}`);
+    root.style.setProperty("--brand-600-rgb", mix(0.92, true));
+    root.style.setProperty("--brand-700-rgb", mix(0.85, true));
+    root.style.setProperty("--brand-800-rgb", mix(0.65, true));
+    root.style.setProperty("--brand-900-rgb", mix(0.45, true));
+  }, [primaryColor]);
+
   return (
     <div
       className="flex h-dvh overflow-hidden bg-slate-50"

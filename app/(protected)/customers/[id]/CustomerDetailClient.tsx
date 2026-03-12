@@ -18,6 +18,7 @@ import { useToast } from "@/lib/hooks/useToast";
 import { useConfirm } from "@/lib/hooks/useConfirm";
 import Toast from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import PermissionGate from "@/components/ui/PermissionGate";
 import clsx from "clsx";
 import type { Customer, Project, CustomerStatus } from "@/types";
 
@@ -25,6 +26,7 @@ interface Props {
   customer:       Customer;
   linkedProjects: Project[];
   allProjects:    Project[];
+  canEdit?:       boolean;
 }
 
 interface EditState {
@@ -72,6 +74,7 @@ export default function CustomerDetailClient({
   customer: initial,
   linkedProjects: initialLinked,
   allProjects,
+  canEdit = true,
 }: Props) {
   const router = useRouter();
 
@@ -728,13 +731,15 @@ export default function CustomerDetailClient({
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                 <h2 className="text-sm font-semibold text-slate-700">Gegevens bewerken</h2>
-                <button
-                  onClick={editOpen ? () => { setEditOpen(false); setError(null); } : openEdit}
-                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
-                             px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium">
-                  <Pencil size={12} />
-                  {editOpen ? "Sluiten" : "Bewerken"}
-                </button>
+                <PermissionGate allowed={canEdit} fallback="disabled">
+                  <button
+                    onClick={editOpen ? () => { setEditOpen(false); setError(null); } : openEdit}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-600
+                               px-2.5 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-medium">
+                    <Pencil size={12} />
+                    {editOpen ? "Sluiten" : "Bewerken"}
+                  </button>
+                </PermissionGate>
               </div>
 
               {!editOpen ? (
@@ -820,27 +825,29 @@ export default function CustomerDetailClient({
             </div>
 
             {/* Danger zone */}
-            <div className="card overflow-hidden border-red-100">
-              <div className="px-5 py-4 border-b border-red-100 bg-red-50/40">
-                <h2 className="text-sm font-semibold text-red-700">Gevarenzone</h2>
-                <p className="text-xs text-red-400 mt-0.5">
-                  Acties hieronder zijn onomkeerbaar.
-                </p>
+            <PermissionGate allowed={canEdit}>
+              <div className="card overflow-hidden border-red-100">
+                <div className="px-5 py-4 border-b border-red-100 bg-red-50/40">
+                  <h2 className="text-sm font-semibold text-red-700">Gevarenzone</h2>
+                  <p className="text-xs text-red-400 mt-0.5">
+                    Acties hieronder zijn onomkeerbaar.
+                  </p>
+                </div>
+                <div className="px-5 py-4">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold
+                               text-red-600 border border-red-200 bg-white hover:bg-red-50
+                               hover:border-red-400 transition-all disabled:opacity-50">
+                    {deleting
+                      ? <><Loader2 size={14} className="animate-spin" /> Verwijderen…</>
+                      : <><Trash2 size={14} /> Klant verwijderen</>
+                    }
+                  </button>
+                </div>
               </div>
-              <div className="px-5 py-4">
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold
-                             text-red-600 border border-red-200 bg-white hover:bg-red-50
-                             hover:border-red-400 transition-all disabled:opacity-50">
-                  {deleting
-                    ? <><Loader2 size={14} className="animate-spin" /> Verwijderen…</>
-                    : <><Trash2 size={14} /> Klant verwijderen</>
-                  }
-                </button>
-              </div>
-            </div>
+            </PermissionGate>
           </div>
         )}
       </div>
