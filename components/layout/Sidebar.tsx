@@ -296,8 +296,8 @@ export default function Sidebar({
               className={clsx(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                 isCalendarArea
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-[var(--brand-primary)]"
               )}
             >
               <Calendar size={18} />
@@ -320,8 +320,8 @@ export default function Sidebar({
                       className={clsx(
                         "flex items-center gap-2.5 pl-8 pr-3 py-2 rounded-xl text-xs font-medium transition-all",
                         active
-                          ? "bg-brand-50 text-brand-700 font-semibold"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-brand-600"
+                          ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary-text)] font-semibold"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-[var(--brand-primary)]"
                       )}
                     >
                       <item.icon size={13} />
@@ -427,11 +427,11 @@ function NavItem({
         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
         variant === "admin"
           ? active
-            ? "bg-brand-50 text-brand-700 border border-brand-200"
-            : "text-brand-600 hover:bg-brand-50 hover:text-brand-700 border border-transparent"
+            ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary-text)] border border-[var(--brand-primary-border)]"
+            : "text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)] hover:text-[var(--brand-primary-text)] border border-transparent"
           : active
-          ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
-          : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
+          ? "bg-[var(--brand-primary)] text-white shadow-sm"
+          : "text-slate-600 hover:bg-slate-50 hover:text-[var(--brand-primary)]"
       )}
     >
       <Icon size={18} />

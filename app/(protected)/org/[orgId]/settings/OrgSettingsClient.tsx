@@ -23,7 +23,7 @@ import type { Organisation, OrgMember, OrgRole, TeamInvite } from "@/types";
 // ── Config ────────────────────────────────────────────────────
 
 const ORG_ROLE_CONFIG: Record<OrgRole, { label: string; color: string; bg: string; border: string }> = {
-  admin:  { label: "Org Admin", color: "text-brand-700",  bg: "bg-brand-50",  border: "border-brand-200" },
+  admin:  { label: "Org Admin", color: "text-[var(--brand-primary-text)]",  bg: "bg-[var(--brand-primary-soft)]",  border: "border-[var(--brand-primary-border)]" },
   member: { label: "Lid",       color: "text-slate-600",  bg: "bg-slate-100", border: "border-slate-200" },
   viewer: { label: "Viewer",    color: "text-slate-500",  bg: "bg-slate-50",  border: "border-slate-200" },
 };
@@ -241,9 +241,9 @@ export default function OrgSettingsClient({
       {toast && (
         <div className={clsx(
           "fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg",
-          toast.ok ? "bg-white border-brand-200 text-brand-700" : "bg-white border-red-200 text-red-700"
+          toast.ok ? "bg-white border-[var(--brand-primary-border)] text-[var(--brand-primary-text)]" : "bg-white border-red-200 text-red-700"
         )}>
-          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-brand-500" : "bg-red-500")} />
+          <span className={clsx("w-2 h-2 rounded-full flex-shrink-0", toast.ok ? "bg-[var(--brand-primary)]" : "bg-red-500")} />
           {toast.msg}
           <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
         </div>
@@ -312,9 +312,9 @@ export default function OrgSettingsClient({
                   value={orgName}
                   onChange={e => setOrgName(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") saveOrgName(); if (e.key === "Escape") { setEditName(false); setOrgName(org.name); } }}
-                  className="text-xl font-bold border-b-2 border-brand-500 bg-transparent outline-none text-slate-800 w-48"
+                  className="text-xl font-bold border-b-2 border-[var(--brand-primary)] bg-transparent outline-none text-slate-800 w-48"
                 />
-                <button onClick={saveOrgName} disabled={nameSaving} className="p-1 rounded-lg text-brand-600 hover:bg-brand-50">
+                <button onClick={saveOrgName} disabled={nameSaving} className="p-1 rounded-lg text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]">
                   {nameSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 </button>
                 <button onClick={() => { setEditName(false); setOrgName(org.name); }} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
@@ -325,7 +325,7 @@ export default function OrgSettingsClient({
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-800">{orgName}</h1>
                 {isAdmin && (
-                  <button onClick={() => setEditName(true)} className="p-1 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50">
+                  <button onClick={() => setEditName(true)} className="p-1 rounded-lg text-slate-400 hover:text-[var(--brand-primary)] hover:bg-[var(--brand-primary-soft)]">
                     <Pencil size={13} />
                   </button>
                 )}
@@ -341,7 +341,7 @@ export default function OrgSettingsClient({
         {isAdmin && (
           <button
             onClick={() => { setShowInvite(v => !v); setInvError(""); }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm"
           >
             <UserPlus size={15} /> Lid uitnodigen
           </button>
@@ -350,10 +350,10 @@ export default function OrgSettingsClient({
 
       {/* Invite form */}
       {showInvite && isAdmin && (
-        <div className="card p-6 border-2 border-brand-100 space-y-4">
+        <div className="card p-6 border-2 border-[var(--brand-primary-border)] space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Send size={16} className="text-brand-500" />
+              <Send size={16} className="text-[var(--brand-primary)]" />
               <h3 className="font-semibold text-slate-800">Nieuw lid uitnodigen</h3>
             </div>
             <button onClick={() => setShowInvite(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
@@ -370,7 +370,7 @@ export default function OrgSettingsClient({
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">E-mailadres *</label>
               <input
                 autoFocus
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-[var(--brand-primary)]"
                 type="email" placeholder="naam@bedrijf.nl"
                 value={invEmail} onChange={e => setInvEmail(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && sendInvite()}
@@ -379,7 +379,7 @@ export default function OrgSettingsClient({
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Rol</label>
               <select
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-[var(--brand-primary)] bg-white"
                 value={invRole} onChange={e => setInvRole(e.target.value as OrgRole)}
               >
                 <option value="member">Lid</option>
@@ -392,7 +392,7 @@ export default function OrgSettingsClient({
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowInvite(false)} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100">Annuleren</button>
             <button onClick={sendInvite} disabled={invSending}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60">
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60">
               {invSending ? <><Loader2 size={14} className="animate-spin" /> Versturen…</> : <><Send size={14} /> Versturen</>}
             </button>
           </div>
@@ -402,7 +402,7 @@ export default function OrgSettingsClient({
       {/* Ledenlijst */}
       <div>
         <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
-          <Users size={14} className="text-brand-500" /> Leden
+          <Users size={14} className="text-[var(--brand-primary)]" /> Leden
         </h2>
         <div className="card divide-y divide-slate-50 overflow-hidden">
           {members.length === 0 ? (
@@ -531,7 +531,7 @@ export default function OrgSettingsClient({
       {isAdmin && (
         <div>
           <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
-            <Palette size={14} className="text-brand-500" /> Huisstijl
+            <Palette size={14} className="text-[var(--brand-primary)]" /> Huisstijl
           </h2>
           <div className="card p-6 space-y-5">
 
@@ -552,7 +552,7 @@ export default function OrgSettingsClient({
                     type="text"
                     value={primaryColor}
                     onChange={e => setPrimaryColor(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-[var(--brand-primary)]"
                     placeholder="#16a34a"
                   />
                 </div>
@@ -572,7 +572,7 @@ export default function OrgSettingsClient({
                     type="text"
                     value={accentColor}
                     onChange={e => setAccentColor(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-[var(--brand-primary)]"
                     placeholder="#15803d"
                   />
                 </div>
@@ -583,7 +583,7 @@ export default function OrgSettingsClient({
               <button
                 onClick={saveOrgSettings}
                 disabled={settingsSaving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60 transition-colors"
               >
                 {settingsSaving
                   ? <><Loader2 size={14} className="animate-spin" /> Opslaan…</>

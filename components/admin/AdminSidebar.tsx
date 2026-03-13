@@ -35,9 +35,12 @@ export default function AdminSidebar() {
 
       <div className="px-2 mb-6">
         <Logo variant="main" />
-        <div className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-brand-50 rounded-xl border border-brand-100">
-          <ShieldCheck size={13} className="text-brand-500 flex-shrink-0" />
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-wider">Beheerpaneel</span>
+        <div
+          className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-xl border"
+          style={{ backgroundColor: "var(--brand-primary-soft)", borderColor: "var(--brand-primary-border)" }}
+        >
+          <ShieldCheck size={13} className="flex-shrink-0" style={{ color: "var(--brand-primary)" }} />
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--brand-primary-text)" }}>Beheerpaneel</span>
         </div>
       </div>
 
@@ -49,8 +52,8 @@ export default function AdminSidebar() {
               className={clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                 active
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-200"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-brand-600"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-[var(--brand-primary)]"
               )}
             >
               <item.icon size={18} />
