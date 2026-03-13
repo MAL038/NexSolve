@@ -179,14 +179,14 @@ export default function AcceptInvitePage() {
               <input
                 type="password"
                 placeholder="Nieuw wachtwoord (min. 8 tekens)"
-                className="w-full rounded border p-3"
+                className="input"
                 value={pw1}
                 onChange={(e) => setPw1(e.target.value)}
               />
               <input
                 type="password"
                 placeholder="Herhaal wachtwoord"
-                className="w-full rounded border p-3"
+                className="input"
                 value={pw2}
                 onChange={(e) => setPw2(e.target.value)}
               />
@@ -194,7 +194,7 @@ export default function AcceptInvitePage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full rounded bg-black p-3 text-white disabled:opacity-60"
+                className="btn-primary w-full disabled:opacity-60"
               >
                 {busy ? "Bezig..." : "Activeren"}
               </button>
