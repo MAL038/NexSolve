@@ -177,7 +177,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
       {/* ── Profielfoto ───────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-          <Camera size={16} className="text-brand-600" />
+          <Camera size={16} className="text-[var(--brand-primary)]" />
           {t("profile.avatar")}
         </h2>
 
@@ -186,7 +186,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
             <Avatar name={profile.full_name} url={profile.avatar_url} size="lg" />
             {avatarLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-full">
-                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
           </div>
@@ -203,7 +203,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={avatarLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] disabled:opacity-50 transition-colors"
             >
               <Upload size={14} />
               {t("profile.avatarUpload")}
@@ -220,7 +220,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
               </button>
             )}
             <p className="text-xs text-slate-400">{t("profile.avatarHint")}</p>
-            {avatarMsg && <p className="text-xs text-brand-600">{avatarMsg}</p>}
+            {avatarMsg && <p className="text-xs text-[var(--brand-primary)]">{avatarMsg}</p>}
           </div>
         </div>
       </section>
@@ -228,7 +228,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
       {/* ── Persoonlijke informatie ───────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-          <User size={16} className="text-brand-600" />
+          <User size={16} className="text-[var(--brand-primary)]" />
           {t("profile.personalInfo")}
         </h2>
 
@@ -243,7 +243,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-transparent transition"
             />
           </div>
 
@@ -264,14 +264,14 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
 
           <div className="flex items-center justify-between pt-1">
             {infoMsg ? (
-              <p className={clsx("text-xs font-medium", infoMsg.ok ? "text-brand-600" : "text-red-500")}>
+              <p className={clsx("text-xs font-medium", infoMsg.ok ? "text-[var(--brand-primary)]" : "text-red-500")}>
                 {infoMsg.text}
               </p>
             ) : <span />}
             <button
               type="submit"
               disabled={infoSaving || !fullName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] disabled:opacity-50 transition-colors"
             >
               {infoSaving ? t("common.saving") : t("common.save")}
             </button>
@@ -282,7 +282,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
       {/* ── Taalvoorkeur ─────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6">
         <h2 className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2">
-          <Globe size={16} className="text-brand-600" />
+          <Globe size={16} className="text-[var(--brand-primary)]" />
           {t("profile.language")}
         </h2>
         <p className="text-xs text-slate-400 mb-4">{t("profile.languageHint")}</p>
@@ -297,21 +297,21 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
               className={clsx(
                 "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all",
                 locale === loc.value
-                  ? "border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-200"
+                  ? "border-[var(--brand-primary)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary-text)] ring-2 ring-[var(--brand-primary-ring)]"
                   : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50",
               )}
             >
               <span className="text-lg">{loc.flag}</span>
               <span>{loc.label}</span>
               {locale === loc.value && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-brand-500" />
+                <span className="ml-auto w-2 h-2 rounded-full bg-[var(--brand-primary)]" />
               )}
             </button>
           ))}
         </div>
 
         {langMsg && (
-          <p className="text-xs text-brand-600 mt-3">{langMsg}</p>
+          <p className="text-xs text-[var(--brand-primary)] mt-3">{langMsg}</p>
         )}
       </section>
 
@@ -319,13 +319,13 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
       <section className="bg-white rounded-2xl border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Lock size={16} className="text-brand-600" />
+            <Lock size={16} className="text-[var(--brand-primary)]" />
             {t("profile.security")}
           </h2>
           <button
             type="button"
             onClick={() => { setPwOpen(o => !o); setPwMsg(null); }}
-            className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+            className="text-xs text-[var(--brand-primary)] hover:text-[var(--brand-primary-text)] font-medium"
           >
             {pwOpen ? t("common.cancel") : t("profile.changePassword")}
           </button>
@@ -347,7 +347,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
                   onChange={e => setNewPw(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-transparent transition"
                 />
                 <button
                   type="button"
@@ -371,7 +371,7 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
                   onChange={e => setConfirmPw(e.target.value)}
                   required
                   className={clsx(
-                    "w-full px-3.5 py-2.5 pr-10 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition",
+                    "w-full px-3.5 py-2.5 pr-10 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-ring)] focus:border-transparent transition",
                     confirmPw && newPw !== confirmPw ? "border-red-300" : "border-slate-200",
                   )}
                 />
@@ -390,14 +390,14 @@ export default function ProfileClient({ initialProfile, initialLocale }: Props) 
 
             <div className="flex items-center justify-between pt-1">
               {pwMsg ? (
-                <p className={clsx("text-xs font-medium", pwMsg.ok ? "text-brand-600" : "text-red-500")}>
+                <p className={clsx("text-xs font-medium", pwMsg.ok ? "text-[var(--brand-primary)]" : "text-red-500")}>
                   {pwMsg.text}
                 </p>
               ) : <span />}
               <button
                 type="submit"
                 disabled={pwSaving || !newPw || !confirmPw}
-                className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] disabled:opacity-50 transition-colors"
               >
                 {pwSaving ? t("common.saving") : t("profile.changePassword")}
               </button>
