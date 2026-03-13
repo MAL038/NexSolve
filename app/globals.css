@@ -12,24 +12,32 @@
   :root {
     /* RGB-tupels (r g b) — zodat Tailwind opacity-modifiers werken: rgb(var(--brand-N-rgb) / 0.4) */
     /* Standaard: NexSolve groen #0A6645 als primair, #085a3c als accent                          */
-    --brand-50-rgb:  235 243 240;   /* #0A6645  8% op wit  */
-    --brand-100-rgb: 218 232 227;   /* #0A6645 15% op wit  */
-    --brand-200-rgb: 182 209 199;   /* #0A6645 30% op wit  */
-    --brand-300-rgb: 120 171 153;   /* #0A6645 55% op wit  */
-    --brand-400-rgb:  71 140 116;   /* #0A6645 75% op wit  */
-    --brand-500-rgb:  10 102  69;   /* #0A6645              */
-    --brand-600-rgb:   8  90  60;   /* #085a3c              */
-    --brand-700-rgb:   7  77  51;   /* #085a3c 85% op zwart */
-    --brand-800-rgb:   5  59  39;   /* #085a3c 65% op zwart */
-    --brand-900-rgb:   4  41  27;   /* #085a3c 45% op zwart */
+    --brand-50-rgb:  235 243 240;
+    --brand-100-rgb: 218 232 227;
+    --brand-200-rgb: 182 209 199;
+    --brand-300-rgb: 120 171 153;
+    --brand-400-rgb:  71 140 116;
+    --brand-500-rgb:  10 102  69;
+    --brand-600-rgb:   8  90  60;
+    --brand-700-rgb:   7  77  51;
+    --brand-800-rgb:   5  59  39;
+    --brand-900-rgb:   4  41  27;
+
+    /* Runtime theming variabelen (tenant/org) */
+    --brand-primary: #0A6645;
+    --brand-primary-hover: #085a3c;
+    --brand-primary-active: #074d33;
+    --brand-primary-soft: rgba(10, 102, 69, 0.08);
+    --brand-primary-soft-hover: rgba(10, 102, 69, 0.14);
+    --brand-primary-border: rgba(10, 102, 69, 0.24);
+    --brand-primary-ring: rgba(10, 102, 69, 0.35);
+    --brand-primary-text: #085a3c;
   }
 
   html {
     font-family: var(--font-poppins), sans-serif;
     -webkit-font-smoothing: antialiased;
-    /* Soepel momentum-scrollen op iOS */
     -webkit-overflow-scrolling: touch;
-    /* Voorkom tekst-resize bij landscape-rotatie op iOS */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     width: 100%;
@@ -44,11 +52,6 @@
     overflow-x: clip;
   }
 
-  /*
-    iOS zoomt automatisch op form controls met een effectieve font-size <16px.
-    In combinatie met utility classes (zoals text-sm) kan dit alsnog gebeuren.
-    Daarom forceren we op touch-devices minimaal 16px voor invoervelden.
-  */
   @media (hover: none) and (pointer: coarse) {
     input,
     select,
@@ -72,11 +75,26 @@
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm hover:shadow-md;
+    @apply btn text-white shadow-sm hover:shadow-md;
+    background-color: var(--brand-primary);
   }
+  .btn-primary:hover {
+    background-color: var(--brand-primary-hover);
+  }
+  .btn-primary:active {
+    background-color: var(--brand-primary-active);
+  }
+
   .btn-secondary {
-    @apply btn bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200;
+    @apply btn border;
+    background-color: var(--brand-primary-soft);
+    color: var(--brand-primary-text);
+    border-color: var(--brand-primary-border);
   }
+  .btn-secondary:hover {
+    background-color: var(--brand-primary-soft-hover);
+  }
+
   .btn-ghost {
     @apply btn bg-transparent text-slate-700 hover:bg-slate-100;
   }
@@ -87,24 +105,26 @@
     @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:border-slate-400;
   }
 
-  /* Betere veld-contrast: border-slate-300 i.p.v. 200, focus duidelijker */
-  /* font-size ≥ 16px: voorkomt dat iOS automatisch inzoomt bij focus op een input */
   .input {
     @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-800
            placeholder:text-slate-400
-           focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500
+           focus:outline-none
            transition-all duration-150;
-    font-size: 16px; /* iOS zoom-preventie: min 16px vereist */
+    font-size: 16px;
   }
+  .input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px var(--brand-primary-ring);
+  }
+
   .select {
     @apply input appearance-none cursor-pointer;
   }
 
-  /* Alle textarea's: ook min 16px om iOS-zoom te voorkomen */
   textarea {
     font-size: 16px;
   }
-  /* Label donkerder voor betere leesbaarheid — slate-600 i.p.v. 500 */
+
   .label {
     @apply block text-xs font-bold uppercase tracking-widest text-slate-600 mb-1.5;
   }
@@ -120,34 +140,31 @@
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
   }
 
-  /* Inline-edit veld: ziet eruit als tekst maar is bewerkbaar */
-  /* font-size 16px: ook hier iOS-zoom-preventie bij focus */
   .inline-edit {
     @apply w-full bg-transparent border-b-2 border-transparent hover:border-slate-200
-           focus:border-brand-500 focus:outline-none px-0 py-0.5 text-slate-800
+           focus:outline-none px-0 py-0.5 text-slate-800
            transition-colors duration-150;
     font-size: 16px;
   }
+  .inline-edit:focus {
+    border-color: var(--brand-primary);
+  }
+
   .inline-edit-title {
     @apply inline-edit text-xl font-bold;
   }
 }
 
 @layer utilities {
-  /* ─── iOS / PWA safe-area hulpklassen ────────────────────────────────────
-     Gebruik env(safe-area-inset-*) voor notch (boven) en home indicator (onder).
-     Vereist viewport-fit=cover in de <meta name="viewport"> tag.              */
   .pt-safe  { padding-top:    env(safe-area-inset-top,    0px); }
   .pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .pl-safe  { padding-left:   env(safe-area-inset-left,   0px); }
   .pr-safe  { padding-right:  env(safe-area-inset-right,  0px); }
 
-  /* Hoogte die rekening houdt met dynamische viewport (iOS adresbalk) + safe areas */
   .min-h-dvh-safe {
     min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
 
-  /* Touch-target minstens 44×44 pt (Apple HIG) */
   .touch-target {
     min-width:  44px;
     min-height: 44px;
