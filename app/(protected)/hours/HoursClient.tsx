@@ -400,7 +400,7 @@ export default function HoursClient({ userId, userName, projects }: Props) {
                     <button
                       onClick={() => handleDelete(e.id)}
                       disabled={deleting === e.id}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 transition-all shrink-0 mt-0.5"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-[var(--brand-primary-soft-hover)] transition-all shrink-0 mt-0.5"
                     >
                       {deleting === e.id
                         ? <Loader2 size={9} className="animate-spin" />
