@@ -257,7 +257,7 @@ export default function IntakeModal({
             <button
               onClick={handleGenerate}
               disabled={loading || fetching || selected.size === 0}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-50"
             >
               {loading
                 ? <><Loader2 size={14} className="animate-spin" /> Genereren…</>

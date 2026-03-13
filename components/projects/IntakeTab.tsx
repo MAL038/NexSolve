@@ -448,7 +448,7 @@ function IntakeCard({
           <button
             onClick={handlePDF}
             disabled={pdfLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--brand-primary)] text-white text-xs font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60 transition-colors"
           >
             {pdfLoading
               ? <><Loader2 size={12} className="animate-spin" /> PDF laden…</>
@@ -577,7 +577,7 @@ export default function IntakeTab({ projectId, projectName, themeId }: Props) {
             </button>
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors"
             >
               <Plus size={14} /> Nieuwe intake
             </button>
@@ -600,7 +600,7 @@ export default function IntakeTab({ projectId, projectName, themeId }: Props) {
             </p>
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors"
             >
               <Plus size={15} /> Intake genereren
             </button>

@@ -184,7 +184,8 @@ export default function ProjectsClient({ initialProjects, hierarchy, currentUser
           >
             <Trash2 size={14} /> Prullenbak
           </button>
-          <button onClick={() => setShowWizard(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200">
+          <button onClick={() => setShowWizard(true)} className="btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl
+                       text-sm font-medium hover:btn-primary:hover transition-colors">
             <Plus size={15} /> Nieuw project
           </button>
         </div>

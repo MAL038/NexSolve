@@ -40,7 +40,7 @@ export default function OrgOverviewClient({ organisations }: Props) {
         </div>
         <Link
           href="/admin/organisaties/nieuw"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm"
         >
           <Plus size={15} /> Nieuwe organisatie
         </Link>

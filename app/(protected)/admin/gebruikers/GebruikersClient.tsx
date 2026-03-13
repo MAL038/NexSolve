@@ -176,7 +176,7 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
         </div>
         <button
           onClick={() => { setShowInvite(v => !v); setInvError(""); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm"
         >
           <UserPlus size={15} /> Gebruiker uitnodigen
         </button>
@@ -245,7 +245,7 @@ export default function GebruikersClient({ initialUsers, organisations }: Props)
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowInvite(false)} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100">Annuleren</button>
             <button onClick={sendInvite} disabled={invSending}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60">
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60">
               {invSending ? <><Loader2 size={14} className="animate-spin" /> Versturen…</> : <><Send size={14} /> Versturen</>}
             </button>
           </div>

@@ -143,7 +143,7 @@ alter table project_templates
         </div>
         <button
           onClick={() => { setShowForm(true); setError(null); }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors flex-shrink-0"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] transition-colors flex-shrink-0"
         >
           <Plus size={14} /> Nieuw template
         </button>
@@ -162,7 +162,7 @@ alter table project_templates
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors mt-4"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors mt-4"
           >
             <Plus size={13} /> Maak eerste template
           </button>
@@ -273,7 +273,7 @@ alter table project_templates
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
                 {saving ? "Opslaan..." : "Template opslaan"}

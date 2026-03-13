@@ -768,7 +768,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
                       <button
                         onClick={handleCreateTeam}
                         disabled={newTeamLoading}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60 transition-colors"
                       >
                         {newTeamLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                         Aanmaken
@@ -841,7 +841,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
                 <div className="space-y-2">
                   <button
                     onClick={() => { router.push(`/projects/${created.id}`); onClose(); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors"
                   >
                     <ExternalLink size={15} /> Naar de projectpagina
                   </button>
@@ -893,7 +893,7 @@ export default function ProjectWizard({ onClose, onCreated, hierarchy, editProje
               <button
                 onClick={next}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm disabled:opacity-60"
               >
                 {loading ? (
                   <><Loader2 size={14} className="animate-spin" /> Aanmaken…</>

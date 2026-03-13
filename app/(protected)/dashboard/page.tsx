@@ -347,7 +347,7 @@ export default async function DashboardPage() {
                 <p className="text-xs text-slate-400 mt-1">Start je eerste project om de voortgang te volgen.</p>
                 <Link
                   href="/projects?new=1"
-                  className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors mt-4"
+                  className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold transition-colors mt-4"
                 >
                   <Plus size={12} /> Nieuw project aanmaken
                 </Link>

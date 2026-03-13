@@ -213,7 +213,7 @@ export default function PdfExportButton({
             <button
               onClick={handleExport}
               disabled={loading || done}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60 transition-colors"
             >
               {loading ? <><Loader2 size={11} className="animate-spin" /> Bezig…</>
                : done  ? <><Check size={11} /> Klaar!</>

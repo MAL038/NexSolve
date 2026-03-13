@@ -360,7 +360,7 @@ export default function ProjectEditModal({ project, hierarchy, onClose, onSaved 
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm disabled:opacity-60"
           >
             {saving ? (
               <><Loader2 size={14} className="animate-spin" /> Opslaan…</>

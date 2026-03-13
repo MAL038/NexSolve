@@ -302,7 +302,7 @@ function PlanningModal({
             <button
               onClick={handleSave}
               disabled={loading || !!warning}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm disabled:opacity-60"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
               {modal.mode === "create" ? "Inplannen" : "Opslaan"}
@@ -407,7 +407,7 @@ function AbsenceModal({
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100">Annuleren</button>
             <button onClick={handleSave} disabled={loading}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60">
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60">
               {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
               {modal.mode === "create" ? "Toevoegen" : "Opslaan"}
             </button>
@@ -606,7 +606,7 @@ export default function CalendarClient({
           {canPlan && (
             <button
               onClick={() => setPlanModal({ mode: "create", prefillDate: selectedKey })}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors shadow-sm"
             >
               <FolderKanban size={14} /> Inplannen
             </button>

@@ -195,7 +195,7 @@ function QuickAddModal({ date, projects, onSave, onClose }: QuickAddProps) {
           <button
             onClick={handleSave}
             disabled={saving || !projectId || hours <= 0}
-            className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[var(--brand-primary-hover)] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
             Opslaan

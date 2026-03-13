@@ -349,7 +349,7 @@ export function ExportModal({ variant = 'button', defaultScope = 'all' }: Props)
               )}
 
               <button onClick={handleExport} disabled={loading || done}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-sm font-bold hover:bg-[var(--brand-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
                 {loading ? <><Loader2 size={15} className="animate-spin" /> Bezig…</>
                 : done    ? <><Check size={15} /> Gedownload!</>
                           : <><FileDown size={15} /> Download {format === 'csv' ? 'CSV' : 'PDF'}</>}
