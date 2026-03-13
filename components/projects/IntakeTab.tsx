@@ -19,6 +19,7 @@ import {
 import clsx from "clsx";
 import IntakeModal from "./IntakeModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import Button from "@/components/ui/Button";
 import { useConfirm } from "@/lib/hooks/useConfirm";
 
 interface Question {
@@ -272,8 +273,8 @@ function EmailModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Mail size={15} className="text-blue-600" />
+            <div className="w-8 h-8 rounded-xl bg-[var(--brand-primary-soft)] flex items-center justify-center">
+              <Mail size={15} className="text-[var(--brand-primary)]" />
             </div>
             <h3 className="font-bold text-slate-800 text-sm">Intake versturen</h3>
           </div>
@@ -307,19 +308,20 @@ function EmailModal({
         </div>
 
         <div className="flex items-center justify-between px-6 pb-5">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:bg-slate-100">
+          <Button onClick={onClose} variant="ghost" className="text-slate-500">
             Annuleren
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={send}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            variant="primary"
+            size="lg"
           >
             {loading
               ? <><Loader2 size={13} className="animate-spin" /> Versturen…</>
               : <><Send size={13} /> Versturen</>
             }
-          </button>
+          </Button>
         </div>
       </div>
     </div>

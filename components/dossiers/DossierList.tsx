@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { DossierWithDetails, DOSSIER_TYPE_LABELS } from '@/types/dossier'
 import { DossierCreateModal } from './DossierCreateModal'
 import { DossierDetailModal } from './DossierDetailModal'
+import Button from '@/components/ui/Button'
 
 interface Props {
   projectId?: string
@@ -77,15 +78,17 @@ export function DossierList({ projectId, customerId }: Props) {
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
           Dossiers ({dossiers.length})
         </h3>
-        <button
+        <Button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium"
+          variant="primary"
+          size="sm"
+          className="gap-1.5 px-3"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Nieuw dossier
-        </button>
+        </Button>
       </div>
 
       {error && (
