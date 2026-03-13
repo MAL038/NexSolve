@@ -228,7 +228,7 @@ export default async function DashboardPage() {
           <Link
             href="/projects?new=1"
             className="btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl
-                       text-sm font-medium hover:bg-brand-700 transition-colors"
+                       text-sm font-medium hover:btn-primary:hover transition-colors"
           >
             <Plus size={14} /> Nieuw project
           </Link>
