@@ -162,8 +162,14 @@ export default function AcceptInvitePage() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 max-w-md w-full text-center space-y-4">
         {status === "loading" && (
           <>
-            <div className="w-14 h-14 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center mx-auto">
-              <Loader2 size={24} className="text-brand-500 animate-spin" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                backgroundColor: "var(--brand-primary-soft)",
+                border: "1px solid var(--brand-primary-border)",
+              }}
+            >
+              <Loader2 size={24} className="animate-spin" style={{ color: "var(--brand-primary)" }} />
             </div>
             <h1 className="text-lg font-semibold text-slate-800">Uitnodiging verwerken</h1>
             <p className="text-sm text-slate-500">{message}</p>
@@ -206,8 +212,14 @@ export default function AcceptInvitePage() {
 
         {status === "success" && (
           <>
-            <div className="w-14 h-14 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center mx-auto">
-              <CheckCircle size={24} className="text-brand-500" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                backgroundColor: "var(--brand-primary-soft)",
+                border: "1px solid var(--brand-primary-border)",
+              }}
+            >
+              <CheckCircle size={24} style={{ color: "var(--brand-primary)" }} />
             </div>
             <h1 className="text-lg font-semibold text-slate-800">{message}</h1>
             <p className="text-sm text-slate-500">Je wordt doorgestuurd naar het dashboard...</p>
