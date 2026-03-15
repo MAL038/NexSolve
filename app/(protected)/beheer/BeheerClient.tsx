@@ -17,9 +17,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirm } from "@/lib/hooks/useConfirm";
 import { useToast } from "@/lib/hooks/useToast";
 import Toast from "@/components/ui/Toast";
+import type { ModuleKey } from "@/lib/moduleDefinitions";
+import { MODULE_DEFINITIONS } from "@/lib/moduleDefinitions";
 
 type OrgPlan   = "trial" | "starter" | "pro" | "enterprise";
-type OrgModule = "dashboard" | "projects" | "customers" | "team" | "time" | "calendar" | "export" | "intake" | "planning" | "hrm";
+type ModuleKey = "dashboard" | "projects" | "customers" | "team" | "time" | "calendar" | "export" | "intake" | "planning" | "hrm";
 
 interface Organisation {
   id: string; name: string; slug: string; logo_url: string | null;

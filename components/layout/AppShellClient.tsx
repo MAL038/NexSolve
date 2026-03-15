@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { createClient } from "@/lib/supabaseClient";
 import Avatar from "@/components/ui/Avatar";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import type { Profile } from "@/types";
 
 // ─── Breadcrumb route map ──────────────────────────────────────
@@ -64,9 +65,35 @@ export default function AppShellClient({
 }) {
   const [open,         setOpen]         = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchOpen,   setSearchOpen]   = useState(false);
   const pathname  = usePathname();
   const router    = useRouter();
   const menuRef   = useRef<HTMLDivElement>(null);
+
+  // Keyboard shortcuts
+  const shortcuts = useMemo(() => [
+    // Navigation shortcuts
+    { key: "1", ctrl: true, action: () => router.push("/dashboard"), description: "Ga naar Dashboard" },
+    { key: "2", ctrl: true, action: () => router.push("/projects"), description: "Ga naar Projecten" },
+    { key: "3", ctrl: true, action: () => router.push("/customers"), description: "Ga naar Klanten" },
+    { key: "4", ctrl: true, action: () => router.push("/team"), description: "Ga naar Team" },
+    { key: "5", ctrl: true, action: () => router.push("/calendar"), description: "Ga naar Kalender" },
+    { key: "6", ctrl: true, action: () => router.push("/processen"), description: "Ga naar Processen" },
+
+    // Action shortcuts
+    { key: "k", ctrl: true, action: () => setSearchOpen(true), description: "Open globale zoekbalk" },
+    { key: "n", ctrl: true, action: () => {
+      if (pathname.startsWith("/projects")) router.push("/projects?new=1");
+      // Add more context-aware actions as needed
+    }, description: "Nieuw item aanmaken" },
+    { key: "Escape", action: () => {
+      setOpen(false);
+      setUserMenuOpen(false);
+      setSearchOpen(false);
+    }, description: "Sluit menu's en modals" },
+  ], [router, pathname]);
+
+  useKeyboardShortcuts(shortcuts);
 
   const sidebarNode = useMemo(() => {
     if (React.isValidElement(sidebar)) {
@@ -226,6 +253,15 @@ export default function AppShellClient({
             {/* Search (compact) */}
             <GlobalSearch compact />
 
+            {/* Help button */}
+            <button
+              onClick={() => alert(`Keyboard Shortcuts:\n${shortcuts.map(s => `${s.ctrl ? 'Ctrl+' : ''}${s.alt ? 'Alt+' : ''}${s.shift ? 'Shift+' : ''}${s.key}: ${s.description}`).join('\n')}`)}
+              className="hidden md:flex items-center justify-center w-8 h-8 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              title="Toetsenbord sneltoetsen"
+            >
+              ?
+            </button>
+
             {/* User menu */}
             {profile && (
               <div ref={menuRef} className="relative">
@@ -291,6 +327,9 @@ export default function AppShellClient({
             )}
           </div>
         </header>
+
+        {/* Global Search Modal */}
+        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
         {/* ── Main content ─────────────────────────────────────
             flex-1 + overflow-y-auto: eigen scrolllaag.

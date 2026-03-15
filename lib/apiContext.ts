@@ -6,17 +6,10 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
-
+import { type ModuleKey, moduleDefault } from "@/lib/moduleDefinitions";
 export type OrgRole = "owner" | "org.admin" | "org.member" | "member" | "viewer" | string;
 
-export type ModuleKey =
-  | "dashboard"
-  | "projects"
-  | "customers"
-  | "team"
-  | "time"
-  | "calendar"
-  | "export";
+export type { ModuleKey }; // re-export zodat bestaande imports niet breken
 
 const MODULE_DEFAULTS: Record<string, boolean> = {
   dashboard: true,
@@ -112,7 +105,7 @@ async function isModuleEnabled(
     .maybeSingle();
 
   if (!primary.error) {
-    return primary.data?.is_enabled ?? MODULE_DEFAULTS[moduleKey] ?? true;
+    return primary.data?.is_enabled ?? moduleDefault(moduleKey);
   }
 
   // Fall back to organisations.enabled_modules JSON if present

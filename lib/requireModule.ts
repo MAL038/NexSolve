@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabaseServer";
 import { getUserContext } from "@/lib/getUserContext";
+import { moduleDefault } from "@/lib/moduleDefinitions";
 
 const DEFAULTS: Record<string, boolean> = {
   dashboard: true,
@@ -32,7 +33,7 @@ export async function requireModuleEnabled(moduleKey: string, redirectTo = "/das
     .eq("module", moduleKey)
     .maybeSingle();
 
-  const enabled = data?.is_enabled ?? DEFAULTS[moduleKey] ?? true;
+  const enabled = data?.is_enabled ?? moduleDefault(moduleKey as ModuleKey);
 
   if (!enabled) {
     redirect(redirectTo);

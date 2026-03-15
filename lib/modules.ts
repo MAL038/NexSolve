@@ -1,19 +1,12 @@
 // lib/modules.ts
-export type ModuleKey =
-  | "dashboard"
-  | "projects"
-  | "customers"
-  | "team"
-  | "time"
-  | "calendar"
-  | "export"
-  | "rapportages"
-  | "templates";
+// Client-side helper — importeer ModuleKey altijd vanuit moduleDefinitions
+export type { ModuleKey } from "@/lib/moduleDefinitions";
+import { moduleDefault } from "@/lib/moduleDefinitions";
+import type { ModuleKey } from "@/lib/moduleDefinitions";
 
 export function isModuleEnabled(
   enabled: Record<string, boolean> | null | undefined,
   key: ModuleKey
-) {
-  // default: aan
-  return enabled?.[key] ?? true;
+): boolean {
+  return enabled?.[key] ?? moduleDefault(key);
 }
