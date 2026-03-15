@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Building2, Search, Users, Calendar, ChevronRight,
+  Building2, Search, Users, Calendar, ChevronRight, Plus,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -14,6 +14,7 @@ interface OrgRow {
   slug: string | null;
   created_at: string;
   memberCount: number;
+  is_active?: boolean;
 }
 
 interface Props {
@@ -41,15 +42,23 @@ export default function OrganisatiesClient({ organisations }: Props) {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
 
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Building2 size={16} className="text-brand-500" />
-          <span className="text-xs font-semibold uppercase tracking-widest text-brand-500">Superuser</span>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 size={16} className="text-brand-500" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-brand-500">Superuser</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">Organisaties</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {organisations.length} organisatie{organisations.length !== 1 ? "s" : ""} op het platform
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-slate-800">Organisaties</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {organisations.length} organisatie{organisations.length !== 1 ? "s" : ""} op het platform
-        </p>
+        <Link
+          href="/admin/organisaties/nieuw"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors shadow-sm"
+        >
+          <Plus size={15} /> Nieuwe organisatie
+        </Link>
       </div>
 
       {/* Zoekbalk */}
@@ -88,15 +97,23 @@ export default function OrganisatiesClient({ organisations }: Props) {
           filtered.map((org, i) => (
             <Link
               key={org.id}
-              href={`/org/${org.id}/settings?from=admin`}
+              href={`/admin/organisaties/${org.id}`}
               className={clsx(
                 "grid grid-cols-[1fr_100px_140px_48px] items-center px-5 py-4",
                 "transition-colors hover:bg-slate-50 group",
-                i !== 0 && "border-t border-slate-100"
+                i !== 0 && "border-t border-slate-100",
+                org.is_active === false && "opacity-60"
               )}
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{org.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{org.name}</p>
+                  {org.is_active === false && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-500 flex-shrink-0">
+                      Inactief
+                    </span>
+                  )}
+                </div>
                 {org.slug && (
                   <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">{org.slug}</p>
                 )}
