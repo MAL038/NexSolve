@@ -49,6 +49,16 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   return crumbs;
 }
 
+// ─── Shortcut type ────────────────────────────────────────────
+interface Shortcut {
+  key: string;
+  ctrl?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  action: () => void;
+  description: string;
+}
+
 // ─── Component ────────────────────────────────────────────────
 export default function AppShellClient({
   sidebar,
@@ -71,7 +81,7 @@ export default function AppShellClient({
   const menuRef   = useRef<HTMLDivElement>(null);
 
   // Keyboard shortcuts
-  const shortcuts = useMemo(() => [
+  const shortcuts = useMemo<Shortcut[]>(() => [
     // Navigation shortcuts
     { key: "1", ctrl: true, action: () => router.push("/dashboard"), description: "Ga naar Dashboard" },
     { key: "2", ctrl: true, action: () => router.push("/projects"), description: "Ga naar Projecten" },
