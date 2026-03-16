@@ -75,7 +75,6 @@ export default function AppShellClient({
 }) {
   const [open,         setOpen]         = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [searchOpen,   setSearchOpen]   = useState(false);
   const pathname  = usePathname();
   const router    = useRouter();
   const menuRef   = useRef<HTMLDivElement>(null);
@@ -91,7 +90,9 @@ export default function AppShellClient({
     { key: "6", ctrl: true, action: () => router.push("/processen"), description: "Ga naar Processen" },
 
     // Action shortcuts
-    { key: "k", ctrl: true, action: () => setSearchOpen(true), description: "Open globale zoekbalk" },
+    { key: "k", ctrl: true, action: () => {
+      // GlobalSearch opent zichzelf via Ctrl+K intern
+    }, description: "Open globale zoekbalk" },
     { key: "n", ctrl: true, action: () => {
       if (pathname.startsWith("/projects")) router.push("/projects?new=1");
       // Add more context-aware actions as needed
@@ -99,7 +100,6 @@ export default function AppShellClient({
     { key: "Escape", action: () => {
       setOpen(false);
       setUserMenuOpen(false);
-      setSearchOpen(false);
     }, description: "Sluit menu's en modals" },
   ], [router, pathname]);
 
@@ -337,9 +337,6 @@ export default function AppShellClient({
             )}
           </div>
         </header>
-
-        {/* Global Search Modal */}
-        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
         {/* ── Main content ─────────────────────────────────────
             flex-1 + overflow-y-auto: eigen scrolllaag.
